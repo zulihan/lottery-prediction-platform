@@ -6,11 +6,13 @@ import os
 import datetime
 import io
 import base64
+import json
 from data_processor import DataProcessor
 from statistics import EuromillionsStatistics
 from strategies import PredictionStrategies
 from visualization import DataVisualization
 from utils import get_download_link_csv, get_download_link_excel
+import database
 
 # Page configuration
 st.set_page_config(
@@ -70,19 +72,67 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"Error loading data: {str(e)}")
     else:
-        if st.button("Load Sample Data"):
+        data_option = st.radio(
+            "Data source options:",
+            ["Load from database", "Load sample CSV", "Load both (merge and save to database)"]
+        )
+        
+        if st.button("Load Data"):
             try:
-                # Load sample data from the sample_data directory
-                data = pd.read_csv("sample_data/sample_euromillions.csv")
-                st.session_state.data_processor = DataProcessor(data)
-                st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
-                st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
-                st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
-                st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
-                st.session_state.data_loaded = True
-                st.success("Sample data successfully loaded!")
+                if data_option == "Load from database":
+                    # Try to load data from the database
+                    db_data = database.get_all_drawings()
+                    if not db_data.empty:
+                        st.session_state.data_processor = DataProcessor(db_data)
+                        st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
+                        st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
+                        st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
+                        st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
+                        st.session_state.data_loaded = True
+                        st.success(f"Successfully loaded {len(db_data)} records from database!")
+                    else:
+                        st.warning("No data found in the database. Try loading the sample CSV data first.")
+                
+                elif data_option == "Load sample CSV":
+                    # Load sample data from the sample_data directory
+                    data = pd.read_csv("sample_data/sample_euromillions.csv")
+                    st.session_state.data_processor = DataProcessor(data)
+                    st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
+                    st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
+                    st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
+                    st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
+                    st.session_state.data_loaded = True
+                    st.success(f"Successfully loaded {len(data)} records from sample CSV!")
+                
+                else:  # Load both
+                    # Load sample data from CSV
+                    csv_data = pd.read_csv("sample_data/sample_euromillions.csv")
+                    
+                    # Process the data
+                    data_processor = DataProcessor(csv_data)
+                    processed_data = data_processor.get_processed_data()
+                    
+                    # Load the data into the database
+                    inserted_count = database.load_drawings_from_dataframe(processed_data)
+                    
+                    # Now load all data from the database
+                    db_data = database.get_all_drawings()
+                    
+                    # Set up application state
+                    st.session_state.data_processor = DataProcessor(db_data)
+                    st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
+                    st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
+                    st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
+                    st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
+                    st.session_state.data_loaded = True
+                    
+                    if inserted_count > 0:
+                        st.success(f"Added {inserted_count} new records to the database. Total records: {len(db_data)}")
+                    else:
+                        st.info(f"No new records added. Database already contains all {len(db_data)} records.")
+                
             except Exception as e:
-                st.error(f"Error loading sample data: {str(e)}")
+                st.error(f"Error loading data: {str(e)}")
     
     if st.session_state.data_loaded:
         st.header("Add New Draw")
@@ -121,12 +171,17 @@ with st.sidebar:
                         st.session_state.data_processor.add_new_draw(
                             draw_date, numbers, stars
                         )
+                        
+                        # Also add to the database
+                        day_name = draw_date.strftime("%A")  # Get day name from date
+                        database.add_new_drawing(draw_date, numbers, stars, day_of_week=day_name)
+                        
                         # Update all dependent objects
                         st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
                         st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
                         st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
                         st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
-                        st.success("New draw added successfully!")
+                        st.success("New draw added successfully to both application and database!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error adding new draw: {str(e)}")
@@ -141,7 +196,8 @@ else:
         "Statistical Analysis", 
         "Strategy Generation",
         "Visualizations",
-        "Generated Combinations"
+        "Generated Combinations",
+        "Saved Combinations"
     ])
     
     # Data Overview tab
@@ -492,7 +548,15 @@ else:
                         
                         # Store the generated combinations
                         st.session_state.generated_combinations[strategy_type] = combinations
-                        st.success(f"Successfully generated {num_combinations} combinations!")
+                        
+                        # Also save to the database
+                        for combo in combinations:
+                            numbers = combo['numbers']
+                            stars = combo['stars']
+                            score = combo.get('score', 0.0)
+                            database.save_generated_combination(numbers, stars, strategy_type, score)
+                        
+                        st.success(f"Successfully generated {num_combinations} combinations and saved to database!")
                     except Exception as e:
                         st.error(f"Error generating combinations: {str(e)}")
         
