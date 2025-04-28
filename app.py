@@ -443,7 +443,8 @@ else:
             strategy_type = st.selectbox(
                 "Select Strategy",
                 ["Frequency Strategy", "Mixed Strategy", "Temporal Strategy", "Stratified Sampling", "Coverage Strategy", 
-                 "Risk/Reward Optimization", "Bayesian Model", "Markov Chain Model", "Time Series Model", "Anti-Cognitive Bias"]
+                 "Risk/Reward Optimization", "Bayesian Model", "Markov Chain Model", "Time Series Model", "Anti-Cognitive Bias",
+                 "Multi-Strategy"]
             )
             
             num_combinations = st.number_input("Number of combinations to generate", 1, 20, 5)
@@ -490,6 +491,9 @@ else:
                 
             elif strategy_type == "Anti-Cognitive Bias":
                 st.info("This strategy generates combinations that avoid common cognitive biases most players have when selecting numbers")
+            elif strategy_type == "Multi-Strategy":
+                st.info("This approach generates combinations using ALL strategies at once, giving you a diverse set of combinations based on different mathematical and statistical approaches.")
+                st.warning("Note: This will generate 10 combinations for each strategy!")
             
             generate_button = st.button("Generate Combinations")
             
@@ -545,6 +549,42 @@ else:
                             combinations = st.session_state.strategies.cognitive_bias_strategy(
                                 num_combinations=num_combinations
                             )
+                        elif strategy_type == "Multi-Strategy":
+                            # Generate combinations for each strategy
+                            all_strategies = {
+                                "Frequency Strategy": lambda: st.session_state.strategies.frequency_strategy(num_combinations=10, recent_weight=0.6),
+                                "Mixed Strategy": lambda: st.session_state.strategies.mixed_strategy(num_combinations=10, hot_ratio=0.7),
+                                "Temporal Strategy": lambda: st.session_state.strategies.temporal_strategy(num_combinations=10, lookback_period=30),
+                                "Stratified Sampling": lambda: st.session_state.strategies.stratified_sampling_strategy(num_combinations=10),
+                                "Coverage Strategy": lambda: st.session_state.strategies.coverage_strategy(num_combinations=10, balanced=True),
+                                "Risk/Reward Optimization": lambda: st.session_state.strategies.risk_reward_strategy(num_combinations=10, risk_level=5),
+                                "Bayesian Model": lambda: st.session_state.strategies.bayesian_strategy(num_combinations=10, recent_draws_count=20),
+                                "Markov Chain Model": lambda: st.session_state.strategies.markov_strategy(num_combinations=10, lag=1),
+                                "Time Series Model": lambda: st.session_state.strategies.time_series_strategy(num_combinations=10, window_size=10),
+                                "Anti-Cognitive Bias": lambda: st.session_state.strategies.cognitive_bias_strategy(num_combinations=10)
+                            }
+                            
+                            combinations = []
+                            strategy_progress = st.progress(0.0)
+                            
+                            for i, (strategy_name, strategy_fn) in enumerate(all_strategies.items()):
+                                try:
+                                    st.write(f"Generating combinations using {strategy_name}...")
+                                    strategy_combos = strategy_fn()
+                                    
+                                    # Add strategy name to each combination
+                                    for combo in strategy_combos:
+                                        combo['strategy'] = strategy_name
+                                    
+                                    combinations.extend(strategy_combos)
+                                    
+                                    # Store these combinations in their respective strategy too
+                                    st.session_state.generated_combinations[strategy_name] = strategy_combos
+                                    
+                                    # Update progress
+                                    strategy_progress.progress((i + 1) / len(all_strategies))
+                                except Exception as e:
+                                    st.warning(f"Error generating combinations for {strategy_name}: {str(e)}")
                         
                         # Store the generated combinations
                         st.session_state.generated_combinations[strategy_type] = combinations
@@ -570,8 +610,13 @@ else:
                     numbers = combo['numbers']
                     stars = combo['stars']
                     score = combo.get('score', 'N/A')
+                    strategy_name = combo.get('strategy', strategy_type)
                     
-                    st.markdown(f"### Combination {i+1}")
+                    # For Multi-Strategy, show which strategy generated each combination
+                    if strategy_type == "Multi-Strategy":
+                        st.markdown(f"### Combination {i+1} - {strategy_name}")
+                    else:
+                        st.markdown(f"### Combination {i+1}")
                     
                     # Display main numbers with colored balls
                     st.markdown("<div style='display:flex; gap:10px;'>", unsafe_allow_html=True)
@@ -610,12 +655,23 @@ else:
                 for i, combo in enumerate(combinations):
                     numbers_str = ', '.join(map(str, sorted(combo['numbers'])))
                     stars_str = ', '.join(map(str, sorted(combo['stars'])))
-                    export_data.append({
-                        'Combination': i+1,
-                        'Numbers': numbers_str,
-                        'Stars': stars_str,
-                        'Score': combo.get('score', 'N/A')
-                    })
+                    
+                    # For Multi-Strategy, include the strategy that generated each combination
+                    if strategy_type == "Multi-Strategy":
+                        export_data.append({
+                            'Combination': i+1,
+                            'Strategy': combo.get('strategy', 'Unknown'),
+                            'Numbers': numbers_str,
+                            'Stars': stars_str,
+                            'Score': combo.get('score', 'N/A')
+                        })
+                    else:
+                        export_data.append({
+                            'Combination': i+1,
+                            'Numbers': numbers_str,
+                            'Stars': stars_str,
+                            'Score': combo.get('score', 'N/A')
+                        })
                 
                 export_df = pd.DataFrame(export_data)
                 
