@@ -262,7 +262,7 @@ class EuromillionsStatistics:
         occurrences = []
         for date in dates:
             draw = self.data[self.data['date'] == date]
-            if any(draw[col] == number for col in self.num_columns):
+            if any([(draw[col] == number).any() for col in self.num_columns]):
                 occurrences.append(1)
             else:
                 occurrences.append(0)
@@ -300,7 +300,7 @@ class EuromillionsStatistics:
         # Occurrences and gaps
         occurrences = []
         for idx, row in self.data.iterrows():
-            if any(row[col] == number for col in self.num_columns):
+            if any([(row[col] == number).any() if isinstance(row[col], pd.Series) else row[col] == number for col in self.num_columns]):
                 occurrences.append(idx)
         
         # Calculate gaps between occurrences
@@ -351,11 +351,11 @@ class EuromillionsStatistics:
         
         # Get draws where the number appears
         number_draws = self.data[
-            (self.data['n1'] == number) |
-            (self.data['n2'] == number) |
-            (self.data['n3'] == number) |
-            (self.data['n4'] == number) |
-            (self.data['n5'] == number)
+            (self.data['n1'].astype(int) == number) |
+            (self.data['n2'].astype(int) == number) |
+            (self.data['n3'].astype(int) == number) |
+            (self.data['n4'].astype(int) == number) |
+            (self.data['n5'].astype(int) == number)
         ]
         
         if number_draws.empty:

@@ -493,7 +493,7 @@ else:
                 st.info("This strategy generates combinations that avoid common cognitive biases most players have when selecting numbers")
             elif strategy_type == "Multi-Strategy":
                 st.info("This approach generates combinations using ALL strategies at once, giving you a diverse set of combinations based on different mathematical and statistical approaches.")
-                st.warning("Note: This will generate 10 combinations for each strategy!")
+                st.warning("Note: This will generate 1 combination from each strategy!")
             
             generate_button = st.button("Generate Combinations")
             
@@ -552,16 +552,16 @@ else:
                         elif strategy_type == "Multi-Strategy":
                             # Generate combinations for each strategy
                             all_strategies = {
-                                "Frequency Strategy": lambda: st.session_state.strategies.frequency_strategy(num_combinations=10, recent_weight=0.6),
-                                "Mixed Strategy": lambda: st.session_state.strategies.mixed_strategy(num_combinations=10, hot_ratio=0.7),
-                                "Temporal Strategy": lambda: st.session_state.strategies.temporal_strategy(num_combinations=10, lookback_period=30),
-                                "Stratified Sampling": lambda: st.session_state.strategies.stratified_sampling_strategy(num_combinations=10),
-                                "Coverage Strategy": lambda: st.session_state.strategies.coverage_strategy(num_combinations=10, balanced=True),
-                                "Risk/Reward Optimization": lambda: st.session_state.strategies.risk_reward_strategy(num_combinations=10, risk_level=5),
-                                "Bayesian Model": lambda: st.session_state.strategies.bayesian_strategy(num_combinations=10, recent_draws_count=20),
-                                "Markov Chain Model": lambda: st.session_state.strategies.markov_strategy(num_combinations=10, lag=1),
-                                "Time Series Model": lambda: st.session_state.strategies.time_series_strategy(num_combinations=10, window_size=10),
-                                "Anti-Cognitive Bias": lambda: st.session_state.strategies.cognitive_bias_strategy(num_combinations=10)
+                                "Frequency Strategy": lambda: st.session_state.strategies.frequency_strategy(num_combinations=1, recent_weight=0.6),
+                                "Mixed Strategy": lambda: st.session_state.strategies.mixed_strategy(num_combinations=1, hot_ratio=0.7),
+                                "Temporal Strategy": lambda: st.session_state.strategies.temporal_strategy(num_combinations=1, lookback_period=30),
+                                "Stratified Sampling": lambda: st.session_state.strategies.stratified_sampling_strategy(num_combinations=1),
+                                "Coverage Strategy": lambda: st.session_state.strategies.coverage_strategy(num_combinations=1, balanced=True),
+                                "Risk/Reward Optimization": lambda: st.session_state.strategies.risk_reward_strategy(num_combinations=1, risk_level=5),
+                                "Bayesian Model": lambda: st.session_state.strategies.bayesian_strategy(num_combinations=1, recent_draws_count=20),
+                                "Markov Chain Model": lambda: st.session_state.strategies.markov_strategy(num_combinations=1, lag=1),
+                                "Time Series Model": lambda: st.session_state.strategies.time_series_strategy(num_combinations=1, window_size=10),
+                                "Anti-Cognitive Bias": lambda: st.session_state.strategies.cognitive_bias_strategy(num_combinations=1)
                             }
                             
                             combinations = []
