@@ -386,7 +386,8 @@ else:
             
             strategy_type = st.selectbox(
                 "Select Strategy",
-                ["Frequency Strategy", "Mixed Strategy", "Temporal Strategy", "Stratified Sampling", "Coverage Strategy", "Risk/Reward Optimization"]
+                ["Frequency Strategy", "Mixed Strategy", "Temporal Strategy", "Stratified Sampling", "Coverage Strategy", 
+                 "Risk/Reward Optimization", "Bayesian Model", "Markov Chain Model", "Time Series Model", "Anti-Cognitive Bias"]
             )
             
             num_combinations = st.number_input("Number of combinations to generate", 1, 20, 5)
@@ -418,6 +419,21 @@ else:
             elif strategy_type == "Risk/Reward Optimization":
                 st.info("This strategy focuses on combinations that might be less played by others")
                 risk_level = st.slider("Risk level", 1, 10, 5, key="risk_level")
+                
+            elif strategy_type == "Bayesian Model":
+                st.info("This strategy uses Bayesian probability theory to predict numbers based on prior probabilities and recent evidence")
+                recent_draws_count = st.slider("Recent draws to consider", 5, 50, 20, key="bayes_draws")
+                
+            elif strategy_type == "Markov Chain Model":
+                st.info("This strategy uses Markov chain transition probabilities to predict the next draw based on previous draws")
+                lag = st.slider("Lag (number of previous draws to consider)", 1, 5, 1, key="markov_lag")
+                
+            elif strategy_type == "Time Series Model":
+                st.info("This strategy analyzes time series patterns to find cycles and predict numbers due to appear")
+                window_size = st.slider("Analysis window size", 5, 30, 10, key="ts_window")
+                
+            elif strategy_type == "Anti-Cognitive Bias":
+                st.info("This strategy generates combinations that avoid common cognitive biases most players have when selecting numbers")
             
             generate_button = st.button("Generate Combinations")
             
@@ -453,6 +469,25 @@ else:
                             combinations = st.session_state.strategies.risk_reward_strategy(
                                 num_combinations=num_combinations,
                                 risk_level=risk_level
+                            )
+                        elif strategy_type == "Bayesian Model":
+                            combinations = st.session_state.strategies.bayesian_strategy(
+                                num_combinations=num_combinations,
+                                recent_draws_count=recent_draws_count
+                            )
+                        elif strategy_type == "Markov Chain Model":
+                            combinations = st.session_state.strategies.markov_strategy(
+                                num_combinations=num_combinations,
+                                lag=lag
+                            )
+                        elif strategy_type == "Time Series Model":
+                            combinations = st.session_state.strategies.time_series_strategy(
+                                num_combinations=num_combinations,
+                                window_size=window_size
+                            )
+                        elif strategy_type == "Anti-Cognitive Bias":
+                            combinations = st.session_state.strategies.cognitive_bias_strategy(
+                                num_combinations=num_combinations
                             )
                         
                         # Store the generated combinations
