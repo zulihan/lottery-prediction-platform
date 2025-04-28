@@ -1,0 +1,96 @@
+Prompt pour la création d'une application avancée de prédiction Euromillions
+Contexte
+Je souhaite développer une application sophistiquée qui utilise des méthodes statistiques et mathématiques avancées pour générer des combinaisons optimisées pour l'Euromillions. Cette application devra dépasser la simple analyse de fréquences et intégrer des modèles probabilistes complexes pour maximiser les chances de gain.
+Données disponibles
+
+Fichiers CSV contenant l'historique complet des tirages Euromillions depuis 2004
+Format des tirages : 5 numéros principaux (1-50) et 2 étoiles (1-12)
+Métadonnées temporelles associées (dates, jours de la semaine, etc.)
+
+Fonctionnalités requises
+1. Acquisition et prétraitement des données
+
+Import automatisé des données historiques depuis différentes sources
+Nettoyage et validation avancée des données
+Structuration optimisée pour les analyses temporelles
+Mise à jour automatique après chaque nouveau tirage
+
+2. Analyse statistique multi-dimensionnelle
+
+Analyse de fréquences pondérées (récente/historique avec ratio 60/40)
+Analyse des séries temporelles pour détecter des motifs cycliques
+Modèles de Markov pour étudier les transitions entre tirages
+Analyse bayésienne pour mettre à jour continuellement les probabilités
+Détection de biais systémiques dans les tirages (s'ils existent)
+Analyse des paires et sous-ensembles récurrents de numéros
+
+3. Génération de grilles avec approches hybrides
+
+Stratégie de base : Combinaisons optimisées des numéros/étoiles à haute fréquence
+Stratégie mixte : Mélange optimal statistiquement validé entre numéros fréquents et outsiders
+Stratégie temporelle : Sélections basées sur des cycles et motifs temporels identifiés
+Stratégie d'échantillonnage stratifié : Sélection proportionnelle dans différentes strates de numéros
+Stratégie de couverture systématique : Optimisation mathématique pour couvrir des sous-ensembles de possibilités
+Stratégie d'optimisation risque/récompense : Identification des combinaisons à probabilité égale mais potentiellement moins jouées
+
+4. Interface utilisateur et visualisation avancée
+
+Dashboard interactif avec visualisation des tendances et patterns
+Graphiques dynamiques montrant les évolutions temporelles des fréquences
+Heatmaps des corrélations entre numéros et étoiles
+Visualisation des prédictions avec intervalles de confiance
+Interface pour personnaliser les paramètres des modèles
+
+5. Évaluation et adaptation continue
+
+Systèmes de rétroaction automatisés après chaque tirage
+Métriques d'évaluation des performances des différentes stratégies
+Algorithmes d'apprentissage pour affiner progressivement les modèles
+A/B testing entre différentes approches prédictives
+
+Méthodes mathématiques à implémenter
+1. Tests statistiques rigoureux
+Implémentation de tests statistiques (chi-carré, Kolmogorov-Smirnov) pour vérifier la véritable uniformité des tirages et identifier d'éventuelles anomalies.
+2. Chaînes de Markov
+Modélisation des transitions entre les états (tirages) pour détecter des dépendances potentielles entre tirages successifs:
+
+Matrices de transition entre les numéros
+Analyse des séquences temporelles avec différentes fenêtres
+
+3. Méthodes bayésiennes
+Utilisation de l'inférence bayésienne pour mettre à jour continuellement les probabilités:
+
+Définition des distributions a priori basées sur l'historique long
+Mise à jour des distributions avec les données récentes
+Calcul des distributions de probabilité postérieures
+
+4. Échantillonnage stratifié
+Division de l'ensemble des numéros en strates pertinentes:
+
+Par parité (pairs/impairs)
+Par plages numériques (1-10, 11-20, etc.)
+Par somme des chiffres
+Par répartition spatiale sur la grille
+
+5. Analyse des biais cognitifs humains
+Identification et exploitation des tendances des joueurs humains:
+
+Évitement des combinaisons fréquemment jouées
+Identification des numéros statistiquement "sous-joués"
+Optimisation du rapport gain potentiel / probabilité
+
+Exemple de formule mathématique pour le scoring
+Pour un numéro i, calculer un score composite S(i) tel que:
+S(i) = α × F_r(i) + β × F_h(i) + γ × M(i) + δ × B(i) + ε × T(i)
+Où:
+
+F_r(i) = fréquence récente normalisée
+F_h(i) = fréquence historique normalisée
+M(i) = score de Markov (basé sur les transitions)
+B(i) = score bayésien (probabilité postérieure)
+T(i) = composante temporelle (cycles identifiés)
+α, β, γ, δ, ε = coefficients de pondération optimisés
+
+Livrable attendu
+Une application sophistiquée intégrant ces multiples approches mathématiques et statistiques, capable de générer des grilles optimisées selon différentes stratégies, avec une interface permettant de visualiser et comprendre les patterns identifiés dans les données.
+L'application doit être capable d'apprendre et de s'adapter à chaque nouveau tirage, en ajustant automatiquement les paramètres des modèles pour maximiser les performances prédictives sur le long terme.
