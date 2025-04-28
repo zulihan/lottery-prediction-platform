@@ -789,3 +789,180 @@ else:
                         )
         else:
             st.info("No combinations have been generated yet. Go to the Strategy Generation tab to create some.")
+    
+    # Saved Combinations tab
+    with tabs[5]:
+        st.header("Saved Combinations")
+        
+        # Initialize session state for saved combinations
+        if 'saved_combinations_loaded' not in st.session_state:
+            st.session_state.saved_combinations_loaded = False
+        
+        # Add a button to load saved combinations from database
+        if not st.session_state.saved_combinations_loaded:
+            if st.button("Load Saved Combinations from Database"):
+                try:
+                    # Get saved combinations from database
+                    saved_combos = database.get_user_saved_combinations()
+                    if saved_combos:
+                        st.session_state.saved_combinations = saved_combos
+                        st.session_state.saved_combinations_loaded = True
+                        st.success(f"Successfully loaded {len(saved_combos)} saved combinations!")
+                    else:
+                        st.session_state.saved_combinations = []
+                        st.session_state.saved_combinations_loaded = True
+                        st.info("No saved combinations found in the database.")
+                except Exception as e:
+                    st.error(f"Error loading saved combinations: {str(e)}")
+        
+        # Display two columns: left for creating new saved combinations, right for displaying existing ones
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.subheader("Save New Combination")
+            
+            # Form for adding a new saved combination
+            with st.form("save_combination_form"):
+                st.markdown("**Main Numbers (1-50)**")
+                
+                # Create rows of number inputs
+                rows = 2
+                cols_per_row = 3
+                all_num_inputs = []
+                
+                for row in range(rows):
+                    cols = st.columns(cols_per_row if row == 0 else cols_per_row - 1)
+                    for i, col in enumerate(cols):
+                        with col:
+                            idx = row * cols_per_row + i
+                            if idx < 5:  # We need 5 numbers total
+                                num = st.number_input(f"Number {idx+1}", min_value=1, max_value=50, key=f"save_num_{idx}")
+                                all_num_inputs.append(num)
+                
+                st.markdown("**Star Numbers (1-12)**")
+                col1, col2 = st.columns(2)
+                with col1:
+                    star1 = st.number_input("Star 1", min_value=1, max_value=12, key="save_star_1")
+                with col2:
+                    star2 = st.number_input("Star 2", min_value=1, max_value=12, key="save_star_2")
+                
+                # Additional fields
+                strategy = st.text_input("Strategy (optional)", "")
+                notes = st.text_area("Notes (optional)", "")
+                
+                submitted = st.form_submit_button("Save Combination")
+                
+                if submitted:
+                    # Check for duplicates in the numbers
+                    numbers = all_num_inputs
+                    stars = [star1, star2]
+                    
+                    if len(set(numbers)) != 5:
+                        st.error("Main numbers must be unique!")
+                    elif len(set(stars)) != 2:
+                        st.error("Star numbers must be unique!")
+                    else:
+                        try:
+                            # Save to database
+                            saved_id = database.save_user_combination(numbers, stars, strategy, notes)
+                            
+                            # Reload saved combinations to include the new one
+                            saved_combos = database.get_user_saved_combinations()
+                            st.session_state.saved_combinations = saved_combos
+                            st.session_state.saved_combinations_loaded = True
+                            
+                            st.success("Combination saved successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error saving combination: {str(e)}")
+        
+        with col2:
+            st.subheader("Your Saved Combinations")
+            
+            if st.session_state.saved_combinations_loaded:
+                if hasattr(st.session_state, 'saved_combinations') and st.session_state.saved_combinations:
+                    for i, combo in enumerate(st.session_state.saved_combinations):
+                        with st.expander(f"Combination {i+1} - Saved on {combo['saved_at']}"):
+                            # Display combination details
+                            numbers = combo['numbers']
+                            stars = combo['stars']
+                            
+                            col1, col2 = st.columns([3, 1])
+                            
+                            with col1:
+                                # Display main numbers with colored balls
+                                st.markdown("<div style='display:flex; gap:10px;'>", unsafe_allow_html=True)
+                                for num in sorted(numbers):
+                                    st.markdown(
+                                        f"<div style='background-color:#1E88E5; color:white; width:40px; height:40px; "
+                                        f"border-radius:50%; display:flex; align-items:center; justify-content:center; "
+                                        f"font-weight:bold;'>{num}</div>",
+                                        unsafe_allow_html=True
+                                    )
+                                st.markdown("</div>", unsafe_allow_html=True)
+                                
+                                # Display star numbers with yellow stars
+                                st.markdown("<div style='display:flex; gap:10px; margin-top:10px;'>", unsafe_allow_html=True)
+                                for star in sorted(stars):
+                                    st.markdown(
+                                        f"<div style='background-color:#FFD700; color:#333; width:40px; height:40px; "
+                                        f"border-radius:50%; display:flex; align-items:center; justify-content:center; "
+                                        f"font-weight:bold;'>{star}</div>",
+                                        unsafe_allow_html=True
+                                    )
+                                st.markdown("</div>", unsafe_allow_html=True)
+                            
+                            with col2:
+                                # Display if it was played and the result
+                                played = combo.get('played', False)
+                                result = combo.get('result', 'Not played yet')
+                                
+                                if played:
+                                    st.success("✓ Played")
+                                    st.write(f"Result: {result}")
+                                else:
+                                    st.warning("⧖ Not played")
+                            
+                            # Display strategy and notes
+                            if combo.get('strategy'):
+                                st.write(f"**Strategy:** {combo['strategy']}")
+                            
+                            if combo.get('notes'):
+                                st.write(f"**Notes:** {combo['notes']}")
+                            
+                            # Form to update combination status
+                            with st.form(key=f"update_form_{combo['id']}"):
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    played_status = st.checkbox("Played?", value=combo.get('played', False))
+                                
+                                with col2:
+                                    result_text = st.text_input("Result", value=combo.get('result', ''))
+                                
+                                updated_notes = st.text_area("Update Notes", value=combo.get('notes', ''))
+                                
+                                update_submitted = st.form_submit_button("Update")
+                                
+                                if update_submitted:
+                                    try:
+                                        # Update in database
+                                        database.update_user_combination(
+                                            combo['id'], 
+                                            played=played_status, 
+                                            result=result_text, 
+                                            notes=updated_notes
+                                        )
+                                        
+                                        # Reload saved combinations
+                                        saved_combos = database.get_user_saved_combinations()
+                                        st.session_state.saved_combinations = saved_combos
+                                        
+                                        st.success("Combination updated successfully!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error updating combination: {str(e)}")
+                else:
+                    st.info("You don't have any saved combinations yet. Use the form on the left to save your first combination.")
+            else:
+                st.info("Click the 'Load Saved Combinations from Database' button to view your saved combinations.")
