@@ -235,7 +235,7 @@ def save_generated_combination(numbers, stars, strategy, score):
         List of 2 star numbers
     strategy : str
         Strategy used to generate the combination
-    score : float
+    score : float or numpy.float64
         Score or confidence value
         
     Returns:
@@ -243,6 +243,15 @@ def save_generated_combination(numbers, stars, strategy, score):
     int
         ID of the saved combination
     """
+    # Convert NumPy values to native Python types for database compatibility
+    # Convert numbers and stars to standard Python lists
+    numbers = [int(n) for n in numbers]
+    stars = [int(s) for s in stars]
+    
+    # Convert score to a standard Python float if it's a NumPy type
+    if hasattr(score, 'item'):  # Check if it's a NumPy scalar
+        score = float(score)
+    
     # Convert lists to JSON strings
     numbers_json = json.dumps(numbers)
     stars_json = json.dumps(stars)
@@ -306,6 +315,11 @@ def save_user_combination(numbers, stars, strategy=None, notes=None):
     int
         ID of the saved combination
     """
+    # Convert NumPy values to native Python types for database compatibility
+    # Convert numbers and stars to standard Python lists
+    numbers = [int(n) for n in numbers]
+    stars = [int(s) for s in stars]
+    
     # Convert lists to JSON strings
     numbers_json = json.dumps(numbers)
     stars_json = json.dumps(stars)
