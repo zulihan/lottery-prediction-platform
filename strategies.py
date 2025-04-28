@@ -813,9 +813,28 @@ class PredictionStrategies:
         Returns:
         --------
         list
-            List of k sampled elements
+            List of k sampled elements (guaranteed to be unique)
         """
         population = list(weights.keys())
         weights_list = [weights[i] for i in population]
         
-        return random.choices(population, weights=weights_list, k=k)
+        # Ensure unique samples
+        result = []
+        remaining_population = population.copy()
+        remaining_weights = weights_list.copy()
+        
+        while len(result) < k and remaining_population:
+            if len(remaining_population) == 1:
+                # Only one choice left
+                result.append(remaining_population[0])
+            else:
+                # Sample based on weights
+                chosen = random.choices(remaining_population, weights=remaining_weights, k=1)[0]
+                result.append(chosen)
+                
+                # Remove the chosen element for next selection
+                idx = remaining_population.index(chosen)
+                remaining_population.pop(idx)
+                remaining_weights.pop(idx)
+        
+        return result
