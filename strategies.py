@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 import random
-from collections import Counter
+from collections import Counter, defaultdict
 import itertools
+import math
+from models import BayesianModel, MarkovModel, TimeSeriesModel
 
 class PredictionStrategies:
     """
@@ -605,6 +607,198 @@ class PredictionStrategies:
         
         return combinations
     
+    def bayesian_strategy(self, num_combinations=5, recent_draws_count=20):
+        """
+        Generate combinations using a Bayesian probability model.
+        
+        Parameters:
+        -----------
+        num_combinations : int
+            Number of combinations to generate
+        recent_draws_count : int
+            Number of recent draws to use for updating priors
+            
+        Returns:
+        --------
+        list of dict
+            List of combinations, each with 'numbers', 'stars', and 'score'
+        """
+        # Create a Bayesian model with the historical data
+        bayesian_model = BayesianModel(self.stats.data, recent_draws_count)
+        
+        # Generate combinations
+        bayesian_combinations = bayesian_model.generate_combinations(num_combinations)
+        
+        # Convert to the expected format
+        combinations = []
+        for combo in bayesian_combinations:
+            combinations.append({
+                'numbers': combo.numbers,
+                'stars': combo.stars,
+                'score': combo.score,
+                'strategy': 'Bayesian'
+            })
+            
+        return combinations
+        
+    def markov_strategy(self, num_combinations=5, lag=1):
+        """
+        Generate combinations using a Markov chain model.
+        
+        Parameters:
+        -----------
+        num_combinations : int
+            Number of combinations to generate
+        lag : int
+            Number of draws to look back in the Markov chain
+            
+        Returns:
+        --------
+        list of dict
+            List of combinations, each with 'numbers', 'stars', and 'score'
+        """
+        # Create a Markov model with the historical data
+        markov_model = MarkovModel(self.stats.data, lag)
+        
+        # Get the last draw's numbers to use as seed
+        last_draw = self.stats.data.iloc[0]
+        seed_numbers = [last_draw[f'n{i}'] for i in range(1, 6)]
+        seed_stars = [last_draw[f's{i}'] for i in range(1, 3)]
+        
+        # Generate combinations
+        markov_combinations = markov_model.generate_combinations(
+            num_combinations, 
+            seed_numbers=seed_numbers, 
+            seed_stars=seed_stars
+        )
+        
+        # Convert to the expected format
+        combinations = []
+        for combo in markov_combinations:
+            combinations.append({
+                'numbers': combo.numbers,
+                'stars': combo.stars,
+                'score': combo.score,
+                'strategy': 'Markov'
+            })
+            
+        return combinations
+    
+    def time_series_strategy(self, num_combinations=5, window_size=10):
+        """
+        Generate combinations using time series analysis to detect cycles and patterns.
+        
+        Parameters:
+        -----------
+        num_combinations : int
+            Number of combinations to generate
+        window_size : int
+            Size of the sliding window for pattern detection
+            
+        Returns:
+        --------
+        list of dict
+            List of combinations, each with 'numbers', 'stars', and 'score'
+        """
+        # Create a time series model
+        ts_model = TimeSeriesModel(self.stats.data, window_size)
+        
+        # Generate combinations
+        ts_combinations = ts_model.generate_combinations(num_combinations)
+        
+        # Convert to the expected format
+        combinations = []
+        for combo in ts_combinations:
+            combinations.append({
+                'numbers': combo.numbers,
+                'stars': combo.stars,
+                'score': combo.score,
+                'strategy': 'Time Series'
+            })
+            
+        return combinations
+    
+    def cognitive_bias_strategy(self, num_combinations=5):
+        """
+        Generate combinations that avoid common cognitive biases of human players.
+        
+        Parameters:
+        -----------
+        num_combinations : int
+            Number of combinations to generate
+            
+        Returns:
+        --------
+        list of dict
+            List of combinations, each with 'numbers', 'stars', and 'score'
+        """
+        # Most humans tend to select "special" numbers:
+        # - Avoid consecutive numbers
+        # - Avoid numbers that form patterns
+        # - Avoid numbers that are birthdays (1-31)
+        # - Avoid numbers that are commonly played
+        
+        # Get basic frequencies
+        number_freq = self.stats.get_frequency()
+        star_freq = self.stats.get_star_frequency()
+        
+        # Create anti-bias weightings
+        # Favor high numbers (>31) as they're less likely to be birthdays
+        number_weights = {}
+        for num in range(1, 51):
+            # Base weight from frequency
+            weight = number_freq[num]
+            
+            # Bonus for higher numbers (less likely to be birthdays)
+            if num > 31:
+                weight *= 1.3
+                
+            # Bonus for "unpopular" numbers (4, 13, etc. might be avoided by superstitious players)
+            if num in [4, 13, 17, 39, 40, 44]:
+                weight *= 1.2
+                
+            number_weights[num] = weight
+        
+        # Similar for stars
+        star_weights = {}
+        for star in range(1, 13):
+            weight = star_freq[star]
+            
+            # Bonus for "unpopular" stars
+            if star in [4, 7, 8, 13 % 12]:
+                weight *= 1.2
+                
+            star_weights[star] = weight
+        
+        combinations = []
+        for _ in range(num_combinations):
+            # Choose numbers with weighted sampling
+            numbers = self._weighted_sample(number_weights, 5)
+            stars = self._weighted_sample(star_weights, 2)
+            
+            # Calculate sum (combinations with unusual sums may be less played)
+            num_sum = sum(numbers)
+            
+            # Human tendency is to pick combinations with "nice" sums (100, 150, etc.)
+            # So we'll score higher when the sum isn't a multiple of 10 or 50
+            sum_score = 0.7
+            if num_sum % 10 != 0:
+                sum_score += 0.2
+            if num_sum % 5 != 0:
+                sum_score += 0.1
+                
+            # Calculate score (higher when the combo is likely avoided by humans)
+            final_score = round(sum_score * 100, 2)
+            
+            combinations.append({
+                'numbers': numbers,
+                'stars': stars,
+                'score': final_score,
+                'strategy': 'Anti-Bias'
+            })
+            
+        return combinations
+        
     def _weighted_sample(self, weights, k):
         """
         Helper method to sample k elements based on weights.
