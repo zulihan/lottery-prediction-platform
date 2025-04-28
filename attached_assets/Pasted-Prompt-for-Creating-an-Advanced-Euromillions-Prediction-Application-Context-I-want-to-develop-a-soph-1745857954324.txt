@@ -1,0 +1,96 @@
+Prompt for Creating an Advanced Euromillions Prediction Application
+Context
+I want to develop a sophisticated application that uses advanced statistical and mathematical methods to generate optimized combinations for Euromillions. This application should go beyond simple frequency analysis and integrate complex probabilistic models to maximize winning chances.
+Available Data
+
+CSV files containing the complete history of Euromillions draws since 2004
+Draw format: 5 main numbers (1-50) and 2 star numbers (1-12)
+Associated temporal metadata (dates, days of the week, etc.)
+
+Required Features
+1. Data Acquisition and Preprocessing
+
+Automated import of historical data from different sources
+Advanced data cleaning and validation
+Optimized structuring for temporal analyses
+Automatic updates after each new draw
+
+2. Multi-dimensional Statistical Analysis
+
+Weighted frequency analysis (recent/historical with 60/40 ratio)
+Time series analysis to detect cyclical patterns
+Markov models to study transitions between draws
+Bayesian analysis to continuously update probabilities
+Detection of systemic biases in draws (if they exist)
+Analysis of recurring pairs and subsets of numbers
+
+3. Grid Generation with Hybrid Approaches
+
+Basic strategy: Optimized combinations of high-frequency numbers/stars
+Mixed strategy: Statistically validated optimal mix between frequent numbers and outsiders
+Temporal strategy: Selections based on identified temporal cycles and patterns
+Stratified sampling strategy: Proportional selection from different strata of numbers
+Systematic coverage strategy: Mathematical optimization to cover subsets of possibilities
+Risk/reward optimization strategy: Identification of combinations with equal probability but potentially less played
+
+4. Advanced User Interface and Visualization
+
+Interactive dashboard with visualization of trends and patterns
+Dynamic charts showing temporal evolutions of frequencies
+Heatmaps of correlations between numbers and stars
+Visualization of predictions with confidence intervals
+Interface for customizing model parameters
+
+5. Continuous Evaluation and Adaptation
+
+Automated feedback systems after each draw
+Performance metrics for different strategies
+Learning algorithms to progressively refine models
+A/B testing between different predictive approaches
+
+Mathematical Methods to Implement
+1. Rigorous Statistical Tests
+Implementation of statistical tests (chi-square, Kolmogorov-Smirnov) to verify the true uniformity of draws and identify potential anomalies.
+2. Markov Chains
+Modeling transitions between states (draws) to detect potential dependencies between successive draws:
+
+Transition matrices between numbers
+Analysis of temporal sequences with different windows
+
+3. Bayesian Methods
+Use of Bayesian inference to continuously update probabilities:
+
+Definition of prior distributions based on long history
+Updating distributions with recent data
+Calculation of posterior probability distributions
+
+4. Stratified Sampling
+Division of the set of numbers into relevant strata:
+
+By parity (even/odd)
+By numerical ranges (1-10, 11-20, etc.)
+By sum of digits
+By spatial distribution on the grid
+
+5. Analysis of Human Cognitive Biases
+Identification and exploitation of human player tendencies:
+
+Avoidance of frequently played combinations
+Identification of statistically "under-played" numbers
+Optimization of potential gain / probability ratio
+
+Example of Mathematical Formula for Scoring
+For a number i, calculate a composite score S(i) such that:
+S(i) = α × F_r(i) + β × F_h(i) + γ × M(i) + δ × B(i) + ε × T(i)
+Where:
+
+F_r(i) = normalized recent frequency
+F_h(i) = normalized historical frequency
+M(i) = Markov score (based on transitions)
+B(i) = Bayesian score (posterior probability)
+T(i) = temporal component (identified cycles)
+α, β, γ, δ, ε = optimized weighting coefficients
+
+Expected Deliverable
+A sophisticated application integrating these multiple mathematical and statistical approaches, capable of generating optimized grids according to different strategies, with an interface allowing users to visualize and understand the patterns identified in the data.
+The application should be able to learn and adapt to each new draw, automatically adjusting model parameters to maximize predictive performance over the long term.
