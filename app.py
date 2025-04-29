@@ -1527,3 +1527,259 @@ else:
                     st.info("You don't have any saved combinations yet. Use the form on the left to save your first combination.")
             else:
                 st.info("Click the 'Load Saved Combinations from Database' button to view your saved combinations.")
+                
+    # Strategy Testing tab
+    with tabs[6]:
+        st.header("Strategy A/B Testing")
+        
+        st.markdown("""
+        This section allows you to scientifically compare different prediction strategies 
+        to determine which ones perform better based on historical data. The system uses 
+        backtesting to evaluate how well each strategy would have performed if used in the past.
+        """)
+        
+        # Initialize session state for strategy testing
+        if 'strategy_tester' not in st.session_state:
+            st.session_state.strategy_tester = None
+            
+        if 'test_results' not in st.session_state:
+            st.session_state.test_results = None
+            
+        # Create the tester object if not already created
+        if st.session_state.strategy_tester is None and st.session_state.data_loaded:
+            try:
+                st.session_state.strategy_tester = StrategyTester(
+                    data=st.session_state.euromillions_data,
+                    statistics=st.session_state.statistics,
+                    strategies=st.session_state.strategies
+                )
+                st.success("Strategy tester initialized successfully!")
+            except Exception as e:
+                st.error(f"Error initializing strategy tester: {str(e)}")
+        
+        # Create tabs for testing options
+        test_tabs = st.tabs(["Run New Test", "View Test Results"])
+        
+        # Run New Test tab
+        with test_tabs[0]:
+            st.subheader("Run Strategy A/B Test")
+            
+            if st.session_state.strategy_tester is None:
+                st.warning("Please load data first to enable strategy testing.")
+            else:
+                with st.form("ab_test_form"):
+                    # Test parameters
+                    st.markdown("### Test Configuration")
+                    
+                    # Time periods
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        test_period = st.slider("Test period (draws)", 10, 100, 30, 
+                                               help="Number of most recent draws to use for testing")
+                    with col2:
+                        training_period = st.slider("Training period (draws)", 100, 500, 200, 
+                                                  help="Number of draws to use for training the models")
+                    
+                    # Strategies to test
+                    st.markdown("### Select Strategies to Test")
+                    strategies = {
+                        "frequency": st.checkbox("Frequency Analysis", value=True),
+                        "time_series": st.checkbox("Time Series", value=True),
+                        "markov_chain": st.checkbox("Markov Chain", value=True),
+                        "stratified": st.checkbox("Stratified Sampling", value=True),
+                        "bayesian": st.checkbox("Bayesian Model", value=True),
+                        "balanced": st.checkbox("Balanced Mix", value=True),
+                        "cognitive_bias": st.checkbox("Anti-Cognitive Bias", value=False),
+                        "coverage": st.checkbox("Coverage Optimization", value=False),
+                        "risk_reward": st.checkbox("Risk/Reward Optimization", value=False)
+                    }
+                    
+                    # Evaluation metrics
+                    st.markdown("### Select Evaluation Metrics")
+                    metrics = {
+                        "numbers_match_rate": st.checkbox("Number Match Rate", value=True, 
+                                                      help="How well the strategies predict the main numbers"),
+                        "stars_match_rate": st.checkbox("Star Match Rate", value=True,
+                                                     help="How well the strategies predict the star numbers"),
+                        "coverage_efficiency": st.checkbox("Coverage Efficiency", value=True,
+                                                       help="How efficiently the combinations cover the number space"),
+                        "diversity_score": st.checkbox("Diversity Score", value=True,
+                                                   help="How diverse the generated combinations are"),
+                        "historical_similarity": st.checkbox("Historical Pattern Similarity", value=True,
+                                                         help="How similar the combinations are to historical patterns"),
+                        "balance_factor": st.checkbox("Balance Factor", value=True,
+                                                 help="How well-balanced the combinations are across different properties")
+                    }
+                    
+                    # Test execution parameters
+                    st.markdown("### Execution Parameters")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        num_combinations = st.slider("Combinations per strategy", 5, 50, 10,
+                                                  help="Number of combinations to generate for each strategy")
+                    with col2:
+                        iterations = st.slider("Test iterations", 1, 10, 3,
+                                            help="Number of test iterations with different seeds")
+                    
+                    submitted = st.form_submit_button("Run A/B Test")
+                    
+                    if submitted:
+                        # Get selected strategies and metrics
+                        selected_strategies = [key for key, value in strategies.items() if value]
+                        selected_metrics = [key for key, value in metrics.items() if value]
+                        
+                        if not selected_strategies:
+                            st.error("Please select at least one strategy to test.")
+                        elif not selected_metrics:
+                            st.error("Please select at least one evaluation metric.")
+                        else:
+                            with st.spinner("Running A/B test. This may take a few minutes..."):
+                                try:
+                                    # Set up test environment
+                                    st.session_state.strategy_tester.setup_test_environment(
+                                        test_period=test_period,
+                                        training_period=training_period
+                                    )
+                                    
+                                    # Run the test
+                                    results = st.session_state.strategy_tester.run_ab_test(
+                                        strategies_to_test=selected_strategies,
+                                        num_combinations=num_combinations,
+                                        iterations=iterations,
+                                        metrics=selected_metrics
+                                    )
+                                    
+                                    # Store results
+                                    st.session_state.test_results = results
+                                    st.success("A/B test completed successfully!")
+                                    
+                                    # Show summary
+                                    st.subheader("Test Summary")
+                                    st.json(results['summary'])
+                                    
+                                    # Display rankings
+                                    st.subheader("Strategy Rankings")
+                                    
+                                    # Create a DataFrame for better visualization
+                                    ranking_data = []
+                                    for strategy, ranks in results['rankings'].items():
+                                        row = {
+                                            'Strategy': strategy,
+                                            'Overall Rank': ranks['overall_rank'],
+                                            'Avg. Rank': f"{ranks['average_rank']:.2f}"
+                                        }
+                                        # Add metric-specific ranks
+                                        for metric, rank in ranks['ranks_by_metric'].items():
+                                            row[f"{metric}"] = rank
+                                        
+                                        ranking_data.append(row)
+                                    
+                                    ranking_df = pd.DataFrame(ranking_data).sort_values('Overall Rank')
+                                    st.dataframe(ranking_df)
+                                    
+                                except Exception as e:
+                                    st.error(f"Error running A/B test: {str(e)}")
+        
+        # View Test Results tab
+        with test_tabs[1]:
+            st.subheader("Previous Test Results")
+            
+            # Load results from database
+            if st.button("Load Previous Test Results"):
+                with st.spinner("Loading test results..."):
+                    try:
+                        results = database.get_strategy_test_results()
+                        if results:
+                            st.success(f"Loaded {len(results)} test results!")
+                            
+                            # Display results
+                            for i, result in enumerate(results):
+                                with st.expander(f"Test #{result['id']} - {result['test_date']}"):
+                                    st.markdown(f"**Strategies Tested:** {', '.join(result['strategies_tested'])}")
+                                    st.markdown(f"**Iterations:** {result['iterations']}")
+                                    st.markdown(f"**Combinations per Strategy:** {result['num_combinations']}")
+                                    
+                                    # Create DataFrame for rankings
+                                    if 'rankings' in result['results']:
+                                        st.subheader("Strategy Rankings")
+                                        ranking_data = []
+                                        
+                                        for strategy, ranks in result['results']['rankings'].items():
+                                            row = {
+                                                'Strategy': strategy,
+                                                'Overall Rank': ranks['overall_rank'],
+                                                'Avg. Rank': f"{ranks['average_rank']:.2f}"
+                                            }
+                                            
+                                            # Add metric-specific ranks if available
+                                            if 'ranks_by_metric' in ranks:
+                                                for metric, rank in ranks['ranks_by_metric'].items():
+                                                    row[f"{metric}"] = rank
+                                            
+                                            ranking_data.append(row)
+                                        
+                                        if ranking_data:
+                                            ranking_df = pd.DataFrame(ranking_data).sort_values('Overall Rank')
+                                            st.dataframe(ranking_df)
+                                    
+                                    # Show summary metrics
+                                    if 'summary' in result['results']:
+                                        st.subheader("Performance Summary")
+                                        st.json(result['results']['summary'])
+                        else:
+                            st.info("No test results found in the database.")
+                    except Exception as e:
+                        st.error(f"Error loading test results: {str(e)}")
+            
+            # If there are results in session state, display them
+            if st.session_state.test_results is not None:
+                st.subheader("Current Test Results")
+                
+                # Create visualization for the current test results
+                try:
+                    results = st.session_state.test_results
+                    
+                    # Strategy performance by metric
+                    st.subheader("Strategy Performance by Metric")
+                    
+                    # Extract metrics and strategies
+                    metrics = results['metrics']
+                    strategies = results['strategies_tested']
+                    
+                    # Show plots for each metric
+                    for metric in metrics:
+                        metric_data = []
+                        
+                        for strategy in strategies:
+                            # Get mean and std for this strategy and metric
+                            mean = results['summary'][strategy][metric]['mean']
+                            std = results['summary'][strategy][metric]['std']
+                            
+                            metric_data.append({
+                                'Strategy': strategy,
+                                'Value': mean,
+                                'Lower': mean - std,
+                                'Upper': mean + std
+                            })
+                        
+                        # Create DataFrame
+                        df = pd.DataFrame(metric_data)
+                        
+                        # Display bar chart with error bars
+                        st.markdown(f"#### {metric.replace('_', ' ').title()}")
+                        
+                        fig = px.bar(
+                            df, 
+                            x='Strategy', 
+                            y='Value',
+                            error_y=df['Upper'] - df['Value'],
+                            error_y_minus=df['Value'] - df['Lower'],
+                            title=f"{metric.replace('_', ' ').title()} by Strategy",
+                            labels={'Value': 'Mean Value', 'Strategy': 'Strategy'},
+                            color='Strategy'
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                except Exception as e:
+                    st.error(f"Error visualizing test results: {str(e)}")
