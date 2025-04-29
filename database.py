@@ -42,8 +42,9 @@ def get_session(max_retries=3, retry_delay=1):
         try:
             # Create a new session
             session = Session()
-            # Test connection with a simple query
-            session.execute("SELECT 1")
+            # Test connection with a simple query using text() to properly declare SQL
+            from sqlalchemy import text
+            session.execute(text("SELECT 1"))
             return session
         except exc.DBAPIError as e:
             last_error = e
