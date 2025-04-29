@@ -163,12 +163,13 @@ class EuromillionsCombination:
 
 class BayesianModel:
     """
-    Class implementing a Bayesian model for Euromillions prediction.
+    Class implementing a Bayesian model for Euromillions prediction with enhanced inference methods.
     """
     
-    def __init__(self, historical_data, recent_draws_count=20):
+    def __init__(self, historical_data, recent_draws_count=20, prior_type="empirical", 
+                 update_method="standard", smoothing_factor=0.1):
         """
-        Initialize the Bayesian model with historical data.
+        Initialize the enhanced Bayesian model with historical data.
         
         Parameters:
         -----------
@@ -176,15 +177,36 @@ class BayesianModel:
             Historical Euromillions data
         recent_draws_count : int
             Number of recent draws to use for updating
+        prior_type : str
+            Type of prior distribution to use:
+            - "empirical": Based on historical frequencies
+            - "uniform": Equal probabilities for all numbers
+            - "informative": Uses external information about number patterns
+        update_method : str
+            Method for Bayesian updating:
+            - "standard": Traditional Bayesian update
+            - "sequential": Sequential updating using each draw
+            - "adaptive": Adaptive updating with time decay
+        smoothing_factor : float
+            Laplace smoothing factor for handling zero probabilities
         """
         self.historical_data = historical_data
         self.recent_draws_count = min(recent_draws_count, len(historical_data))
+        self.prior_type = prior_type
+        self.update_method = update_method
+        self.smoothing_factor = smoothing_factor
         
         # Split data into historical and recent
         self.recent_data = historical_data.iloc[:self.recent_draws_count]
         self.prior_data = historical_data.iloc[self.recent_draws_count:]
         
-        # Calculate prior probabilities
+        # For tracking changes in probabilities
+        self.probability_history = {
+            'numbers': {},
+            'stars': {}
+        }
+        
+        # Calculate prior probabilities based on specified method
         self.calculate_priors()
         
         # Update with recent evidence
@@ -192,74 +214,240 @@ class BayesianModel:
     
     def calculate_priors(self):
         """
-        Calculate prior probabilities based on historical data.
+        Calculate prior probabilities based on the selected method.
         """
-        # Calculate prior probabilities for main numbers
-        num_columns = [f'n{i}' for i in range(1, 6)]
+        # Initialize prior dictionaries
         self.number_priors = {}
-        
-        total_numbers = len(self.prior_data) * 5
-        for num in range(1, 51):
-            count = sum((self.prior_data[col] == num).sum() for col in num_columns)
-            self.number_priors[num] = count / total_numbers
-        
-        # Calculate prior probabilities for star numbers
-        star_columns = [f's{i}' for i in range(1, 3)]
         self.star_priors = {}
         
-        total_stars = len(self.prior_data) * 2
+        if self.prior_type == "uniform":
+            # Uniform priors - equal probability for all numbers and stars
+            for num in range(1, 51):
+                self.number_priors[num] = 1/50
+            
+            for star in range(1, 13):
+                self.star_priors[star] = 1/12
+                
+        elif self.prior_type == "informative":
+            # Informative priors based on number patterns and common knowledge
+            # Calculate base uniform distribution
+            for num in range(1, 51):
+                self.number_priors[num] = 1/50
+            
+            for star in range(1, 13):
+                self.star_priors[star] = 1/12
+            
+            # Apply adjustments based on "informative" patterns
+            # - Numbers divisible by 5 or 10 are slightly less likely (as they're more commonly played)
+            # - Popular numbers (1, 7, etc.) are less likely (for same reason)
+            for num in range(1, 51):
+                if num % 5 == 0:
+                    self.number_priors[num] *= 1.05  # Slightly increase probability
+                if num in [1, 7, 13, 17, 23, 42]:
+                    self.number_priors[num] *= 0.95  # Slightly decrease probability
+            
+            # Normalize to ensure probabilities sum to 1
+            total_prob = sum(self.number_priors.values())
+            for num in range(1, 51):
+                self.number_priors[num] /= total_prob
+                
+            # Similar for stars
+            for star in range(1, 13):
+                if star in [1, 7]:
+                    self.star_priors[star] *= 0.95
+                    
+            # Normalize star probabilities
+            total_prob = sum(self.star_priors.values())
+            for star in range(1, 13):
+                self.star_priors[star] /= total_prob
+                
+        else:  # "empirical" - default
+            # Calculate prior probabilities for main numbers from historical data
+            num_columns = [f'n{i}' for i in range(1, 6)]
+            
+            # Apply Laplace smoothing
+            total_numbers = len(self.prior_data) * 5 + 50 * self.smoothing_factor
+            for num in range(1, 51):
+                count = sum((self.prior_data[col] == num).sum() for col in num_columns)
+                # Add smoothing factor to avoid zero probabilities
+                self.number_priors[num] = (count + self.smoothing_factor) / total_numbers
+            
+            # Calculate prior probabilities for star numbers with smoothing
+            star_columns = [f's{i}' for i in range(1, 3)]
+            
+            total_stars = len(self.prior_data) * 2 + 12 * self.smoothing_factor
+            for star in range(1, 13):
+                count = sum((self.prior_data[col] == star).sum() for col in star_columns)
+                self.star_priors[star] = (count + self.smoothing_factor) / total_stars
+                
+        # Store initial priors for comparison
+        for num in range(1, 51):
+            self.probability_history['numbers'][num] = [self.number_priors[num]]
+            
         for star in range(1, 13):
-            count = sum((self.prior_data[col] == star).sum() for col in star_columns)
-            self.star_priors[star] = count / total_stars
+            self.probability_history['stars'][star] = [self.star_priors[star]]
     
     def update_probabilities(self):
         """
-        Update probabilities using Bayesian updating with recent evidence.
+        Update probabilities using different Bayesian updating methods.
         """
-        # Count occurrences in recent data
+        # Common data for all methods
         num_columns = [f'n{i}' for i in range(1, 6)]
         star_columns = [f's{i}' for i in range(1, 3)]
         
-        # Count recent occurrences of each number
-        number_counts = {}
-        for num in range(1, 51):
-            count = sum((self.recent_data[col] == num).sum() for col in num_columns)
-            number_counts[num] = count
-        
-        # Count recent occurrences of each star
-        star_counts = {}
-        for star in range(1, 13):
-            count = sum((self.recent_data[col] == star).sum() for col in star_columns)
-            star_counts[star] = count
-        
-        # Calculate likelihoods and posterior probabilities for numbers
-        total_recent_numbers = len(self.recent_data) * 5
-        number_likelihoods = {}
-        
-        for num in range(1, 51):
-            # Simple binomial likelihood
-            k = number_counts[num]  # Number of occurrences
-            n = total_recent_numbers  # Total trials
-            p = self.number_priors[num]  # Prior probability
+        if self.update_method == "sequential":
+            # Sequential updating processes each draw sequentially
+            # Start with priors
+            number_posteriors = self.number_priors.copy()
+            star_posteriors = self.star_priors.copy()
             
-            # Approximation of binomial PMF for likelihood
-            number_likelihoods[num] = self._binomial_pmf(k, n, p)
-        
-        # Normalize to get posterior probabilities
-        self.number_posteriors = self._normalize_posteriors(self.number_priors, number_likelihoods)
-        
-        # Same for star numbers
-        total_recent_stars = len(self.recent_data) * 2
-        star_likelihoods = {}
-        
-        for star in range(1, 13):
-            k = star_counts[star]
-            n = total_recent_stars
-            p = self.star_priors[star]
+            # Process each recent draw in sequence
+            for idx in range(len(self.recent_data)):
+                draw = self.recent_data.iloc[idx]
+                
+                # Update for each number in this draw
+                draw_numbers = [draw[col] for col in num_columns]
+                draw_stars = [draw[col] for col in star_columns]
+                
+                # Number updates
+                number_likelihoods = {}
+                for num in range(1, 51):
+                    # Likelihood is higher if the number appeared in this draw
+                    if num in draw_numbers:
+                        number_likelihoods[num] = 5/50  # Probability of being selected (5 out of 50)
+                    else:
+                        number_likelihoods[num] = 45/50  # Probability of not being selected
+                
+                # Calculate posteriors using current posteriors as priors
+                number_posteriors = self._normalize_posteriors(number_posteriors, number_likelihoods)
+                
+                # Track probability history for key numbers
+                for num in range(1, 51):
+                    self.probability_history['numbers'][num].append(number_posteriors[num])
+                
+                # Star updates
+                star_likelihoods = {}
+                for star in range(1, 13):
+                    # Likelihood is higher if the star appeared in this draw
+                    if star in draw_stars:
+                        star_likelihoods[star] = 2/12  # Probability of being selected (2 out of 12)
+                    else:
+                        star_likelihoods[star] = 10/12  # Probability of not being selected
+                
+                # Calculate posteriors
+                star_posteriors = self._normalize_posteriors(star_posteriors, star_likelihoods)
+                
+                # Track probability history
+                for star in range(1, 13):
+                    self.probability_history['stars'][star].append(star_posteriors[star])
             
-            star_likelihoods[star] = self._binomial_pmf(k, n, p)
+            # Set final posteriors
+            self.number_posteriors = number_posteriors
+            self.star_posteriors = star_posteriors
+            
+        elif self.update_method == "adaptive":
+            # Adaptive updating gives more weight to recent draws
+            # Count occurrences in recent data with time decay
+            number_counts = {}
+            for num in range(1, 51):
+                count = 0
+                for idx, draw in self.recent_data.iterrows():
+                    # More recent draws get higher weight (linear decay)
+                    recency_weight = 1 - (idx / len(self.recent_data))
+                    for col in num_columns:
+                        if draw[col] == num:
+                            count += recency_weight
+                number_counts[num] = count
+            
+            # Star counts with time decay
+            star_counts = {}
+            for star in range(1, 13):
+                count = 0
+                for idx, draw in self.recent_data.iterrows():
+                    recency_weight = 1 - (idx / len(self.recent_data))
+                    for col in star_columns:
+                        if draw[col] == star:
+                            count += recency_weight
+                star_counts[star] = count
+            
+            # Calculate posteriors with adaptive weighting
+            # For numbers
+            number_likelihoods = {}
+            total_weighted_count = sum(number_counts.values())
+            
+            if total_weighted_count > 0:
+                for num in range(1, 51):
+                    number_likelihoods[num] = number_counts[num] / total_weighted_count
+            else:
+                # Fallback if no data
+                for num in range(1, 51):
+                    number_likelihoods[num] = 1/50
+            
+            self.number_posteriors = self._normalize_posteriors(self.number_priors, number_likelihoods)
+            
+            # For stars
+            star_likelihoods = {}
+            total_weighted_count = sum(star_counts.values())
+            
+            if total_weighted_count > 0:
+                for star in range(1, 13):
+                    star_likelihoods[star] = star_counts[star] / total_weighted_count
+            else:
+                # Fallback if no data
+                for star in range(1, 13):
+                    star_likelihoods[star] = 1/12
+            
+            self.star_posteriors = self._normalize_posteriors(self.star_priors, star_likelihoods)
+            
+        else:  # "standard" - default
+            # Standard Bayesian update using batch data
+            # Count recent occurrences of each number
+            number_counts = {}
+            for num in range(1, 51):
+                count = sum((self.recent_data[col] == num).sum() for col in num_columns)
+                number_counts[num] = count
+            
+            # Count recent occurrences of each star
+            star_counts = {}
+            for star in range(1, 13):
+                count = sum((self.recent_data[col] == star).sum() for col in star_columns)
+                star_counts[star] = count
+            
+            # Calculate likelihoods and posterior probabilities for numbers
+            total_recent_numbers = len(self.recent_data) * 5
+            number_likelihoods = {}
+            
+            for num in range(1, 51):
+                # Simple binomial likelihood
+                k = number_counts[num]  # Number of occurrences
+                n = total_recent_numbers  # Total trials
+                p = self.number_priors[num]  # Prior probability
+                
+                # Approximation of binomial PMF for likelihood
+                number_likelihoods[num] = self._binomial_pmf(k, n, p)
+            
+            # Normalize to get posterior probabilities
+            self.number_posteriors = self._normalize_posteriors(self.number_priors, number_likelihoods)
+            
+            # Same for star numbers
+            total_recent_stars = len(self.recent_data) * 2
+            star_likelihoods = {}
+            
+            for star in range(1, 13):
+                k = star_counts[star]
+                n = total_recent_stars
+                p = self.star_priors[star]
+                
+                star_likelihoods[star] = self._binomial_pmf(k, n, p)
+            
+            self.star_posteriors = self._normalize_posteriors(self.star_priors, star_likelihoods)
         
-        self.star_posteriors = self._normalize_posteriors(self.star_priors, star_likelihoods)
+        # Track final probabilities
+        for num in range(1, 51):
+            self.probability_history['numbers'][num].append(self.number_posteriors[num])
+            
+        for star in range(1, 13):
+            self.probability_history['stars'][star].append(self.star_posteriors[star])
     
     def _binomial_pmf(self, k, n, p):
         """
