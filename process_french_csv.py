@@ -23,8 +23,15 @@ def convert_french_date(date_str):
     # Check if this is already in ISO format
     if re.match(r'^\d{4}[/.-]\d{1,2}[/.-]\d{1,2}$', date_str):
         return date_str
-        
-    # Extract components regardless of separator
+    
+    # Check for format YYYYMMDD (numeric date)
+    if date_str.isdigit() and len(date_str) == 8:
+        year = date_str[0:4]
+        month = date_str[4:6]
+        day = date_str[6:8]
+        return f"{year}-{month}-{day}"
+    
+    # Handle French format with various delimiters (DD/MM/YYYY)
     match = re.match(r'^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$', date_str)
     if match:
         day, month, year = match.groups()
@@ -33,21 +40,22 @@ def convert_french_date(date_str):
             year = '20' + year
         # Return in ISO format
         return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-    else:
-        # Try alternative formats with potential numeric date codes
-        try:
-            # If it's a numeric date code, try to interpret as YYYYMMDD
-            if date_str.isdigit() and len(date_str) == 8:
-                year = date_str[0:4]
-                month = date_str[4:6]
-                day = date_str[6:8]
-                return f"{year}-{month}-{day}"
-        except:
-            pass
-        
-        # Return today's date as fallback
-        logger.warning(f"Unknown date format: {date_str}, using today's date instead")
-        return datetime.datetime.now().strftime("%Y-%m-%d")
+    
+    # Try to handle dates with French format (e.g., "20110506" as string)
+    try:
+        if len(date_str) == 8 and not date_str.isdigit():
+            # Try to extract a date pattern
+            year = date_str[4:8]
+            month = date_str[2:4]
+            day = date_str[0:2]
+            if year.isdigit() and month.isdigit() and day.isdigit():
+                return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+    except:
+        pass
+    
+    # If all else fails, log a warning and use a fallback
+    logger.warning(f"Unknown date format: {date_str}, using today's date instead")
+    return datetime.datetime.now().strftime("%Y-%m-%d")
 
 def process_csv_file(file_path, output_dir='processed_data'):
     """Process a CSV file and save to a standardized format"""
