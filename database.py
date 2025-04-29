@@ -144,7 +144,7 @@ class StrategyTestResult(Base):
     strategies_tested = Column(String(500), nullable=False)  # Comma-separated list of tested strategies
     iterations = Column(Integer, nullable=False)
     num_combinations = Column(Integer, nullable=False)
-    results = Column(String(10000), nullable=False)  # JSON string with detailed results
+    results = Column(String(50000), nullable=False)  # JSON string with detailed results
     
     def __repr__(self):
         return f"<StrategyTestResult(id='{self.id}', test_date='{self.test_date}', strategies='{self.strategies_tested}')>"
