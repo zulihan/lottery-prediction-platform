@@ -134,21 +134,30 @@ class UserSavedCombination(Base):
     notes = Column(String(500))
     played = Column(Boolean, default=False)
     result = Column(String(50))  # What was the result if played
+
+class StrategyTestResult(Base):
+    """Table for storing A/B test results for strategy comparison"""
+    __tablename__ = 'strategy_test_results'
+    
+    id = Column(Integer, primary_key=True)
+    test_date = Column(Date, nullable=False)
+    strategies_tested = Column(String(500), nullable=False)  # Comma-separated list of tested strategies
+    iterations = Column(Integer, nullable=False)
+    num_combinations = Column(Integer, nullable=False)
+    results = Column(String(10000), nullable=False)  # JSON string with detailed results
     
     def __repr__(self):
-        return f"<UserSavedCombination(id='{self.id}', numbers={self.numbers}, stars={self.stars}, played={self.played})>"
+        return f"<StrategyTestResult(id='{self.id}', test_date='{self.test_date}', strategies='{self.strategies_tested}')>"
     
     def to_dict(self):
-        """Convert saved combination to dictionary format"""
+        """Convert test result to dictionary format"""
         return {
             'id': self.id,
-            'saved_at': self.saved_at.strftime('%Y-%m-%d'),
-            'numbers': json.loads(self.numbers),
-            'stars': json.loads(self.stars),
-            'strategy': self.strategy,
-            'notes': self.notes,
-            'played': self.played,
-            'result': self.result
+            'test_date': self.test_date.strftime('%Y-%m-%d'),
+            'strategies_tested': self.strategies_tested.split(','),
+            'iterations': self.iterations,
+            'num_combinations': self.num_combinations,
+            'results': json.loads(self.results)
         }
 
 def init_db():
@@ -219,6 +228,12 @@ def load_drawings_from_dataframe(df):
     
     return count
 
+def get_all_draws(max_retries=3):
+    """
+    Alias for get_all_drawings() for compatibility with strategy testing module
+    """
+    return get_all_drawings(max_retries)
+    
 def get_all_drawings(max_retries=3):
     """
     Get all Euromillions drawings from the database with retry logic
@@ -591,6 +606,107 @@ def update_user_combination(id, played=None, result=None, notes=None):
         session.close()
         
     return success
+
+def save_strategy_test_results(test_date, strategies_tested, iterations, num_combinations, results):
+    """
+    Save A/B test results to the database
+    
+    Parameters:
+    -----------
+    test_date : datetime.datetime
+        Date of the test
+    strategies_tested : str
+        Comma-separated list of tested strategies
+    iterations : int
+        Number of test iterations
+    num_combinations : int
+        Number of combinations generated per strategy
+    results : str
+        JSON string with detailed test results
+        
+    Returns:
+    --------
+    int
+        ID of the saved test result
+    """
+    session = get_session()
+    test_id = None
+    
+    try:
+        # Convert date to date object if it's a datetime
+        if isinstance(test_date, datetime):
+            test_date = test_date.date()
+            
+        # Create new test result record
+        test_result = StrategyTestResult(
+            test_date=test_date,
+            strategies_tested=strategies_tested,
+            iterations=iterations,
+            num_combinations=num_combinations,
+            results=results
+        )
+        
+        # Add to the database
+        session.add(test_result)
+        session.commit()
+        test_id = test_result.id
+        
+    except Exception as e:
+        logger.error(f"Error saving strategy test results: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+        
+    return test_id
+
+def get_strategy_test_results(limit=10, max_retries=3):
+    """
+    Get strategy test results from the database with retry logic
+    
+    Parameters:
+    -----------
+    limit : int, optional
+        Maximum number of test results to return
+    max_retries : int
+        Maximum number of retry attempts
+        
+    Returns:
+    --------
+    list
+        List of dictionaries containing test result data
+    """
+    for attempt in range(max_retries):
+        session = get_session()
+        result = []
+        
+        try:
+            test_results = session.query(StrategyTestResult).order_by(StrategyTestResult.test_date.desc()).limit(limit).all()
+            result = [test.to_dict() for test in test_results]
+            return result
+        except exc.OperationalError as e:
+            # Handle specific database operational errors
+            logger.warning(f"Database operational error (attempt {attempt+1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                # Wait before retrying (exponential backoff)
+                retry_delay = 2 ** attempt
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                # Create a fresh engine and session factory if needed
+                if "SSL connection has been closed" in str(e):
+                    logger.info("Resetting database connection pool")
+                    Session.remove()  # Close all sessions
+            else:
+                logger.error(f"Failed to retrieve test results after {max_retries} attempts")
+                # Return empty list as a fallback
+                return []
+        except Exception as e:
+            logger.error(f"Error retrieving test results: {str(e)}")
+            return []
+        finally:
+            session.close()
+            
+    return result
 
 # Initialize the database if this module is run directly
 if __name__ == "__main__":
