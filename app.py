@@ -843,6 +843,8 @@ else:
                 
                 st.write(f"The star combination **{', '.join(str(s) for s in top_combo)}** appears **{deviation:.2f}x** more often than expected by chance.")
         
+    # Visualizations tab continued
+    with tabs[3]:
         if viz_type == "Number Heatmap":
             st.subheader("Number Frequency Heatmap")
             
@@ -984,7 +986,7 @@ else:
             st.info("No combinations have been generated yet. Go to the Strategy Generation tab to create some.")
     
     # Saved Combinations tab
-    with tabs[5]:
+    with tabs[6]:
         st.header("Saved Combinations")
         
         # Initialize session state for saved combinations
