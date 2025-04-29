@@ -38,6 +38,8 @@ if 'visualization' not in st.session_state:
     st.session_state.visualization = None
 if 'generated_combinations' not in st.session_state:
     st.session_state.generated_combinations = {}
+if 'combinations_loaded' not in st.session_state:
+    st.session_state.combinations_loaded = False
 
 # Title and introduction
 st.title("Euromillions Advanced Prediction Application")
@@ -198,8 +200,7 @@ else:
         "Strategy Generation",
         "Visualizations",
         "Combination Analysis",
-        "Generated Combinations",
-        "Saved Combinations"
+        "My Combinations"
     ])
     
     # Data Overview tab
@@ -621,9 +622,27 @@ else:
                 The score is not a true probability (0-100%), but a relative measure to compare combinations within the same strategy.
                 """)
                 
-            # Add a button to load previously generated combinations from the database
-            if st.button("Load Previously Generated Combinations from Database", key="load_generated_combinations"):
+            # Automatically load generated combinations for the current strategy if not already loaded
+            if not st.session_state.combinations_loaded:
                 with st.spinner("Loading combinations from database..."):
+                    try:
+                        # Get combinations for the current strategy
+                        db_combinations = database.get_generated_combinations(strategy=strategy_type)
+                        
+                        if db_combinations:
+                            # Store in session state
+                            st.session_state.generated_combinations[strategy_type] = db_combinations
+                            st.success(f"Successfully loaded {len(db_combinations)} combinations for {strategy_type} strategy!")
+                            st.session_state.combinations_loaded = True
+                        else:
+                            st.info(f"No previously generated combinations found for {strategy_type} strategy. Generate some now!")
+                            st.session_state.combinations_loaded = True
+                    except Exception as e:
+                        st.error(f"Error loading combinations from database: {str(e)}")
+                        
+            # Add a refresh button to reload combinations from database
+            if st.button("Refresh Combinations from Database", key="refresh_combinations"):
+                with st.spinner("Refreshing combinations from database..."):
                     try:
                         # Get combinations for the current strategy
                         db_combinations = database.get_generated_combinations(strategy=strategy_type)
@@ -1018,42 +1037,136 @@ else:
         else:
             st.info("No combinations have been generated yet. Go to the Strategy Generation tab to create some.")
     
-    # Saved Combinations tab
-    with tabs[6]:
-        st.header("Saved Combinations")
+    # My Combinations tab
+    with tabs[5]:
+        st.header("My Combinations")
         
-        # Initialize session state for saved combinations
-        if 'saved_combinations_loaded' not in st.session_state:
-            st.session_state.saved_combinations_loaded = False
+        # Create sub-tabs for different types of combinations
+        my_tabs = st.tabs(["Generated Combinations", "Saved Combinations"])
         
-        # Add a button to load saved combinations from database
-        if not st.session_state.saved_combinations_loaded:
-            if st.button("Load Saved Combinations from Database"):
-                try:
-                    # Get saved combinations from database
-                    saved_combos = database.get_user_saved_combinations()
-                    if saved_combos:
-                        st.session_state.saved_combinations = saved_combos
-                        st.session_state.saved_combinations_loaded = True
-                        st.success(f"Successfully loaded {len(saved_combos)} saved combinations!")
-                    else:
-                        st.session_state.saved_combinations = []
-                        st.session_state.saved_combinations_loaded = True
-                        st.info("No saved combinations found in the database.")
-                except Exception as e:
-                    st.error(f"Error loading saved combinations: {str(e)}")
-        
-        # Display two columns: left for creating new saved combinations, right for displaying existing ones
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            st.subheader("Save New Combination")
+        # Generated Combinations tab
+        with my_tabs[0]:
+            st.subheader("Generated Combinations")
             
-            # Form for adding a new saved combination
-            with st.form("save_combination_form"):
-                st.markdown("**Main Numbers (1-50)**")
+            # Show available strategies that have generated combinations
+            available_strategies = list(st.session_state.generated_combinations.keys())
+            if available_strategies:
+                strategy_selection = st.selectbox(
+                    "Select Strategy to View",
+                    available_strategies
+                )
                 
-                # Create rows of number inputs
+                # Automatically load generated combinations for the selected strategy if not already loaded
+                if strategy_selection not in st.session_state.generated_combinations or len(st.session_state.generated_combinations[strategy_selection]) == 0:
+                    with st.spinner(f"Loading combinations for {strategy_selection}..."):
+                        try:
+                            # Get combinations for the selected strategy
+                            db_combinations = database.get_generated_combinations(strategy=strategy_selection)
+                            
+                            if db_combinations:
+                                # Store in session state
+                                st.session_state.generated_combinations[strategy_selection] = db_combinations
+                                st.success(f"Successfully loaded {len(db_combinations)} combinations for {strategy_selection} strategy!")
+                            else:
+                                st.info(f"No combinations found for {strategy_selection} strategy in the database.")
+                        except Exception as e:
+                            st.error(f"Error loading combinations from database: {str(e)}")
+                
+                # Add a refresh button to reload combinations from database
+                if st.button("Refresh Combinations from Database", key="refresh_generated"):
+                    with st.spinner(f"Refreshing combinations for {strategy_selection}..."):
+                        try:
+                            # Get combinations for the selected strategy
+                            db_combinations = database.get_generated_combinations(strategy=strategy_selection)
+                            
+                            if db_combinations:
+                                # Store in session state
+                                st.session_state.generated_combinations[strategy_selection] = db_combinations
+                                st.success(f"Successfully loaded {len(db_combinations)} combinations for {strategy_selection} strategy!")
+                                st.rerun()
+                            else:
+                                st.info(f"No combinations found for {strategy_selection} strategy in the database.")
+                        except Exception as e:
+                            st.error(f"Error loading combinations from database: {str(e)}")
+                
+                # Display the combinations
+                if strategy_selection in st.session_state.generated_combinations and st.session_state.generated_combinations[strategy_selection]:
+                    combinations = st.session_state.generated_combinations[strategy_selection]
+                    
+                    for i, combo in enumerate(combinations):
+                        numbers = combo['numbers']
+                        stars = combo['stars']
+                        score = combo.get('score', 'N/A')
+                        
+                        st.markdown(f"### Combination {i+1}")
+                        
+                        # Display main numbers with colored balls
+                        st.markdown("<div style='display:flex; gap:10px;'>", unsafe_allow_html=True)
+                        for num in sorted(numbers):
+                            st.markdown(
+                                f"<div style='background-color:#1E88E5; color:white; width:40px; height:40px; "
+                                f"border-radius:50%; display:flex; align-items:center; justify-content:center; "
+                                f"font-weight:bold;'>{num}</div>",
+                                unsafe_allow_html=True
+                            )
+                        st.markdown("</div>", unsafe_allow_html=True)
+                        
+                        # Display star numbers with yellow stars
+                        st.markdown("<div style='display:flex; gap:10px; margin-top:10px;'>", unsafe_allow_html=True)
+                        for star in sorted(stars):
+                            st.markdown(
+                                f"<div style='background-color:#FFD700; color:#333; width:40px; height:40px; "
+                                f"border-radius:50%; display:flex; align-items:center; justify-content:center; "
+                                f"font-weight:bold;'>{star}</div>",
+                                unsafe_allow_html=True
+                            )
+                        st.markdown("</div>", unsafe_allow_html=True)
+                        
+                        # Display combination score/confidence
+                        st.markdown(f"**Score/Confidence:** {score if score != 'N/A' else 'N/A'}")
+                        
+                        # Add delimiter between combinations
+                        if i < len(combinations) - 1:
+                            st.markdown("---")
+                else:
+                    st.info("No combinations found for this strategy. Generate some using the Strategy Generation tab.")
+            else:
+                st.info("You haven't generated any combinations yet. Use the Strategy Generation tab to create some.")
+        
+        # Saved Combinations tab
+        with my_tabs[1]:
+            st.subheader("Saved Combinations")
+            
+            # Initialize session state for saved combinations
+            if 'saved_combinations_loaded' not in st.session_state:
+                st.session_state.saved_combinations_loaded = False
+            
+            # Add a button to load saved combinations from database
+            if not st.session_state.saved_combinations_loaded:
+                if st.button("Load Saved Combinations from Database"):
+                    try:
+                        # Get saved combinations from database
+                        saved_combos = database.get_user_saved_combinations()
+                        if saved_combos:
+                            st.session_state.saved_combinations = saved_combos
+                            st.session_state.saved_combinations_loaded = True
+                            st.success(f"Successfully loaded {len(saved_combos)} saved combinations!")
+                        else:
+                            st.session_state.saved_combinations = []
+                            st.session_state.saved_combinations_loaded = True
+                            st.info("No saved combinations found in the database.")
+                    except Exception as e:
+                        st.error(f"Error loading saved combinations: {str(e)}")
+            
+            # Display two columns: left for creating new saved combinations, right for displaying existing ones
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                st.subheader("Save New Combination")
+                
+                # Form for adding a new saved combination
+                with st.form("save_combination_form"):
+                    st.markdown("**Main Numbers (1-50)**")
                 rows = 2
                 cols_per_row = 3
                 all_num_inputs = []
