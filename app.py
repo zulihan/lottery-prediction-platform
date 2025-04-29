@@ -13,6 +13,7 @@ from strategies import PredictionStrategies
 from visualization import DataVisualization
 from utils import get_download_link_csv, get_download_link_excel
 import database
+from combination_analysis import analyze_full_combinations, analyze_number_combinations, analyze_star_combinations
 
 # Page configuration
 st.set_page_config(
@@ -196,6 +197,7 @@ else:
         "Statistical Analysis", 
         "Strategy Generation",
         "Visualizations",
+        "Combination Analysis",
         "Generated Combinations",
         "Saved Combinations"
     ])
@@ -705,6 +707,141 @@ else:
             "Select Visualization",
             ["Number Heatmap", "Evolution Over Time", "Correlation Analysis", "Winning Numbers Distribution"]
         )
+    
+    # Combination Analysis tab
+    with tabs[4]:
+        st.header("Combination Analysis")
+        
+        analysis_options = st.selectbox(
+            "Select Analysis Type",
+            ["Repeated Combinations Check", "Frequent Number Groups", "Frequent Star Combinations"]
+        )
+        
+        if analysis_options == "Repeated Combinations Check":
+            st.subheader("Full Combination Repetition Analysis")
+            st.write("This analysis checks if any complete Euromillions combination (5 numbers + 2 stars) has ever been repeated in the draw history.")
+            
+            with st.spinner("Analyzing combination repetitions..."):
+                full_analysis = analyze_full_combinations()
+                
+                # Display results
+                st.info(f"Total draws analyzed: {full_analysis['total_draws']}")
+                st.info(f"Number of unique combinations: {full_analysis['unique_combinations']}")
+                
+                if full_analysis['repeated_combinations']:
+                    st.success("Found repeated combinations!")
+                    for combo, count in full_analysis['repeated_combinations'].items():
+                        st.write(f"**{combo}** has appeared {count} times!")
+                        repeat_dates = full_analysis['repeated_details'][combo]
+                        st.write(f"Dates: {', '.join(str(date) for date in repeat_dates)}")
+                else:
+                    st.warning("No complete Euromillions combination (5 numbers + 2 stars) has ever repeated in the draw history.")
+                    st.write("""
+                    This is expected due to the extremely high number of possible combinations:
+                    - For 5 numbers from 1-50: 2,118,760 possibilities
+                    - Combined with 2 stars from 1-12: 25,425,120 possibilities
+                    
+                    Even with draws twice a week for decades, the probability of a repeat is extremely low.
+                    """)
+        
+        elif analysis_options == "Frequent Number Groups":
+            st.subheader("Frequent Number Group Analysis")
+            st.write("This analysis identifies the most frequent number groups (2, 3, or 4 numbers that appear together).")
+            
+            group_size = st.radio("Select number group size to analyze", [2, 3, 4], horizontal=True)
+            
+            with st.spinner(f"Analyzing {group_size}-number groups..."):
+                group_analysis = analyze_number_combinations(size=group_size)
+                
+                # Display results
+                st.info(f"Total draws analyzed: {group_analysis['total_draws']}")
+                
+                # Create a table for the results
+                data = []
+                for combo, count in group_analysis['most_frequent_combinations'][:15]:  # Top 15 only
+                    data.append({
+                        "Numbers": ', '.join(str(n) for n in combo),
+                        "Occurrences": count,
+                        "Percentage": f"{(count / group_analysis['total_draws'] * 100):.2f}%"
+                    })
+                
+                result_df = pd.DataFrame(data)
+                st.table(result_df)
+                
+                # Create a bar chart
+                fig = px.bar(
+                    result_df, 
+                    x="Numbers", 
+                    y="Occurrences", 
+                    title=f"Most Frequent {group_size}-Number Combinations",
+                    color="Occurrences",
+                    color_continuous_scale="Viridis"
+                )
+                fig.update_layout(xaxis_title="Number Combination", yaxis_title="Times Drawn Together")
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Statistical significance
+                if group_size == 2:
+                    expected_freq = 1 / (50 * 49 / 2) * (5 * 4 / 2) / 5
+                elif group_size == 3:
+                    expected_freq = 1 / (50 * 49 * 48 / 6) * (5 * 4 * 3 / 6) / 5
+                elif group_size == 4:
+                    expected_freq = 1 / (50 * 49 * 48 * 47 / 24) * (5 * 4 * 3 * 2 / 24) / 5
+                
+                expected_count = expected_freq * group_analysis['total_draws']
+                
+                st.subheader("Statistical Significance")
+                st.write(f"If combinations were completely random, each {group_size}-number group would be expected to appear approximately **{expected_count:.2f}** times.")
+                
+                for combo, count in group_analysis['most_frequent_combinations'][:5]:  # Top 5 only
+                    deviation = count / expected_count
+                    st.write(f"The group **{', '.join(str(n) for n in combo)}** appears **{deviation:.2f}x** more often than expected by chance.")
+        
+        elif analysis_options == "Frequent Star Combinations":
+            st.subheader("Frequent Star Combinations Analysis")
+            st.write("This analysis identifies the most frequent star number combinations.")
+            
+            with st.spinner("Analyzing star combinations..."):
+                star_analysis = analyze_star_combinations()
+                
+                # Display results
+                st.info(f"Total draws analyzed: {star_analysis['total_draws']}")
+                
+                # Create a table for the results
+                data = []
+                for combo, count in star_analysis['most_frequent_star_combinations']:
+                    data.append({
+                        "Stars": ', '.join(str(s) for s in combo),
+                        "Occurrences": count,
+                        "Percentage": f"{(count / star_analysis['total_draws'] * 100):.2f}%"
+                    })
+                
+                result_df = pd.DataFrame(data)
+                st.table(result_df)
+                
+                # Create a bar chart
+                fig = px.bar(
+                    result_df.head(10), 
+                    x="Stars", 
+                    y="Occurrences", 
+                    title=f"Most Frequent Star Combinations",
+                    color="Occurrences",
+                    color_continuous_scale="Reds"
+                )
+                fig.update_layout(xaxis_title="Star Combination", yaxis_title="Times Drawn Together")
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Expected frequency
+                expected_count = star_analysis['total_draws'] / 66  # 12 choose 2 = 66 combinations
+                
+                st.subheader("Statistical Significance")
+                st.write(f"If combinations were completely random, each star pair would be expected to appear approximately **{expected_count:.2f}** times.")
+                
+                # Find the top star combo
+                top_combo, top_count = star_analysis['most_frequent_star_combinations'][0]
+                deviation = top_count / expected_count
+                
+                st.write(f"The star combination **{', '.join(str(s) for s in top_combo)}** appears **{deviation:.2f}x** more often than expected by chance.")
         
         if viz_type == "Number Heatmap":
             st.subheader("Number Frequency Heatmap")
@@ -793,7 +930,7 @@ else:
                 """)
     
     # Generated Combinations tab
-    with tabs[4]:
+    with tabs[5]:
         st.header("All Generated Combinations")
         
         if len(st.session_state.generated_combinations) > 0:
