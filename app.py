@@ -605,6 +605,22 @@ else:
         with col2:
             st.subheader("Generated Combinations")
             
+            # Add Score/Confidence explanation
+            with st.expander("What does Score/Confidence mean?"):
+                st.markdown("""
+                **Score/Confidence** represents how strongly the algorithm believes in this combination based on the strategy used:
+                
+                - **Higher values** indicate combinations more likely to appear according to the algorithm
+                - **Different strategies** calculate scores differently:
+                  - Frequency: Higher scores for more frequently drawn numbers
+                  - Bayesian: Probability estimates based on prior observations
+                  - Markov: Transition likelihood between consecutive states
+                  - Time Series: Predictions based on temporal patterns
+                  - Risk/Reward: Balance between common and rare numbers
+                
+                The score is not a true probability (0-100%), but a relative measure to compare combinations within the same strategy.
+                """)
+            
             if strategy_type in st.session_state.generated_combinations:
                 combinations = st.session_state.generated_combinations[strategy_type]
                 

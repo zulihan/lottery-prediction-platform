@@ -1,11 +1,14 @@
 import os
 import pandas as pd
+import time
+import json
+import logging
+from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Date, Float, Boolean, ForeignKey, Table, MetaData, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, scoped_session
-from datetime import datetime
-import json
-import logging
+from sqlalchemy.pool import QueuePool
+from sqlalchemy import exc
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -14,14 +17,47 @@ logger = logging.getLogger(__name__)
 # Get database URL from environment variable
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Create SQLAlchemy engine with isolation level setting
-engine = create_engine(DATABASE_URL, isolation_level="AUTOCOMMIT")
+# Create SQLAlchemy engine with improved connection pooling
+engine = create_engine(
+    DATABASE_URL,
+    isolation_level="AUTOCOMMIT",
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800,  # Recycle connections after 30 minutes
+    pool_pre_ping=True,  # Verify connections before using them
+    poolclass=QueuePool
+)
 
 # Create a scoped session to manage connections properly
 Session = scoped_session(sessionmaker(bind=engine, autoflush=True, autocommit=False))
 
-# Function to get a fresh session for each operation
-def get_session():
+# Function to get a fresh session with retry logic
+def get_session(max_retries=3, retry_delay=1):
+    """Get a database session with retry logic for connection issues"""
+    retries = 0
+    last_error = None
+    
+    while retries < max_retries:
+        try:
+            # Create a new session
+            session = Session()
+            # Test connection with a simple query
+            session.execute("SELECT 1")
+            return session
+        except exc.DBAPIError as e:
+            last_error = e
+            logger.warning(f"Database connection error (attempt {retries+1}/{max_retries}): {str(e)}")
+            # Close the session if it was created
+            if 'session' in locals():
+                session.close()
+            # Wait before retrying
+            time.sleep(retry_delay)
+            retries += 1
+            
+    # If we got here, all retries failed
+    logger.error(f"Failed to establish database connection after {max_retries} attempts: {str(last_error)}")
+    # Return a session anyway - let the caller handle any exceptions
     return Session()
 
 # Create Base class for declarative models
@@ -182,29 +218,51 @@ def load_drawings_from_dataframe(df):
     
     return count
 
-def get_all_drawings():
+def get_all_drawings(max_retries=3):
     """
-    Get all Euromillions drawings from the database
+    Get all Euromillions drawings from the database with retry logic
+    
+    Parameters:
+    -----------
+    max_retries : int
+        Maximum number of retry attempts
     
     Returns:
     --------
     pandas.DataFrame
         DataFrame containing all drawing records
     """
-    session = get_session()
-    try:
-        drawings = session.query(EuromillionsDrawing).order_by(EuromillionsDrawing.date.desc()).all()
-        if not drawings:
+    for attempt in range(max_retries):
+        session = get_session()
+        try:
+            drawings = session.query(EuromillionsDrawing).order_by(EuromillionsDrawing.date.desc()).all()
+            if not drawings:
+                return pd.DataFrame()
+                
+            # Convert to list of dictionaries
+            records = [drawing.to_dict() for drawing in drawings]
+            return pd.DataFrame(records)
+        except exc.OperationalError as e:
+            # Handle specific database operational errors
+            logger.warning(f"Database operational error (attempt {attempt+1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                # Wait before retrying (exponential backoff)
+                retry_delay = 2 ** attempt
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                # Create a fresh engine and session factory if needed
+                if "SSL connection has been closed" in str(e):
+                    logger.info("Resetting database connection pool")
+                    Session.remove()  # Close all sessions
+            else:
+                logger.error(f"Failed to retrieve drawings after {max_retries} attempts")
+                # Return empty DataFrame as a fallback
+                return pd.DataFrame()
+        except Exception as e:
+            logger.error(f"Error retrieving drawings: {str(e)}")
             return pd.DataFrame()
-            
-        # Convert to list of dictionaries
-        records = [drawing.to_dict() for drawing in drawings]
-        return pd.DataFrame(records)
-    except Exception as e:
-        logger.error(f"Error retrieving drawings: {str(e)}")
-        raise
-    finally:
-        session.close()
+        finally:
+            session.close()
 
 def add_new_drawing(date, numbers, stars, day_of_week=None):
     """
@@ -326,9 +384,9 @@ def save_generated_combination(numbers, stars, strategy, score):
         
     return combo_id
 
-def get_generated_combinations(strategy=None, limit=100):
+def get_generated_combinations(strategy=None, limit=100, max_retries=3):
     """
-    Get generated combinations from the database
+    Get generated combinations from the database with retry logic
     
     Parameters:
     -----------
@@ -336,30 +394,50 @@ def get_generated_combinations(strategy=None, limit=100):
         Filter by strategy
     limit : int, optional
         Maximum number of combinations to return
+    max_retries : int
+        Maximum number of retry attempts
         
     Returns:
     --------
     list
         List of dictionaries containing combination data
     """
-    session = get_session()
-    result = []
-    
-    try:
-        query = session.query(GeneratedCombination)
+    for attempt in range(max_retries):
+        session = get_session()
+        result = []
         
-        if strategy:
-            query = query.filter_by(strategy=strategy)
+        try:
+            query = session.query(GeneratedCombination)
             
-        combinations = query.order_by(GeneratedCombination.created_at.desc()).limit(limit).all()
-        result = [combination.to_dict() for combination in combinations]
-        
-    except Exception as e:
-        logger.error(f"Error retrieving generated combinations: {str(e)}")
-        raise
-    finally:
-        session.close()
-        
+            if strategy:
+                query = query.filter_by(strategy=strategy)
+                
+            combinations = query.order_by(GeneratedCombination.created_at.desc()).limit(limit).all()
+            result = [combination.to_dict() for combination in combinations]
+            return result
+            
+        except exc.OperationalError as e:
+            # Handle specific database operational errors
+            logger.warning(f"Database operational error (attempt {attempt+1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                # Wait before retrying (exponential backoff)
+                retry_delay = 2 ** attempt
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                # Create a fresh engine and session factory if needed
+                if "SSL connection has been closed" in str(e):
+                    logger.info("Resetting database connection pool")
+                    Session.remove()  # Close all sessions
+            else:
+                logger.error(f"Failed to retrieve generated combinations after {max_retries} attempts")
+                # Return empty list as a fallback
+                return []
+        except Exception as e:
+            logger.error(f"Error retrieving generated combinations: {str(e)}")
+            return []
+        finally:
+            session.close()
+            
     return result
 
 def save_user_combination(numbers, stars, strategy=None, notes=None):
@@ -418,32 +496,52 @@ def save_user_combination(numbers, stars, strategy=None, notes=None):
         
     return saved_id
 
-def get_user_saved_combinations(limit=50):
+def get_user_saved_combinations(limit=50, max_retries=3):
     """
-    Get user-saved combinations from the database
+    Get user-saved combinations from the database with retry logic
     
     Parameters:
     -----------
     limit : int, optional
         Maximum number of combinations to return
+    max_retries : int
+        Maximum number of retry attempts
         
     Returns:
     --------
     list
         List of dictionaries containing saved combination data
     """
-    session = get_session()
-    result = []
-    
-    try:
-        saved = session.query(UserSavedCombination).order_by(UserSavedCombination.saved_at.desc()).limit(limit).all()
-        result = [combo.to_dict() for combo in saved]
-    except Exception as e:
-        logger.error(f"Error retrieving saved combinations: {str(e)}")
-        raise
-    finally:
-        session.close()
+    for attempt in range(max_retries):
+        session = get_session()
+        result = []
         
+        try:
+            saved = session.query(UserSavedCombination).order_by(UserSavedCombination.saved_at.desc()).limit(limit).all()
+            result = [combo.to_dict() for combo in saved]
+            return result
+        except exc.OperationalError as e:
+            # Handle specific database operational errors
+            logger.warning(f"Database operational error (attempt {attempt+1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                # Wait before retrying (exponential backoff)
+                retry_delay = 2 ** attempt
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                # Create a fresh engine and session factory if needed
+                if "SSL connection has been closed" in str(e):
+                    logger.info("Resetting database connection pool")
+                    Session.remove()  # Close all sessions
+            else:
+                logger.error(f"Failed to retrieve saved combinations after {max_retries} attempts")
+                # Return empty list as a fallback
+                return []
+        except Exception as e:
+            logger.error(f"Error retrieving saved combinations: {str(e)}")
+            return []
+        finally:
+            session.close()
+            
     return result
 
 def update_user_combination(id, played=None, result=None, notes=None):
