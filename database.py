@@ -2,17 +2,27 @@ import os
 import pandas as pd
 from sqlalchemy import create_engine, Column, Integer, String, Date, Float, Boolean, ForeignKey, Table, MetaData, inspect
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, scoped_session
 from datetime import datetime
 import json
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Get database URL from environment variable
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Create SQLAlchemy engine and session
-engine = create_engine(DATABASE_URL)
-Session = sessionmaker(bind=engine)
-session = Session()
+# Create SQLAlchemy engine with isolation level setting
+engine = create_engine(DATABASE_URL, isolation_level="AUTOCOMMIT")
+
+# Create a scoped session to manage connections properly
+Session = scoped_session(sessionmaker(bind=engine, autoflush=True, autocommit=False))
+
+# Function to get a fresh session for each operation
+def get_session():
+    return Session()
 
 # Create Base class for declarative models
 Base = declarative_base()
@@ -124,40 +134,53 @@ def load_drawings_from_dataframe(df):
     int
         Number of records inserted
     """
-    # Convert DataFrame to list of dictionaries
-    drawings = []
-    for _, row in df.iterrows():
-        # Convert date string to date object if it's a string
-        if isinstance(row['date'], str):
-            date = datetime.strptime(row['date'], '%Y-%m-%d').date()
-        else:
-            date = row['date']
-            
-        # Check if this drawing already exists
-        existing = session.query(EuromillionsDrawing).filter_by(date=date).first()
-        if existing:
-            continue
-            
-        # Create new drawing record
-        drawing = EuromillionsDrawing(
-            date=date,
-            day_of_week=row.get('day_of_week', ''),
-            n1=int(row['n1']),
-            n2=int(row['n2']),
-            n3=int(row['n3']),
-            n4=int(row['n4']),
-            n5=int(row['n5']),
-            s1=int(row['s1']),
-            s2=int(row['s2'])
-        )
-        drawings.append(drawing)
+    # Get a fresh session
+    session = get_session()
+    count = 0
     
-    # Add all drawings to the database
-    if drawings:
-        session.add_all(drawings)
-        session.commit()
+    try:
+        # Convert DataFrame to list of dictionaries
+        drawings = []
+        for _, row in df.iterrows():
+            # Convert date string to date object if it's a string
+            if isinstance(row['date'], str):
+                date = datetime.strptime(row['date'], '%Y-%m-%d').date()
+            else:
+                date = row['date']
+                
+            # Check if this drawing already exists
+            existing = session.query(EuromillionsDrawing).filter_by(date=date).first()
+            if existing:
+                continue
+                
+            # Create new drawing record
+            drawing = EuromillionsDrawing(
+                date=date,
+                day_of_week=row.get('day_of_week', ''),
+                n1=int(row['n1']),
+                n2=int(row['n2']),
+                n3=int(row['n3']),
+                n4=int(row['n4']),
+                n5=int(row['n5']),
+                s1=int(row['s1']),
+                s2=int(row['s2'])
+            )
+            drawings.append(drawing)
+        
+        # Add all drawings to the database
+        if drawings:
+            session.add_all(drawings)
+            session.commit()
+            count = len(drawings)
+        
+    except Exception as e:
+        logger.error(f"Error loading drawings: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
     
-    return len(drawings)
+    return count
 
 def get_all_drawings():
     """
@@ -168,13 +191,20 @@ def get_all_drawings():
     pandas.DataFrame
         DataFrame containing all drawing records
     """
-    drawings = session.query(EuromillionsDrawing).order_by(EuromillionsDrawing.date.desc()).all()
-    if not drawings:
-        return pd.DataFrame()
-        
-    # Convert to list of dictionaries
-    records = [drawing.to_dict() for drawing in drawings]
-    return pd.DataFrame(records)
+    session = get_session()
+    try:
+        drawings = session.query(EuromillionsDrawing).order_by(EuromillionsDrawing.date.desc()).all()
+        if not drawings:
+            return pd.DataFrame()
+            
+        # Convert to list of dictionaries
+        records = [drawing.to_dict() for drawing in drawings]
+        return pd.DataFrame(records)
+    except Exception as e:
+        logger.error(f"Error retrieving drawings: {str(e)}")
+        raise
+    finally:
+        session.close()
 
 def add_new_drawing(date, numbers, stars, day_of_week=None):
     """
@@ -196,32 +226,45 @@ def add_new_drawing(date, numbers, stars, day_of_week=None):
     bool
         True if the drawing was added successfully
     """
-    # Convert date string to date object if it's a string
-    if isinstance(date, str):
-        date = datetime.strptime(date, '%Y-%m-%d').date()
-        
-    # Check if this drawing already exists
-    existing = session.query(EuromillionsDrawing).filter_by(date=date).first()
-    if existing:
-        return False
-        
-    # Create new drawing record
-    drawing = EuromillionsDrawing(
-        date=date,
-        day_of_week=day_of_week,
-        n1=numbers[0],
-        n2=numbers[1],
-        n3=numbers[2],
-        n4=numbers[3],
-        n5=numbers[4],
-        s1=stars[0],
-        s2=stars[1]
-    )
+    session = get_session()
+    success = False
     
-    # Add to the database
-    session.add(drawing)
-    session.commit()
-    return True
+    try:
+        # Convert date string to date object if it's a string
+        if isinstance(date, str):
+            date = datetime.strptime(date, '%Y-%m-%d').date()
+            
+        # Check if this drawing already exists
+        existing = session.query(EuromillionsDrawing).filter_by(date=date).first()
+        if existing:
+            return False
+            
+        # Create new drawing record
+        drawing = EuromillionsDrawing(
+            date=date,
+            day_of_week=day_of_week,
+            n1=numbers[0],
+            n2=numbers[1],
+            n3=numbers[2],
+            n4=numbers[3],
+            n5=numbers[4],
+            s1=stars[0],
+            s2=stars[1]
+        )
+        
+        # Add to the database
+        session.add(drawing)
+        session.commit()
+        success = True
+        
+    except Exception as e:
+        logger.error(f"Error adding new drawing: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+        
+    return success
 
 def save_generated_combination(numbers, stars, strategy, score):
     """
@@ -243,32 +286,45 @@ def save_generated_combination(numbers, stars, strategy, score):
     int
         ID of the saved combination
     """
-    # Convert NumPy values to native Python types for database compatibility
-    # Convert numbers and stars to standard Python lists
-    numbers = [int(n) for n in numbers]
-    stars = [int(s) for s in stars]
+    session = get_session()
+    combo_id = None
     
-    # Convert score to a standard Python float if it's a NumPy type
-    if hasattr(score, 'item'):  # Check if it's a NumPy scalar
-        score = float(score)
-    
-    # Convert lists to JSON strings
-    numbers_json = json.dumps(numbers)
-    stars_json = json.dumps(stars)
-    
-    # Create new combination record
-    combination = GeneratedCombination(
-        numbers=numbers_json,
-        stars=stars_json,
-        strategy=strategy,
-        score=score,
-        created_at=datetime.now().date()
-    )
-    
-    # Add to the database
-    session.add(combination)
-    session.commit()
-    return combination.id
+    try:
+        # Convert NumPy values to native Python types for database compatibility
+        # Convert numbers and stars to standard Python lists
+        numbers = [int(n) for n in numbers]
+        stars = [int(s) for s in stars]
+        
+        # Convert score to a standard Python float if it's a NumPy type
+        if hasattr(score, 'item'):  # Check if it's a NumPy scalar
+            score = float(score)
+        
+        # Convert lists to JSON strings
+        numbers_json = json.dumps(numbers)
+        stars_json = json.dumps(stars)
+        
+        # Create new combination record
+        combination = GeneratedCombination(
+            numbers=numbers_json,
+            stars=stars_json,
+            strategy=strategy,
+            score=score,
+            created_at=datetime.now().date()
+        )
+        
+        # Add to the database
+        session.add(combination)
+        session.commit()
+        combo_id = combination.id
+        
+    except Exception as e:
+        logger.error(f"Error saving generated combination: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+        
+    return combo_id
 
 def get_generated_combinations(strategy=None, limit=100):
     """
@@ -286,14 +342,25 @@ def get_generated_combinations(strategy=None, limit=100):
     list
         List of dictionaries containing combination data
     """
-    query = session.query(GeneratedCombination)
+    session = get_session()
+    result = []
     
-    if strategy:
-        query = query.filter_by(strategy=strategy)
+    try:
+        query = session.query(GeneratedCombination)
         
-    combinations = query.order_by(GeneratedCombination.created_at.desc()).limit(limit).all()
-    
-    return [combination.to_dict() for combination in combinations]
+        if strategy:
+            query = query.filter_by(strategy=strategy)
+            
+        combinations = query.order_by(GeneratedCombination.created_at.desc()).limit(limit).all()
+        result = [combination.to_dict() for combination in combinations]
+        
+    except Exception as e:
+        logger.error(f"Error retrieving generated combinations: {str(e)}")
+        raise
+    finally:
+        session.close()
+        
+    return result
 
 def save_user_combination(numbers, stars, strategy=None, notes=None):
     """
@@ -315,28 +382,41 @@ def save_user_combination(numbers, stars, strategy=None, notes=None):
     int
         ID of the saved combination
     """
-    # Convert NumPy values to native Python types for database compatibility
-    # Convert numbers and stars to standard Python lists
-    numbers = [int(n) for n in numbers]
-    stars = [int(s) for s in stars]
+    session = get_session()
+    saved_id = None
     
-    # Convert lists to JSON strings
-    numbers_json = json.dumps(numbers)
-    stars_json = json.dumps(stars)
-    
-    # Create new saved combination record
-    saved = UserSavedCombination(
-        numbers=numbers_json,
-        stars=stars_json,
-        strategy=strategy,
-        notes=notes,
-        saved_at=datetime.now().date()
-    )
-    
-    # Add to the database
-    session.add(saved)
-    session.commit()
-    return saved.id
+    try:
+        # Convert NumPy values to native Python types for database compatibility
+        # Convert numbers and stars to standard Python lists
+        numbers = [int(n) for n in numbers]
+        stars = [int(s) for s in stars]
+        
+        # Convert lists to JSON strings
+        numbers_json = json.dumps(numbers)
+        stars_json = json.dumps(stars)
+        
+        # Create new saved combination record
+        saved = UserSavedCombination(
+            numbers=numbers_json,
+            stars=stars_json,
+            strategy=strategy,
+            notes=notes,
+            saved_at=datetime.now().date()
+        )
+        
+        # Add to the database
+        session.add(saved)
+        session.commit()
+        saved_id = saved.id
+        
+    except Exception as e:
+        logger.error(f"Error saving user combination: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+        
+    return saved_id
 
 def get_user_saved_combinations(limit=50):
     """
@@ -352,8 +432,19 @@ def get_user_saved_combinations(limit=50):
     list
         List of dictionaries containing saved combination data
     """
-    saved = session.query(UserSavedCombination).order_by(UserSavedCombination.saved_at.desc()).limit(limit).all()
-    return [combo.to_dict() for combo in saved]
+    session = get_session()
+    result = []
+    
+    try:
+        saved = session.query(UserSavedCombination).order_by(UserSavedCombination.saved_at.desc()).limit(limit).all()
+        result = [combo.to_dict() for combo in saved]
+    except Exception as e:
+        logger.error(f"Error retrieving saved combinations: {str(e)}")
+        raise
+    finally:
+        session.close()
+        
+    return result
 
 def update_user_combination(id, played=None, result=None, notes=None):
     """
@@ -375,19 +466,32 @@ def update_user_combination(id, played=None, result=None, notes=None):
     bool
         True if the combination was updated successfully
     """
-    saved = session.query(UserSavedCombination).filter_by(id=id).first()
-    if not saved:
-        return False
+    session = get_session()
+    success = False
     
-    if played is not None:
-        saved.played = played
-    if result is not None:
-        saved.result = result
-    if notes is not None:
-        saved.notes = notes
-    
-    session.commit()
-    return True
+    try:
+        saved = session.query(UserSavedCombination).filter_by(id=id).first()
+        if not saved:
+            return False
+        
+        if played is not None:
+            saved.played = played
+        if result is not None:
+            saved.result = result
+        if notes is not None:
+            saved.notes = notes
+        
+        session.commit()
+        success = True
+        
+    except Exception as e:
+        logger.error(f"Error updating user combination: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+        
+    return success
 
 # Initialize the database if this module is run directly
 if __name__ == "__main__":
