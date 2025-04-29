@@ -481,8 +481,52 @@ else:
                 risk_level = st.slider("Risk level", 1, 10, 5, key="risk_level")
                 
             elif strategy_type == "Bayesian Model":
-                st.info("This strategy uses Bayesian probability theory to predict numbers based on prior probabilities and recent evidence")
+                st.info("This strategy uses Bayesian probability theory to predict numbers based on prior probabilities and recent evidence.")
+                
+                # Extended Bayesian parameters
+                st.subheader("Bayesian Inference Parameters")
+                
+                # Draws selection
                 recent_draws_count = st.slider("Recent draws to consider", 5, 50, 20, key="bayes_draws")
+                
+                # Prior type selection
+                prior_type = st.selectbox(
+                    "Prior Distribution Type",
+                    ["empirical", "uniform", "informative"],
+                    help="Select the type of prior distribution to use",
+                    key="bayes_prior"
+                )
+                
+                # Update method selection
+                update_method = st.selectbox(
+                    "Probability Update Method",
+                    ["standard", "sequential", "adaptive"],
+                    help="Select the method for updating probabilities",
+                    key="bayes_update"
+                )
+                
+                # Smoothing factor
+                smoothing_factor = st.slider(
+                    "Smoothing Factor", 
+                    0.01, 1.0, 0.1, 0.01,
+                    help="Laplace smoothing factor to handle zero probabilities",
+                    key="bayes_smoothing"
+                )
+                
+                # Show explanation based on selections
+                if prior_type == "empirical":
+                    st.info("Empirical prior: Uses historical frequencies from past drawings as the basis for probabilities")
+                elif prior_type == "uniform":
+                    st.info("Uniform prior: Assumes all numbers have equal probability initially (useful when you believe past frequencies aren't predictive)")
+                elif prior_type == "informative":
+                    st.info("Informative prior: Incorporates external knowledge about number patterns and player psychology")
+                    
+                if update_method == "standard":
+                    st.info("Standard update: Classic Bayesian update using all evidence at once")
+                elif update_method == "sequential":
+                    st.info("Sequential update: Updates probabilities draw by draw, which can better capture patterns of sequential changes")
+                elif update_method == "adaptive":
+                    st.info("Adaptive update: Gives more weight to recent draws, adapting to potential trends or shifts in drawing patterns")
                 
             elif strategy_type == "Markov Chain Model":
                 st.info("This strategy uses Markov chain transition probabilities to predict the next draw based on previous draws")
@@ -536,7 +580,10 @@ else:
                         elif strategy_type == "Bayesian Model":
                             combinations = st.session_state.strategies.bayesian_strategy(
                                 num_combinations=num_combinations,
-                                recent_draws_count=recent_draws_count
+                                recent_draws_count=recent_draws_count,
+                                prior_type=prior_type,
+                                update_method=update_method,
+                                smoothing_factor=smoothing_factor
                             )
                         elif strategy_type == "Markov Chain Model":
                             combinations = st.session_state.strategies.markov_strategy(
@@ -561,7 +608,13 @@ else:
                                 "Stratified Sampling": lambda: st.session_state.strategies.stratified_sampling_strategy(num_combinations=1),
                                 "Coverage Strategy": lambda: st.session_state.strategies.coverage_strategy(num_combinations=1, balanced=True),
                                 "Risk/Reward Optimization": lambda: st.session_state.strategies.risk_reward_strategy(num_combinations=1, risk_level=5),
-                                "Bayesian Model": lambda: st.session_state.strategies.bayesian_strategy(num_combinations=1, recent_draws_count=20),
+                                "Bayesian Model": lambda: st.session_state.strategies.bayesian_strategy(
+                                    num_combinations=1, 
+                                    recent_draws_count=20,
+                                    prior_type="empirical", 
+                                    update_method="sequential",
+                                    smoothing_factor=0.1
+                                ),
                                 "Markov Chain Model": lambda: st.session_state.strategies.markov_strategy(num_combinations=1, lag=1),
                                 "Time Series Model": lambda: st.session_state.strategies.time_series_strategy(num_combinations=1, window_size=10),
                                 "Anti-Cognitive Bias": lambda: st.session_state.strategies.cognitive_bias_strategy(num_combinations=1)
@@ -757,7 +810,7 @@ else:
         
         viz_type = st.selectbox(
             "Select Visualization",
-            ["Number Heatmap", "Evolution Over Time", "Correlation Analysis", "Winning Numbers Distribution"]
+            ["Number Heatmap", "Evolution Over Time", "Correlation Analysis", "Winning Numbers Distribution", "Bayesian Probability Updates"]
         )
     
     # Combination Analysis tab
@@ -982,6 +1035,131 @@ else:
                 This visualization shows the distribution of different patterns in the winning numbers,
                 such as sequences, pairs, and isolated numbers.
                 """)
+                
+        elif viz_type == "Bayesian Probability Updates":
+            st.subheader("Bayesian Probability Updates Visualization")
+            
+            st.markdown("""
+            This visualization shows how probabilities for selected numbers change through Bayesian updating.
+            
+            To generate this visualization:
+            1. Go to the Prediction tab
+            2. Select the Bayesian Model strategy
+            3. Configure and generate combinations
+            4. Return to this visualization
+            """)
+            
+            # Check if Bayesian model was used
+            if hasattr(st.session_state, 'strategies') and hasattr(st.session_state.strategies, 'current_bayesian_model'):
+                # Get probability history
+                prob_history = st.session_state.strategies.get_bayesian_probability_history()
+                
+                if prob_history:
+                    # Allow user to select which numbers to visualize
+                    st.subheader("Select numbers to visualize probability updates")
+                    
+                    # Number selection
+                    number_selection = st.multiselect(
+                        "Select main numbers",
+                        options=list(range(1, 51)),
+                        default=[1, 17, 23, 33, 50]
+                    )
+                    
+                    # Star selection
+                    star_selection = st.multiselect(
+                        "Select star numbers",
+                        options=list(range(1, 13)),
+                        default=[2, 8]
+                    )
+                    
+                    # Create figure for number probabilities
+                    if number_selection:
+                        st.subheader("Main Number Probability Updates")
+                        
+                        # Create dataframe for plotting
+                        number_data = []
+                        for num in number_selection:
+                            if num in prob_history['numbers']:
+                                history = prob_history['numbers'][num]
+                                for i, prob in enumerate(history):
+                                    number_data.append({
+                                        'Step': i,
+                                        'Number': f"Number {num}",
+                                        'Probability': prob * 100  # Convert to percentage
+                                    })
+                        
+                        if number_data:
+                            number_df = pd.DataFrame(number_data)
+                            fig = px.line(
+                                number_df, 
+                                x='Step', 
+                                y='Probability', 
+                                color='Number',
+                                title='Probability Updates for Selected Numbers',
+                                markers=True
+                            )
+                            fig.update_layout(
+                                xaxis_title="Update Step (0=Prior, 1=Posterior)",
+                                yaxis_title="Probability (%)",
+                                yaxis=dict(range=[0, max(number_df['Probability']) * 1.1])
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Explanation based on model parameters
+                            if hasattr(st.session_state.strategies.current_bayesian_model, 'prior_type'):
+                                prior_type = st.session_state.strategies.current_bayesian_model.prior_type
+                                update_method = st.session_state.strategies.current_bayesian_model.update_method
+                                
+                                st.info(f"This visualization shows how the probabilities change using a **{prior_type}** prior and **{update_method}** updating method.")
+                                
+                                if update_method == "sequential":
+                                    st.markdown("Each step represents the probability after processing one draw in sequence.")
+                                elif update_method == "adaptive":
+                                    st.markdown("The probabilities are weighted by recency, with recent draws having more influence.")
+                                else:
+                                    st.markdown("The final probability is calculated using all evidence at once in a batch update.")
+                        else:
+                            st.warning("No probability history available for the selected numbers.")
+                    
+                    # Create figure for star probabilities
+                    if star_selection:
+                        st.subheader("Star Number Probability Updates")
+                        
+                        # Create dataframe for plotting
+                        star_data = []
+                        for star in star_selection:
+                            if star in prob_history['stars']:
+                                history = prob_history['stars'][star]
+                                for i, prob in enumerate(history):
+                                    star_data.append({
+                                        'Step': i,
+                                        'Star': f"Star {star}",
+                                        'Probability': prob * 100  # Convert to percentage
+                                    })
+                        
+                        if star_data:
+                            star_df = pd.DataFrame(star_data)
+                            fig = px.line(
+                                star_df, 
+                                x='Step', 
+                                y='Probability', 
+                                color='Star',
+                                title='Probability Updates for Selected Stars',
+                                markers=True
+                            )
+                            fig.update_layout(
+                                xaxis_title="Update Step (0=Prior, 1=Posterior)",
+                                yaxis_title="Probability (%)",
+                                yaxis=dict(range=[0, max(star_df['Probability']) * 1.1])
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.warning("No probability history available for the selected stars.")
+                    
+                else:
+                    st.warning("No Bayesian probability history available. Generate combinations using the Bayesian model first.")
+            else:
+                st.warning("Please generate combinations using the Bayesian model strategy first to see probability updates.")
     
     # Generated Combinations tab
     with tabs[5]:

@@ -607,9 +607,10 @@ class PredictionStrategies:
         
         return combinations
     
-    def bayesian_strategy(self, num_combinations=5, recent_draws_count=20):
+    def bayesian_strategy(self, num_combinations=5, recent_draws_count=20, 
+                       prior_type="empirical", update_method="standard", smoothing_factor=0.1):
         """
-        Generate combinations using a Bayesian probability model.
+        Generate combinations using an enhanced Bayesian probability model with multiple inference methods.
         
         Parameters:
         -----------
@@ -617,17 +618,38 @@ class PredictionStrategies:
             Number of combinations to generate
         recent_draws_count : int
             Number of recent draws to use for updating priors
+        prior_type : str
+            Type of prior distribution to use:
+            - "empirical": Based on historical frequencies (default)
+            - "uniform": Equal probabilities for all numbers
+            - "informative": Uses external information about number patterns
+        update_method : str
+            Method for Bayesian updating:
+            - "standard": Traditional Bayesian update (default)
+            - "sequential": Sequential updating using each draw
+            - "adaptive": Adaptive updating with time decay
+        smoothing_factor : float
+            Laplace smoothing factor for handling zero probabilities
             
         Returns:
         --------
         list of dict
             List of combinations, each with 'numbers', 'stars', and 'score'
         """
-        # Create a Bayesian model with the historical data
-        bayesian_model = BayesianModel(self.stats.data, recent_draws_count)
+        # Create an enhanced Bayesian model with the historical data and specified parameters
+        bayesian_model = BayesianModel(
+            self.stats.data, 
+            recent_draws_count=recent_draws_count,
+            prior_type=prior_type,
+            update_method=update_method,
+            smoothing_factor=smoothing_factor
+        )
         
         # Generate combinations
         bayesian_combinations = bayesian_model.generate_combinations(num_combinations)
+        
+        # Set strategy name based on the specific Bayesian approach used
+        strategy_name = f"Bayesian ({prior_type} prior, {update_method} update)"
         
         # Convert to the expected format
         combinations = []
@@ -636,10 +658,27 @@ class PredictionStrategies:
                 'numbers': combo.numbers,
                 'stars': combo.stars,
                 'score': combo.score,
-                'strategy': 'Bayesian'
+                'strategy': strategy_name
             })
             
+        # Store the model for potential visualization of probability updates
+        self.current_bayesian_model = bayesian_model
+            
         return combinations
+        
+    def get_bayesian_probability_history(self):
+        """
+        Get the probability history from the most recently used Bayesian model.
+        
+        Returns:
+        --------
+        dict or None
+            Dictionary of probability histories for numbers and stars,
+            or None if no Bayesian model has been used
+        """
+        if hasattr(self, 'current_bayesian_model'):
+            return self.current_bayesian_model.probability_history
+        return None
         
     def markov_strategy(self, num_combinations=5, lag=1):
         """
