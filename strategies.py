@@ -779,16 +779,41 @@ class PredictionStrategies:
             # Calculate sum (combinations with unusual sums may be less played)
             num_sum = sum(numbers)
             
-            # Human tendency is to pick combinations with "nice" sums (100, 150, etc.)
+            # Calculate several anti-cognitive bias factors:
+            
+            # 1. Human tendency is to pick combinations with "nice" sums (100, 150, etc.)
             # So we'll score higher when the sum isn't a multiple of 10 or 50
-            sum_score = 0.7
+            sum_score = 0.5
             if num_sum % 10 != 0:
-                sum_score += 0.2
+                sum_score += 0.15
             if num_sum % 5 != 0:
                 sum_score += 0.1
                 
-            # Calculate score (higher when the combo is likely avoided by humans)
-            final_score = round(sum_score * 100, 2)
+            # 2. Check for patterns people tend to pick:
+            sorted_nums = sorted(numbers)
+            
+            # Look for consecutive sequences (people like these)
+            has_consecutive = False
+            for i in range(len(sorted_nums) - 1):
+                if sorted_nums[i+1] - sorted_nums[i] == 1:
+                    has_consecutive = True
+                    break
+                    
+            pattern_score = 0.2
+            if not has_consecutive:
+                pattern_score += 0.15  # Bonus for no consecutive numbers
+                
+            # 3. Check distribution across the board (people like clustering)
+            num_in_first_half = sum(1 for n in numbers if n <= 25)
+            distribution_score = 0.0
+            # Score higher when mix of high and low numbers (2/3 or 3/2 split)
+            if num_in_first_half in [2, 3]:
+                distribution_score += 0.2
+                
+            # Calculate final score (higher when the combo is likely avoided by humans)
+            # Maximum theoretical score: 0.5 + 0.15 + 0.1 + 0.2 + 0.15 + 0.2 = 1.3
+            # Normalize to 100-point scale
+            final_score = round((sum_score + pattern_score + distribution_score) / 1.3 * 100, 2)
             
             combinations.append({
                 'numbers': numbers,

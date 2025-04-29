@@ -1167,31 +1167,31 @@ else:
                 # Form for adding a new saved combination
                 with st.form("save_combination_form"):
                     st.markdown("**Main Numbers (1-50)**")
-                rows = 2
-                cols_per_row = 3
-                all_num_inputs = []
-                
-                for row in range(rows):
-                    cols = st.columns(cols_per_row if row == 0 else cols_per_row - 1)
-                    for i, col in enumerate(cols):
-                        with col:
-                            idx = row * cols_per_row + i
-                            if idx < 5:  # We need 5 numbers total
-                                num = st.number_input(f"Number {idx+1}", min_value=1, max_value=50, key=f"save_num_{idx}")
-                                all_num_inputs.append(num)
-                
-                st.markdown("**Star Numbers (1-12)**")
-                col1, col2 = st.columns(2)
-                with col1:
-                    star1 = st.number_input("Star 1", min_value=1, max_value=12, key="save_star_1")
-                with col2:
-                    star2 = st.number_input("Star 2", min_value=1, max_value=12, key="save_star_2")
-                
-                # Additional fields
-                strategy = st.text_input("Strategy (optional)", "")
-                notes = st.text_area("Notes (optional)", "")
-                
-                submitted = st.form_submit_button("Save Combination")
+                    rows = 2
+                    cols_per_row = 3
+                    all_num_inputs = []
+                    
+                    for row in range(rows):
+                        cols = st.columns(cols_per_row if row == 0 else cols_per_row - 1)
+                        for i, col in enumerate(cols):
+                            with col:
+                                idx = row * cols_per_row + i
+                                if idx < 5:  # We need 5 numbers total
+                                    num = st.number_input(f"Number {idx+1}", min_value=1, max_value=50, key=f"save_num_{idx}")
+                                    all_num_inputs.append(num)
+                    
+                    st.markdown("**Star Numbers (1-12)**")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        star1 = st.number_input("Star 1", min_value=1, max_value=12, key="save_star_1")
+                    with col2:
+                        star2 = st.number_input("Star 2", min_value=1, max_value=12, key="save_star_2")
+                    
+                    # Additional fields
+                    strategy = st.text_input("Strategy (optional)", "")
+                    notes = st.text_area("Notes (optional)", "")
+                    
+                    submitted = st.form_submit_button("Save Combination")
                 
                 if submitted:
                     # Check for duplicates in the numbers
