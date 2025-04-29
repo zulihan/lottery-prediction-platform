@@ -13,6 +13,7 @@ from strategies import PredictionStrategies
 from visualization import DataVisualization
 from utils import get_download_link_csv, get_download_link_excel
 import database
+from strategy_testing import StrategyTester
 from combination_analysis import analyze_full_combinations, analyze_number_combinations, analyze_star_combinations
 
 # Page configuration
@@ -200,7 +201,8 @@ else:
         "Strategy Generation",
         "Visualizations",
         "Combination Analysis",
-        "My Combinations"
+        "My Combinations",
+        "Strategy Testing"
     ])
     
     # Data Overview tab
