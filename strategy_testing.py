@@ -573,40 +573,40 @@ class StrategyTester:
     # Strategy generation methods (calling the actual strategy implementations)
     def _generate_frequency_strategy(self, num_combinations):
         """Generate combinations using frequency analysis strategy"""
-        return self.test_strategies.generate_frequency_based(num_combinations)
+        return self.test_strategies.frequency_strategy(num_combinations)
     
     def _generate_mixed_strategy(self, num_combinations):
         """Generate combinations using mixed/balanced strategy"""
-        return self.test_strategies.generate_balanced_combinations(num_combinations)
+        return self.test_strategies.mixed_strategy(num_combinations)
     
     def _generate_temporal_strategy(self, num_combinations):
         """Generate combinations using temporal analysis"""
-        return self.test_strategies.generate_temporal_weighted(num_combinations)
+        return self.test_strategies.temporal_strategy(num_combinations)
     
     def _generate_stratified_strategy(self, num_combinations):
         """Generate combinations using stratified sampling"""
-        return self.test_strategies.generate_stratified_combinations(num_combinations)
+        return self.test_strategies.stratified_sampling_strategy(num_combinations)
     
     def _generate_coverage_strategy(self, num_combinations):
         """Generate combinations optimizing coverage"""
-        return self.test_strategies.generate_optimized_coverage(num_combinations)
+        return self.test_strategies.coverage_strategy(num_combinations)
     
     def _generate_risk_reward_strategy(self, num_combinations):
         """Generate combinations with risk-reward optimization"""
-        return self.test_strategies.generate_risk_reward_optimized(num_combinations)
+        return self.test_strategies.risk_reward_strategy(num_combinations)
     
     def _generate_bayesian_strategy(self, num_combinations):
         """Generate combinations using Bayesian model"""
-        return self.test_strategies.generate_bayesian_combinations(num_combinations)
+        return self.test_strategies.bayesian_strategy(num_combinations)
     
     def _generate_markov_strategy(self, num_combinations):
         """Generate combinations using Markov chain model"""
-        return self.test_strategies.generate_markov_based(num_combinations)
+        return self.test_strategies.markov_strategy(num_combinations)
     
     def _generate_time_series_strategy(self, num_combinations):
         """Generate combinations using time series analysis"""
-        return self.test_strategies.generate_time_series_based(num_combinations)
+        return self.test_strategies.time_series_strategy(num_combinations)
     
     def _generate_cognitive_bias_strategy(self, num_combinations):
         """Generate combinations using anti-cognitive bias approach"""
-        return self.test_strategies.generate_anti_cognitive_bias(num_combinations)
+        return self.test_strategies.cognitive_bias_strategy(num_combinations)
