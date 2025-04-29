@@ -620,6 +620,23 @@ else:
                 
                 The score is not a true probability (0-100%), but a relative measure to compare combinations within the same strategy.
                 """)
+                
+            # Add a button to load previously generated combinations from the database
+            if st.button("Load Previously Generated Combinations from Database", key="load_generated_combinations"):
+                with st.spinner("Loading combinations from database..."):
+                    try:
+                        # Get combinations for the current strategy
+                        db_combinations = database.get_generated_combinations(strategy=strategy_type)
+                        
+                        if db_combinations:
+                            # Store in session state
+                            st.session_state.generated_combinations[strategy_type] = db_combinations
+                            st.success(f"Successfully loaded {len(db_combinations)} combinations for {strategy_type} strategy!")
+                            st.rerun()
+                        else:
+                            st.info(f"No saved combinations found for {strategy_type} strategy in the database.")
+                    except Exception as e:
+                        st.error(f"Error loading combinations from database: {str(e)}")
             
             if strategy_type in st.session_state.generated_combinations:
                 combinations = st.session_state.generated_combinations[strategy_type]
