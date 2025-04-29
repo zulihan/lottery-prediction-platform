@@ -232,7 +232,7 @@ class DataProcessor:
         
         Parameters:
         -----------
-        draw_date : datetime.date
+        draw_date : datetime.date, pandas.Timestamp, or str
             The date of the draw
         numbers : list
             List of 5 main numbers
@@ -254,9 +254,14 @@ class DataProcessor:
         if len(set(numbers)) != 5 or len(set(stars)) != 2:
             raise ValueError("Duplicate numbers are not allowed")
         
-        # Convert date string to datetime if needed
+        # Convert date to a consistent datetime.date object format
         if isinstance(draw_date, str):
             draw_date = datetime.strptime(draw_date, "%Y-%m-%d").date()
+        elif hasattr(draw_date, 'date') and callable(getattr(draw_date, 'date')):  # Handle pandas Timestamp
+            draw_date = draw_date.date()
+        elif not isinstance(draw_date, type(datetime.now().date())):
+            # If it's still not a date object, try to convert with str
+            draw_date = datetime.strptime(str(draw_date), "%Y-%m-%d").date()
         
         # Create new draw data
         new_draw = {

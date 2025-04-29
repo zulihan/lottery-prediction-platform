@@ -211,9 +211,18 @@ else:
         
         # Display data summary
         st.subheader("Dataset Information")
+        
+        # Handle date range safely - convert to string format to avoid type comparison issues
+        min_date = "N/A"
+        max_date = "N/A"
+        if not st.session_state.euromillions_data.empty:
+            # Convert dates to strings to avoid comparison issues between date and Timestamp
+            min_date = str(st.session_state.euromillions_data['date'].min())
+            max_date = str(st.session_state.euromillions_data['date'].max())
+            
         data_info = {
             "Total number of draws": len(st.session_state.euromillions_data),
-            "Date range": f"{st.session_state.euromillions_data['date'].min()} to {st.session_state.euromillions_data['date'].max()}",
+            "Date range": f"{min_date} to {max_date}",
             "Data columns": ", ".join(st.session_state.euromillions_data.columns)
         }
         

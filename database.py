@@ -286,7 +286,7 @@ def add_new_drawing(date, numbers, stars, day_of_week=None):
     
     Parameters:
     -----------
-    date : datetime.date or str
+    date : datetime.date, pandas.Timestamp, or str
         Date of the drawing
     numbers : list
         List of 5 main numbers
@@ -304,9 +304,14 @@ def add_new_drawing(date, numbers, stars, day_of_week=None):
     success = False
     
     try:
-        # Convert date string to date object if it's a string
+        # Convert date to a consistent datetime.date object format
         if isinstance(date, str):
             date = datetime.strptime(date, '%Y-%m-%d').date()
+        elif hasattr(date, 'date') and callable(getattr(date, 'date')):  # Handle pandas Timestamp
+            date = date.date()
+        elif not isinstance(date, type(datetime.now().date())):
+            # If it's still not a date object, try to convert with str
+            date = datetime.strptime(str(date), '%Y-%m-%d').date()
             
         # Check if this drawing already exists
         existing = session.query(EuromillionsDrawing).filter_by(date=date).first()
