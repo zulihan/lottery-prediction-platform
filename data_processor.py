@@ -119,11 +119,12 @@ class DataProcessor:
         # Create a new DataFrame with standardized columns
         processed = pd.DataFrame()
         
-        # Process date
-        processed['date'] = pd.to_datetime(df[date_col])
+        # Process date - convert to datetime and then to date objects for consistency
+        dates = pd.to_datetime(df[date_col])
+        processed['date'] = dates.apply(lambda x: x.date() if hasattr(x, 'date') and callable(getattr(x, 'date')) else x)
         
-        # Add day of week
-        processed['day_of_week'] = processed['date'].dt.day_name()
+        # Add day of week using the original datetime objects (before conversion to date)
+        processed['day_of_week'] = dates.dt.day_name()
         
         # Process numbers
         for i, col in enumerate(number_cols):
@@ -166,17 +167,22 @@ class DataProcessor:
         
         if date_col:
             try:
-                processed['date'] = pd.to_datetime(df[date_col])
-                # Add day of week
-                processed['day_of_week'] = processed['date'].dt.day_name()
+                # Convert to datetime and then explicitly to datetime.date objects for consistency
+                dates = pd.to_datetime(df[date_col])
+                processed['date'] = dates.apply(lambda x: x.date() if hasattr(x, 'date') and callable(getattr(x, 'date')) else x)
+                
+                # Add day of week using the original datetime objects (before conversion to date)
+                processed['day_of_week'] = dates.dt.day_name()
             except:
                 # If conversion fails, create a basic date column
-                processed['date'] = pd.to_datetime('today').normalize()
-                processed['day_of_week'] = processed['date'].dt.day_name()
+                today = pd.to_datetime('today').normalize()
+                processed['date'] = today.date()
+                processed['day_of_week'] = today.day_name()
         else:
             # Create a default date column
-            processed['date'] = pd.to_datetime('today').normalize()
-            processed['day_of_week'] = processed['date'].dt.day_name()
+            today = pd.to_datetime('today').normalize() 
+            processed['date'] = today.date()
+            processed['day_of_week'] = today.day_name()
         
         # Try to identify number columns and star columns
         num_cols = []

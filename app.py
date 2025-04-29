@@ -216,9 +216,22 @@ else:
         min_date = "N/A"
         max_date = "N/A"
         if not st.session_state.euromillions_data.empty:
-            # Convert dates to strings to avoid comparison issues between date and Timestamp
-            min_date = str(st.session_state.euromillions_data['date'].min())
-            max_date = str(st.session_state.euromillions_data['date'].max())
+            # First, ensure all date values are of the same type (convert timestamps to dates)
+            try:
+                date_column = st.session_state.euromillions_data['date'].copy()
+                
+                # Convert any Timestamp objects to datetime.date objects for consistency
+                date_column = date_column.apply(lambda x: x.date() if hasattr(x, 'date') and callable(getattr(x, 'date')) else x)
+                
+                # Now safely get min and max dates
+                if not date_column.empty:
+                    min_date = str(min(date_column))
+                    max_date = str(max(date_column))
+            except Exception as e:
+                # Fallback in case of any errors
+                st.warning(f"Note: Could not determine exact date range due to mixed date types. Error: {str(e)}")
+                min_date = "Unknown"
+                max_date = "Present"
             
         data_info = {
             "Total number of draws": len(st.session_state.euromillions_data),
