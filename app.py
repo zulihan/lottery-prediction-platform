@@ -466,8 +466,42 @@ else:
                 lookback_period = st.slider("Lookback period (draws)", 10, 100, 30, key="lookback")
                 
             elif strategy_type == "Stratified Sampling":
-                st.info("This strategy ensures balanced distribution across different number ranges")
-                # No specific parameters needed
+                st.info("This strategy ensures balanced distribution across different number properties")
+                
+                # Add new stratification type options
+                strata_type = st.selectbox(
+                    "Stratification Type",
+                    [
+                        "range", "even_odd", "prime_composite", 
+                        "hot_cold", "decade", "pattern"
+                    ],
+                    help="Choose how to stratify your number selection"
+                )
+                
+                # Add balance factor slider
+                balance_factor = st.slider(
+                    "Balance Factor", 
+                    min_value=0.0, 
+                    max_value=1.0, 
+                    value=0.7, 
+                    step=0.1,
+                    help="Higher values favor balanced distribution across strata, lower values favor historical frequencies",
+                    key="stratified_balance_factor"
+                )
+                
+                # Display explanations based on selection
+                if strata_type == "range":
+                    st.info("Range stratification divides the number range 1-50 into 5 equal parts and selects numbers from each part.")
+                elif strata_type == "even_odd":
+                    st.info("Even-Odd stratification balances the selection of even and odd numbers based on historical patterns.")
+                elif strata_type == "prime_composite":
+                    st.info("Prime-Composite stratification balances the selection between prime numbers and non-prime numbers.")
+                elif strata_type == "hot_cold":
+                    st.info("Hot-Cold stratification mixes frequently drawn numbers with less frequently drawn ones.")
+                elif strata_type == "decade":
+                    st.info("Decade stratification ensures numbers are selected from different decades (1-10, 11-20, etc.).")
+                elif strata_type == "pattern":
+                    st.info("Pattern stratification selects numbers based on their mathematical properties and patterns.")
                 
             elif strategy_type == "Coverage Strategy":
                 st.info("This strategy optimizes to cover as many possible winning combinations as possible")
@@ -565,7 +599,9 @@ else:
                             )
                         elif strategy_type == "Stratified Sampling":
                             combinations = st.session_state.strategies.stratified_sampling_strategy(
-                                num_combinations=num_combinations
+                                num_combinations=num_combinations,
+                                strata_type=strata_type,
+                                balance_factor=balance_factor
                             )
                         elif strategy_type == "Coverage Strategy":
                             combinations = st.session_state.strategies.coverage_strategy(
@@ -605,7 +641,11 @@ else:
                                 "Frequency Strategy": lambda: st.session_state.strategies.frequency_strategy(num_combinations=1, recent_weight=0.6),
                                 "Mixed Strategy": lambda: st.session_state.strategies.mixed_strategy(num_combinations=1, hot_ratio=0.7),
                                 "Temporal Strategy": lambda: st.session_state.strategies.temporal_strategy(num_combinations=1, lookback_period=30),
-                                "Stratified Sampling": lambda: st.session_state.strategies.stratified_sampling_strategy(num_combinations=1),
+                                "Stratified Sampling": lambda: st.session_state.strategies.stratified_sampling_strategy(
+                                    num_combinations=1,
+                                    strata_type="pattern",  # Use pattern as default for multi-strategy approach
+                                    balance_factor=0.7
+                                ),
                                 "Coverage Strategy": lambda: st.session_state.strategies.coverage_strategy(num_combinations=1, balanced=True),
                                 "Risk/Reward Optimization": lambda: st.session_state.strategies.risk_reward_strategy(num_combinations=1, risk_level=5),
                                 "Bayesian Model": lambda: st.session_state.strategies.bayesian_strategy(

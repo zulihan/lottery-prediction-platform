@@ -233,21 +233,45 @@ class PredictionStrategies:
         
         return combinations
     
-    def stratified_sampling_strategy(self, num_combinations=5):
+    def stratified_sampling_strategy(self, num_combinations=5, strata_type="range", balance_factor=0.7):
         """
-        Generate combinations using stratified sampling across different number ranges.
+        Generate combinations using stratified sampling across different number properties.
         
         Parameters:
         -----------
         num_combinations : int
             Number of combinations to generate
+        strata_type : str
+            Type of stratification to use:
+            - "range": Sample from different numerical ranges
+            - "even_odd": Ensure balance of even and odd numbers
+            - "prime_composite": Mix prime and composite numbers
+            - "hot_cold": Sample from hot and cold numbers
+            - "decade": Sample from different decades (1-10, 11-20, etc.)
+            - "pattern": Sample based on pattern analysis
+        balance_factor : float
+            Factor controlling how balanced the sampling should be (0.0-1.0)
+            Higher values favor more balanced selection across strata
         
         Returns:
         --------
         list of dict
             List of combinations, each with 'numbers', 'stars', and 'score'
         """
-        # Define strata for numbers
+        # Get frequencies for each number
+        number_freq = self.stats.get_frequency()
+        star_freq = self.stats.get_star_frequency()
+        
+        # Get range distribution to determine optimal sampling
+        range_dist = self.stats.get_number_range_distribution()
+        
+        # Get even/odd distribution
+        even_odd_dist = self.stats.get_even_odd_distribution()
+        
+        # Find most common even/odd pattern
+        max_even_count = max(even_odd_dist.items(), key=lambda x: x[1])[0]
+        
+        # Define ranges for decade-based stratification
         ranges = [
             (1, 10),
             (11, 20),
@@ -256,114 +280,539 @@ class PredictionStrategies:
             (41, 50)
         ]
         
-        # Get range distribution to determine optimal sampling
-        range_dist = self.stats.get_number_range_distribution()
-        range_weights = [
-            range_dist["1-10"] / 100,
-            range_dist["11-20"] / 100,
-            range_dist["21-30"] / 100,
-            range_dist["31-40"] / 100,
-            range_dist["41-50"] / 100
-        ]
-        
-        # Get even/odd distribution
-        even_odd_dist = self.stats.get_even_odd_distribution()
-        
-        # Find most common even/odd pattern
-        max_even_count = max(even_odd_dist.items(), key=lambda x: x[1])[0]
-        
-        # Star frequencies
-        star_freq = self.stats.get_star_frequency()
-        
         combinations = []
         
         for _ in range(num_combinations):
-            # Determine how many numbers to pick from each range
-            # Use weighted random assignment
-            range_counts = [0] * 5
-            range_indices = list(range(5))
-            
-            for _ in range(5):
-                # Select a range based on weights
-                selected_range = random.choices(range_indices, k=1, weights=[range_weights[i] for i in range_indices])[0]
-                range_counts[selected_range] += 1
+            if strata_type == "range":
+                # Define range weights based on historical distribution
+                range_weights = [
+                    range_dist["1-10"] / 100,
+                    range_dist["11-20"] / 100,
+                    range_dist["21-30"] / 100,
+                    range_dist["31-40"] / 100,
+                    range_dist["41-50"] / 100
+                ]
                 
-                # Decrease weight to avoid oversampling
-                range_weights[selected_range] *= 0.5
+                # Determine how many numbers to pick from each range using weighted random assignment
+                range_counts = [0] * 5
+                range_indices = list(range(5))
+                temp_weights = range_weights.copy()  # Create a copy to modify during selection
                 
-                # Normalize weights
-                total_weight = sum(range_weights[i] for i in range_indices)
-                range_weights = [w / total_weight for w in range_weights]
+                for _ in range(5):
+                    # Select a range based on weights
+                    selected_range = random.choices(range_indices, k=1, weights=[temp_weights[i] for i in range_indices])[0]
+                    range_counts[selected_range] += 1
+                    
+                    # Decrease weight to avoid oversampling
+                    temp_weights[selected_range] *= 0.5
+                    
+                    # Normalize weights
+                    total_weight = sum(temp_weights[i] for i in range_indices)
+                    temp_weights = [w / total_weight for w in temp_weights]
+                
+                # Now select numbers from each range according to the counts
+                selected_numbers = []
+                for i, count in enumerate(range_counts):
+                    if count > 0:
+                        range_start, range_end = ranges[i]
+                        
+                        # Try to maintain the ideal even/odd distribution
+                        range_numbers = list(range(range_start, range_end + 1))
+                        
+                        # Separate into even and odd
+                        even_numbers = [n for n in range_numbers if n % 2 == 0]
+                        odd_numbers = [n for n in range_numbers if n % 2 == 1]
+                        
+                        # Determine how many even numbers to pick based on the ideal distribution
+                        even_to_pick = min(count, max(0, min(max_even_count - len([n for n in selected_numbers if n % 2 == 0]), len(even_numbers))))
+                        odd_to_pick = count - even_to_pick
+                        
+                        # Sample numbers
+                        if even_to_pick > 0:
+                            # Use weighted sampling based on frequency
+                            even_freqs = {n: number_freq[n] for n in even_numbers}
+                            selected_even = self._weighted_sample(even_freqs, even_to_pick)
+                            selected_numbers.extend(selected_even)
+                            
+                        if odd_to_pick > 0:
+                            # Use weighted sampling based on frequency
+                            odd_freqs = {n: number_freq[n] for n in odd_numbers}
+                            selected_odd = self._weighted_sample(odd_freqs, odd_to_pick)
+                            selected_numbers.extend(selected_odd)
+                
+                # Ensure we have exactly 5 numbers
+                if len(selected_numbers) > 5:
+                    selected_numbers = random.sample(selected_numbers, 5)
+                while len(selected_numbers) < 5:
+                    num = random.randint(1, 50)
+                    if num not in selected_numbers:
+                        selected_numbers.append(num)
+                
+                # Calculate score - how well the combination matches historical distributions
+                # Calculate range distribution
+                range_distribution = [0] * 5
+                for num in selected_numbers:
+                    for i, (start, end) in enumerate(ranges):
+                        if start <= num <= end:
+                            range_distribution[i] += 1
+                            break
+                
+                # Normalize
+                range_distribution = [count / 5 for count in range_distribution]
+                
+                # Calculate similarity to historical distribution
+                target_distribution = [range_dist[f"{r[0]}-{r[1]}"] / 100 for r in ranges]
+                
+                # L1 distance (Manhattan distance)
+                distribution_distance = sum(abs(range_distribution[i] - target_distribution[i]) for i in range(5))
+                
+                # Convert to similarity score (0-1)
+                distribution_similarity = 1 - (distribution_distance / 2)  # Max distance is 2
+                
+                # Even/odd similarity
+                even_count = len([n for n in selected_numbers if n % 2 == 0])
+                even_odd_similarity = 1 - abs(even_count - max_even_count) / 5
+                
+                # Combine scores
+                normalized_score = round((0.7 * distribution_similarity + 0.3 * even_odd_similarity) * 100, 2)
+                
+                strategy_name = "Stratified (Range)"
+                    
+            elif strata_type == "even_odd":
+                # Calculate how many even vs odd numbers based on balance_factor
+                # At balance_factor=1.0, we want distribution based on historical patterns
+                # At balance_factor=0.0, we want a fixed distribution (3 even, 2 odd or vice versa)
+                
+                # Get historical even/odd ratio
+                historical_even_ratio = max_even_count / 5
+                
+                # Get ideal balanced ratio (based on population size)
+                population_even_ratio = 25 / 50  # 25 even numbers out of 50
+                
+                # Blend historical and balanced ratios
+                target_even_ratio = historical_even_ratio * balance_factor + population_even_ratio * (1 - balance_factor)
+                
+                # Decide number of even numbers to include (out of 5)
+                even_numbers_to_select = round(5 * target_even_ratio)
+                odd_numbers_to_select = 5 - even_numbers_to_select
+                
+                # Separate even and odd numbers with their frequencies
+                even_nums = {num: number_freq[num] for num in range(1, 51) if num % 2 == 0}
+                odd_nums = {num: number_freq[num] for num in range(1, 51) if num % 2 == 1}
+                
+                # Sample from each group
+                even_selections = self._weighted_sample(even_nums, even_numbers_to_select)
+                odd_selections = self._weighted_sample(odd_nums, odd_numbers_to_select)
+                
+                # Combine selections
+                selected_numbers = even_selections + odd_selections
+                
+                # Calculate score - how well the selection matches historical even/odd pattern
+                even_count = len([n for n in selected_numbers if n % 2 == 0])
+                even_odd_similarity = 1 - abs(even_count - max_even_count) / 5
+                
+                # Calculate range distribution as a secondary metric
+                range_distribution = [0] * 5
+                for num in selected_numbers:
+                    for i, (start, end) in enumerate(ranges):
+                        if start <= num <= end:
+                            range_distribution[i] += 1
+                            break
+                
+                # Normalize
+                range_distribution = [count / 5 for count in range_distribution]
+                
+                # Calculate similarity to historical distribution
+                target_distribution = [range_dist[f"{r[0]}-{r[1]}"] / 100 for r in ranges]
+                
+                # L1 distance (Manhattan distance)
+                distribution_distance = sum(abs(range_distribution[i] - target_distribution[i]) for i in range(5))
+                
+                # Convert to similarity score (0-1)
+                distribution_similarity = 1 - (distribution_distance / 2)  # Max distance is 2
+                
+                # Combine scores with emphasis on even/odd matching
+                normalized_score = round((0.3 * distribution_similarity + 0.7 * even_odd_similarity) * 100, 2)
+                
+                strategy_name = "Stratified (Even-Odd)"
+                
+            elif strata_type == "prime_composite":
+                # Define prime numbers in range 1-50
+                primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]
+                non_primes = [n for n in range(1, 51) if n not in primes]
+                
+                # Get historical distribution of primes
+                hist_prime_count = 0
+                hist_draws = 100  # Sample from recent draws
+                for i, row in self.stats.data.head(hist_draws).iterrows():
+                    for col in ['n1', 'n2', 'n3', 'n4', 'n5']:
+                        if row[col] in primes:
+                            hist_prime_count += 1
+                
+                hist_prime_ratio = hist_prime_count / (hist_draws * 5)
+                
+                # Calculate target ratio blending historical ratio with theoretical ratio
+                theoretical_prime_ratio = len(primes) / 50  # Proportion of primes in the number space
+                target_prime_ratio = hist_prime_ratio * balance_factor + theoretical_prime_ratio * (1 - balance_factor)
+                
+                # Decide number of primes to include (out of 5)
+                primes_to_select = round(5 * target_prime_ratio)
+                primes_to_select = max(1, min(4, primes_to_select))  # Ensure between 1-4 primes
+                non_primes_to_select = 5 - primes_to_select
+                
+                # Prepare frequencies for each group
+                prime_freqs = {num: number_freq[num] for num in primes}
+                non_prime_freqs = {num: number_freq[num] for num in non_primes}
+                
+                # Sample from each group
+                prime_selections = self._weighted_sample(prime_freqs, primes_to_select)
+                non_prime_selections = self._weighted_sample(non_prime_freqs, non_primes_to_select)
+                
+                # Combine selections
+                selected_numbers = prime_selections + non_prime_selections
+                
+                # Calculate score based on agreement with historical prime distribution
+                prime_count = len([n for n in selected_numbers if n in primes])
+                prime_similarity = 1 - abs(prime_count / 5 - hist_prime_ratio)
+                
+                # Calculate even/odd as a secondary metric
+                even_count = len([n for n in selected_numbers if n % 2 == 0])
+                even_odd_similarity = 1 - abs(even_count - max_even_count) / 5
+                
+                # Combine scores
+                normalized_score = round((0.7 * prime_similarity + 0.3 * even_odd_similarity) * 100, 2)
+                
+                strategy_name = "Stratified (Prime-Composite)"
+                
+            elif strata_type == "hot_cold":
+                # Determine hot vs cold numbers based on frequency
+                # Sort numbers by frequency
+                sorted_nums = sorted(
+                    [(num, number_freq[num]) for num in range(1, 51)],
+                    key=lambda x: x[1],
+                    reverse=True
+                )
+                
+                # Define "hot" numbers as top 40% by frequency
+                hot_count = int(50 * 0.4)
+                hot_nums = dict(sorted_nums[:hot_count])
+                cold_nums = dict(sorted_nums[hot_count:])
+                
+                # Calculate how many hot vs cold numbers based on balance_factor
+                # Higher balance factor means more alignment with historical frequencies
+                hot_ratio = 0.4 * (1 - balance_factor) + balance_factor * 0.8
+                hot_to_select = round(5 * hot_ratio)
+                hot_to_select = max(1, min(4, hot_to_select))  # Ensure between 1-4 hot numbers
+                cold_to_select = 5 - hot_to_select
+                
+                # Sample from each group
+                hot_selections = self._weighted_sample(hot_nums, hot_to_select)
+                cold_selections = self._weighted_sample(cold_nums, cold_to_select)
+                
+                # Combine selections
+                selected_numbers = hot_selections + cold_selections
+                
+                # Calculate score based on frequency distribution
+                freq_score = sum(number_freq[n] for n in selected_numbers) / 5
+                
+                # Normalize to 0-100 scale
+                normalized_score = round(freq_score * 100, 2)
+                
+                strategy_name = "Stratified (Hot-Cold)"
+                
+            elif strata_type == "decade":
+                # Calculate ideal distribution across decades
+                ideal_counts = [1, 1, 1, 1, 1]  # One from each decade
+                hist_counts = [range_dist[f"{r[0]}-{r[1]}"] / 100 * 5 for r in ranges]  # Historical distribution
+                
+                # Blend ideal and historical counts based on balance factor
+                target_counts = []
+                for i in range(5):
+                    target_counts.append(ideal_counts[i] * balance_factor + hist_counts[i] * (1 - balance_factor))
+                
+                # Calculate integers that sum to 5
+                decade_counts = self._distribute_selections(target_counts, 5)
+                
+                # Select numbers from each decade according to the counts
+                selected_numbers = []
+                for i, count in enumerate(decade_counts):
+                    if count > 0:
+                        range_start, range_end = ranges[i]
+                        
+                        # Get all numbers in this decade
+                        decade_numbers = list(range(range_start, range_end + 1))
+                        
+                        # Get frequencies for weighting
+                        decade_freqs = {num: number_freq[num] for num in decade_numbers}
+                        
+                        # Sample from this decade
+                        sampled_nums = self._weighted_sample(decade_freqs, count)
+                        selected_numbers.extend(sampled_nums)
+                
+                # Calculate score - how well the combination matches historical distributions
+                # Range distribution (decade distribution)
+                range_distribution = [0] * 5
+                for num in selected_numbers:
+                    for i, (start, end) in enumerate(ranges):
+                        if start <= num <= end:
+                            range_distribution[i] += 1
+                            break
+                
+                # Normalize
+                range_distribution = [count / 5 for count in range_distribution]
+                
+                # Calculate similarity to historical distribution
+                target_distribution = [range_dist[f"{r[0]}-{r[1]}"] / 100 for r in ranges]
+                
+                # L1 distance (Manhattan distance)
+                distribution_distance = sum(abs(range_distribution[i] - target_distribution[i]) for i in range(5))
+                
+                # Convert to similarity score (0-1)
+                distribution_similarity = 1 - (distribution_distance / 2)  # Max distance is 2
+                
+                # Calculate score with high emphasis on decade distribution
+                normalized_score = round(distribution_similarity * 100, 2)
+                
+                strategy_name = "Stratified (Decade)"
+                
+            elif strata_type == "pattern":
+                # Define pattern categories based on number properties
+                
+                # 1. Boundary numbers (1-5, 46-50)
+                boundary_nums = list(range(1, 6)) + list(range(46, 51))
+                
+                # 2. Multiples of 5 and 10
+                multiples_of_5 = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+                
+                # 3. Prime numbers
+                primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]
+                
+                # 4. Numbers with single digits
+                single_digits = list(range(1, 10))
+                
+                # 5. Numbers in 10-19 range (often underrepresented)
+                teens = list(range(10, 20))
+                
+                # 6. Numbers in 30-39 range (often overrepresented)
+                thirties = list(range(30, 40))
+                
+                # Calculate how many numbers to select from each pattern category
+                # based on balance_factor
+                if balance_factor > 0.8:
+                    # Highly balanced - 1 from each of 5 diverse categories
+                    pattern_counts = [1, 1, 1, 1, 1]
+                elif balance_factor > 0.6:
+                    # Moderately balanced - emphasis on diverse selection
+                    pattern_counts = [1, 1, 1, 2, 0]
+                elif balance_factor > 0.4:
+                    # Medium balance - some pattern representation
+                    pattern_counts = [1, 2, 2, 0, 0]
+                elif balance_factor > 0.2:
+                    # Less balanced - more frequency-based
+                    pattern_counts = [2, 3, 0, 0, 0]
+                else:
+                    # Not balanced - almost pure frequency-based
+                    pattern_counts = [5, 0, 0, 0, 0]
+                
+                # Randomize the pattern assignment to avoid always favoring the same patterns
+                random.shuffle(pattern_counts)
+                
+                # Pattern categories to sample from
+                pattern_categories = [
+                    {"name": "boundary", "numbers": boundary_nums},
+                    {"name": "multiples_of_5", "numbers": multiples_of_5},
+                    {"name": "primes", "numbers": primes},
+                    {"name": "single_digits", "numbers": single_digits},
+                    {"name": "teens", "numbers": teens}
+                ]
+                
+                # Sample from each pattern category
+                selected_numbers = []
+                used_categories = []
+                
+                for i, count in enumerate(pattern_counts):
+                    if count > 0:
+                        category = pattern_categories[i]
+                        used_categories.append(category["name"])
+                        
+                        # Get frequencies for numbers in this category
+                        category_freqs = {
+                            num: number_freq[num] 
+                            for num in category["numbers"]
+                            if num not in selected_numbers  # Avoid duplicates
+                        }
+                        
+                        # If we've already selected more numbers than needed, adjust count
+                        adjusted_count = min(count, 5 - len(selected_numbers))
+                        
+                        if adjusted_count > 0 and category_freqs:
+                            # Sample from this category
+                            sampled = self._weighted_sample(category_freqs, adjusted_count)
+                            selected_numbers.extend(sampled)
+                
+                # If we still need more numbers
+                while len(selected_numbers) < 5:
+                    # Select from remaining numbers
+                    remaining_freqs = {
+                        num: number_freq[num] 
+                        for num in range(1, 51)
+                        if num not in selected_numbers
+                    }
+                    additional = self._weighted_sample(remaining_freqs, 1)[0]
+                    selected_numbers.append(additional)
+                
+                # Calculate pattern diversity score
+                pattern_count = len(used_categories)
+                pattern_diversity = pattern_count / 5  # Normalized to 0-1
+                
+                # Calculate frequency score as a secondary metric
+                freq_score = sum(number_freq[n] for n in selected_numbers) / 5
+                
+                # Combine scores
+                normalized_score = round((0.6 * pattern_diversity + 0.4 * freq_score) * 100, 2)
+                
+                strategy_name = "Stratified (Pattern)"
+                
+            else:  # Fallback to original range-based stratification
+                # Use original implementation for backward compatibility
+                range_weights = [
+                    range_dist["1-10"] / 100,
+                    range_dist["11-20"] / 100,
+                    range_dist["21-30"] / 100,
+                    range_dist["31-40"] / 100,
+                    range_dist["41-50"] / 100
+                ]
+                
+                # Determine how many numbers to pick from each range
+                range_counts = [0] * 5
+                range_indices = list(range(5))
+                
+                for _ in range(5):
+                    # Select a range based on weights
+                    selected_range = random.choices(range_indices, k=1, weights=[range_weights[i] for i in range_indices])[0]
+                    range_counts[selected_range] += 1
+                    
+                    # Decrease weight to avoid oversampling
+                    range_weights[selected_range] *= 0.5
+                    
+                    # Normalize weights
+                    total_weight = sum(range_weights[i] for i in range_indices)
+                    range_weights = [w / total_weight for w in range_weights]
+                
+                # Now select numbers from each range according to the counts
+                selected_numbers = []
+                for i, count in enumerate(range_counts):
+                    if count > 0:
+                        range_start, range_end = ranges[i]
+                        
+                        # Try to maintain the ideal even/odd distribution
+                        range_numbers = list(range(range_start, range_end + 1))
+                        
+                        # Separate into even and odd
+                        even_numbers = [n for n in range_numbers if n % 2 == 0]
+                        odd_numbers = [n for n in range_numbers if n % 2 == 1]
+                        
+                        # Determine how many even numbers to pick based on the ideal distribution
+                        even_to_pick = min(count, max(0, min(max_even_count - len([n for n in selected_numbers if n % 2 == 0]), len(even_numbers))))
+                        odd_to_pick = count - even_to_pick
+                        
+                        # Sample numbers
+                        if even_to_pick > 0:
+                            selected_numbers.extend(random.sample(even_numbers, even_to_pick))
+                        if odd_to_pick > 0:
+                            selected_numbers.extend(random.sample(odd_numbers, odd_to_pick))
+                
+                # Ensure we have exactly 5 numbers
+                if len(selected_numbers) > 5:
+                    selected_numbers = random.sample(selected_numbers, 5)
+                while len(selected_numbers) < 5:
+                    num = random.randint(1, 50)
+                    if num not in selected_numbers:
+                        selected_numbers.append(num)
+                
+                # Calculate score - how well the combination matches historical distributions
+                range_distribution = [0] * 5
+                for num in selected_numbers:
+                    for i, (start, end) in enumerate(ranges):
+                        if start <= num <= end:
+                            range_distribution[i] += 1
+                            break
+                
+                # Normalize
+                range_distribution = [count / 5 for count in range_distribution]
+                
+                # Calculate similarity to historical distribution
+                target_distribution = [range_dist[f"{r[0]}-{r[1]}"] / 100 for r in ranges]
+                
+                # L1 distance (Manhattan distance)
+                distribution_distance = sum(abs(range_distribution[i] - target_distribution[i]) for i in range(5))
+                
+                # Convert to similarity score (0-1)
+                distribution_similarity = 1 - (distribution_distance / 2)  # Max distance is 2
+                
+                # Even/odd similarity
+                even_count = len([n for n in selected_numbers if n % 2 == 0])
+                even_odd_similarity = 1 - abs(even_count - max_even_count) / 5
+                
+                # Combine scores
+                normalized_score = round((0.7 * distribution_similarity + 0.3 * even_odd_similarity) * 100, 2)
+                
+                strategy_name = "Stratified (Range)"
             
-            # Now select numbers from each range according to the counts
-            selected_numbers = []
-            for i, count in enumerate(range_counts):
-                if count > 0:
-                    range_start, range_end = ranges[i]
-                    
-                    # Try to maintain the ideal even/odd distribution
-                    range_numbers = list(range(range_start, range_end + 1))
-                    
-                    # Separate into even and odd
-                    even_numbers = [n for n in range_numbers if n % 2 == 0]
-                    odd_numbers = [n for n in range_numbers if n % 2 == 1]
-                    
-                    # Determine how many even numbers to pick based on the ideal distribution
-                    even_to_pick = min(count, max(0, min(max_even_count - len([n for n in selected_numbers if n % 2 == 0]), len(even_numbers))))
-                    odd_to_pick = count - even_to_pick
-                    
-                    # Sample numbers
-                    if even_to_pick > 0:
-                        selected_numbers.extend(random.sample(even_numbers, even_to_pick))
-                    if odd_to_pick > 0:
-                        selected_numbers.extend(random.sample(odd_numbers, odd_to_pick))
-            
-            # Ensure we have exactly 5 numbers
-            if len(selected_numbers) > 5:
-                selected_numbers = random.sample(selected_numbers, 5)
-            while len(selected_numbers) < 5:
-                num = random.randint(1, 50)
-                if num not in selected_numbers:
-                    selected_numbers.append(num)
-            
-            # For stars, use weighted sampling
+            # For all strategies, use weighted sampling for stars
             stars = self._weighted_sample(star_freq, 2)
-            
-            # Calculate score - how well the combination matches historical distributions
-            # Calculate range distribution
-            range_distribution = [0] * 5
-            for num in selected_numbers:
-                for i, (start, end) in enumerate(ranges):
-                    if start <= num <= end:
-                        range_distribution[i] += 1
-                        break
-            
-            # Normalize
-            range_distribution = [count / 5 for count in range_distribution]
-            
-            # Calculate similarity to historical distribution
-            target_distribution = [range_dist[f"{r[0]}-{r[1]}"] / 100 for r in ranges]
-            
-            # L1 distance (Manhattan distance)
-            distribution_distance = sum(abs(range_distribution[i] - target_distribution[i]) for i in range(5))
-            
-            # Convert to similarity score (0-1)
-            distribution_similarity = 1 - (distribution_distance / 2)  # Max distance is 2
-            
-            # Even/odd similarity
-            even_count = len([n for n in selected_numbers if n % 2 == 0])
-            even_odd_similarity = 1 - abs(even_count - max_even_count) / 5
-            
-            # Combine scores
-            normalized_score = round((0.7 * distribution_similarity + 0.3 * even_odd_similarity) * 100, 2)
             
             combinations.append({
                 'numbers': selected_numbers,
                 'stars': stars,
-                'score': normalized_score
+                'score': normalized_score,
+                'strategy': strategy_name
             })
-        
+            
         return combinations
+        
+    def _distribute_selections(self, probabilities, total_selections):
+        """
+        Helper method to distribute a fixed number of selections across categories
+        based on provided probabilities.
+        
+        Parameters:
+        -----------
+        probabilities : list
+            List of probabilities for each category
+        total_selections : int
+            Total number of selections to distribute
+        
+        Returns:
+        --------
+        list
+            Number of selections for each category
+        """
+        # Initial allocation - convert probabilities to expected counts
+        n = len(probabilities)
+        
+        # Convert probabilities to expected counts
+        expected_counts = [p * total_selections for p in probabilities]
+        
+        # Round to integer values
+        counts = [int(ec) for ec in expected_counts]
+        
+        # Distribute any remaining selections
+        remaining = total_selections - sum(counts)
+        
+        if remaining > 0:
+            # Calculate fractional parts
+            fractions = [ec - int(ec) for ec in expected_counts]
+            
+            # Sort indices by fractional part (descending)
+            indices = list(range(n))
+            indices.sort(key=lambda i: fractions[i], reverse=True)
+            
+            # Distribute remaining selections
+            for i in range(remaining):
+                counts[indices[i]] += 1
+                
+        return counts
     
     def coverage_strategy(self, num_combinations=5, balanced=True):
         """
