@@ -16,6 +16,9 @@ import database
 from strategy_testing import StrategyTester
 from combination_analysis import analyze_full_combinations, analyze_number_combinations, analyze_star_combinations
 
+# Initialize database tables if they don't exist
+database.init_db()
+
 # Page configuration
 st.set_page_config(
     page_title="Euromillions Prediction Application",
