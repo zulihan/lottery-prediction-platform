@@ -103,6 +103,7 @@ class GeneratedCombination(Base):
     
     id = Column(Integer, primary_key=True)
     created_at = Column(Date, default=datetime.now().date())
+    target_draw_date = Column(Date)  # Date of the draw this combination was generated for
     numbers = Column(String(50), nullable=False)  # Stored as JSON string
     stars = Column(String(20), nullable=False)    # Stored as JSON string
     strategy = Column(String(100))
@@ -116,6 +117,7 @@ class GeneratedCombination(Base):
         return {
             'id': self.id,
             'created_at': self.created_at.strftime('%Y-%m-%d'),
+            'target_draw_date': self.target_draw_date.strftime('%Y-%m-%d') if self.target_draw_date else None,
             'numbers': json.loads(self.numbers),
             'stars': json.loads(self.stars),
             'strategy': self.strategy,
@@ -134,6 +136,24 @@ class UserSavedCombination(Base):
     notes = Column(String(500))
     played = Column(Boolean, default=False)
     result = Column(String(50))  # What was the result if played
+    played_date = Column(Date)  # The date this combination was played for
+    
+    def __repr__(self):
+        return f"<UserSavedCombination(id='{self.id}', numbers='{self.numbers}', stars='{self.stars}')>"
+    
+    def to_dict(self):
+        """Convert saved combination to dictionary format"""
+        return {
+            'id': self.id,
+            'saved_at': self.saved_at.strftime('%Y-%m-%d') if self.saved_at else None,
+            'played_date': self.played_date.strftime('%Y-%m-%d') if self.played_date else None,
+            'numbers': json.loads(self.numbers),
+            'stars': json.loads(self.stars),
+            'strategy': self.strategy,
+            'notes': self.notes,
+            'played': self.played,
+            'result': self.result
+        }
 
 class StrategyTestResult(Base):
     """Table for storing A/B test results for strategy comparison"""
@@ -345,7 +365,7 @@ def add_new_drawing(date, numbers, stars, day_of_week=None):
         
     return success
 
-def save_generated_combination(numbers, stars, strategy, score):
+def save_generated_combination(numbers, stars, strategy, score, target_draw_date=None):
     """
     Save a generated combination to the database
     
@@ -359,6 +379,8 @@ def save_generated_combination(numbers, stars, strategy, score):
         Strategy used to generate the combination
     score : float or numpy.float64
         Score or confidence value
+    target_draw_date : datetime.date, str, or None
+        The date of the draw this combination is generated for
         
     Returns:
     --------
@@ -382,13 +404,21 @@ def save_generated_combination(numbers, stars, strategy, score):
         numbers_json = json.dumps(numbers)
         stars_json = json.dumps(stars)
         
+        # Process target_draw_date if provided
+        if target_draw_date:
+            if isinstance(target_draw_date, str):
+                target_draw_date = datetime.strptime(target_draw_date, '%Y-%m-%d').date()
+            elif hasattr(target_draw_date, 'date') and callable(getattr(target_draw_date, 'date')):
+                target_draw_date = target_draw_date.date()
+        
         # Create new combination record
         combination = GeneratedCombination(
             numbers=numbers_json,
             stars=stars_json,
             strategy=strategy,
             score=score,
-            created_at=datetime.now().date()
+            created_at=datetime.now().date(),
+            target_draw_date=target_draw_date
         )
         
         # Add to the database
@@ -461,7 +491,7 @@ def get_generated_combinations(strategy=None, limit=100, max_retries=3):
             
     return result
 
-def save_user_combination(numbers, stars, strategy=None, notes=None):
+def save_user_combination(numbers, stars, strategy=None, notes=None, played_date=None):
     """
     Save a user-selected combination
     
@@ -475,6 +505,8 @@ def save_user_combination(numbers, stars, strategy=None, notes=None):
         Strategy that generated this combination
     notes : str, optional
         User notes
+    played_date : datetime.date, str, or None
+        The date this combination was/will be played for
         
     Returns:
     --------
@@ -494,13 +526,21 @@ def save_user_combination(numbers, stars, strategy=None, notes=None):
         numbers_json = json.dumps(numbers)
         stars_json = json.dumps(stars)
         
+        # Process played_date if provided
+        if played_date:
+            if isinstance(played_date, str):
+                played_date = datetime.strptime(played_date, '%Y-%m-%d').date()
+            elif hasattr(played_date, 'date') and callable(getattr(played_date, 'date')):
+                played_date = played_date.date()
+                
         # Create new saved combination record
         saved = UserSavedCombination(
             numbers=numbers_json,
             stars=stars_json,
             strategy=strategy,
             notes=notes,
-            saved_at=datetime.now().date()
+            saved_at=datetime.now().date(),
+            played_date=played_date
         )
         
         # Add to the database
