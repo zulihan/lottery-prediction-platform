@@ -14,17 +14,51 @@ def load_data():
 
 def generate_frequency_combinations(stats, strategies, count=4):
     """Generate combinations using the frequency strategy"""
-    return strategies.frequency_strategy(
+    combinations = strategies.frequency_strategy(
         num_combinations=count,
         recent_weight=2.75  # Higher weight on recent draws
     )
+    
+    # Ensure we have 3 stars for each combination
+    for combo in combinations:
+        # Get the existing stars
+        stars = combo['stars']
+        
+        # If we already have 3 or more stars, just take the first 3
+        if len(stars) >= 3:
+            combo['stars'] = stars[:3]
+        else:
+            # Add more stars to get to 3
+            all_stars = list(range(1, 13))
+            additional_stars = [s for s in all_stars if s not in stars]
+            stars.extend(random.sample(additional_stars, 3 - len(stars)))
+            combo['stars'] = stars
+    
+    return combinations
 
 def generate_risk_reward_combinations(stats, strategies, count=3):
     """Generate combinations using the risk-reward strategy"""
-    return strategies.risk_reward_strategy(
+    combinations = strategies.risk_reward_strategy(
         num_combinations=count,
         risk_level=6  # Medium-high risk level
     )
+    
+    # Ensure we have 3 stars for each combination
+    for combo in combinations:
+        # Get the existing stars
+        stars = combo['stars']
+        
+        # If we already have 3 or more stars, just take the first 3
+        if len(stars) >= 3:
+            combo['stars'] = stars[:3]
+        else:
+            # Add more stars to get to 3
+            all_stars = list(range(1, 13))
+            additional_stars = [s for s in all_stars if s not in stars]
+            stars.extend(random.sample(additional_stars, 3 - len(stars)))
+            combo['stars'] = stars
+    
+    return combinations
 
 def generate_ultimate_combination(all_combinations):
     """Generate one ultimate combination based on repeated numbers across all combinations"""
