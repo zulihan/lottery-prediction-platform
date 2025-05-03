@@ -794,7 +794,8 @@ def get_strategy_test_results(limit=10, max_retries=3):
         finally:
             session.close()
             
-    return result
+    # This line will only be reached if all retry attempts have failed
+    return []
 
 # Initialize the database if this module is run directly
 if __name__ == "__main__":
