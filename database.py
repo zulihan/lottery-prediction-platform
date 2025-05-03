@@ -453,6 +453,8 @@ def get_generated_combinations(strategy=None, limit=100, max_retries=3):
     list
         List of dictionaries containing combination data
     """
+    logger.info(f"Attempting to get generated combinations, strategy={strategy}, limit={limit}")
+    
     for attempt in range(max_retries):
         session = get_session()
         result = []
@@ -464,7 +466,38 @@ def get_generated_combinations(strategy=None, limit=100, max_retries=3):
                 query = query.filter_by(strategy=strategy)
                 
             combinations = query.order_by(GeneratedCombination.created_at.desc()).limit(limit).all()
-            result = [combination.to_dict() for combination in combinations]
+            logger.info(f"Found {len(combinations)} combinations for strategy={strategy}")
+            
+            result = []
+            for combination in combinations:
+                try:
+                    # Manually ensure JSON parsing works
+                    combo_dict = {
+                        'id': combination.id,
+                        'created_at': combination.created_at.strftime('%Y-%m-%d') if combination.created_at else None,
+                        'target_draw_date': combination.target_draw_date.strftime('%Y-%m-%d') if combination.target_draw_date else None,
+                        'strategy': combination.strategy,
+                        'score': combination.score
+                    }
+                    
+                    # Parse numbers and stars with explicit error handling
+                    try:
+                        combo_dict['numbers'] = json.loads(combination.numbers)
+                    except json.JSONDecodeError as je:
+                        logger.error(f"Error parsing numbers JSON: {str(je)}. Raw value: {combination.numbers}")
+                        combo_dict['numbers'] = []
+                    
+                    try:
+                        combo_dict['stars'] = json.loads(combination.stars)
+                    except json.JSONDecodeError as je:
+                        logger.error(f"Error parsing stars JSON: {str(je)}. Raw value: {combination.stars}")
+                        combo_dict['stars'] = []
+                    
+                    result.append(combo_dict)
+                except Exception as inner_e:
+                    logger.error(f"Error processing combination {combination.id}: {str(inner_e)}")
+            
+            logger.info(f"Successfully converted {len(result)} combinations to dictionary format")
             return result
             
         except exc.OperationalError as e:
@@ -483,13 +516,22 @@ def get_generated_combinations(strategy=None, limit=100, max_retries=3):
                 logger.error(f"Failed to retrieve generated combinations after {max_retries} attempts")
                 # Return empty list as a fallback
                 return []
+                
         except Exception as e:
-            logger.error(f"Error retrieving generated combinations: {str(e)}")
-            return []
+            logger.error(f"Unexpected error retrieving combinations: {str(e)}")
+            if attempt < max_retries - 1:
+                # Wait before retrying (exponential backoff)
+                retry_delay = 2 ** attempt
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                # Return empty list as a fallback
+                return []
         finally:
             session.close()
             
-    return result
+    # If all attempts failed, return an empty list
+    return []
 
 def save_user_combination(numbers, stars, strategy=None, notes=None, played_date=None):
     """
@@ -603,7 +645,8 @@ def get_user_saved_combinations(limit=50, max_retries=3):
         finally:
             session.close()
             
-    return result
+    # If all attempts failed, return an empty list
+    return []
 
 def update_user_combination(id, played=None, result=None, notes=None):
     """
