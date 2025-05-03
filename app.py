@@ -1530,33 +1530,34 @@ else:
                             if combo.get('notes'):
                                 st.write(f"**Notes:** {combo['notes']}")
                             
-                            # Form to update combination status
-                            with st.form(key=f"update_form_{combo['id']}"):
-                                # Use two separate fields instead of columns
-                                played_status = st.checkbox("Played?", value=combo.get('played', False))
-                                result_text = st.text_input("Result", value=combo.get('result', ''))
-                                updated_notes = st.text_area("Update Notes", value=combo.get('notes', ''))
-                                
-                                update_submitted = st.form_submit_button("Update")
-                                
-                                if update_submitted:
-                                    try:
-                                        # Update in database
-                                        database.update_user_combination(
-                                            combo['id'], 
-                                            played=played_status, 
-                                            result=result_text, 
-                                            notes=updated_notes
-                                        )
-                                        
-                                        # Reload saved combinations
-                                        saved_combos = database.get_user_saved_combinations()
-                                        st.session_state.saved_combinations = saved_combos
-                                        
-                                        st.success("Combination updated successfully!")
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Error updating combination: {str(e)}")
+                            # Update combination status section
+                            st.markdown("### Update Combination")
+                            
+                            # Use individual input widgets instead of a form
+                            played_status = st.checkbox("Mark as Played", value=combo.get('played', False), key=f"played_{combo['id']}")
+                            result_text = st.text_input("Result", value=combo.get('result', ''), key=f"result_{combo['id']}")
+                            updated_notes = st.text_area("Update Notes", value=combo.get('notes', ''), key=f"notes_{combo['id']}")
+                            
+                            update_button = st.button("Update Combination", key=f"update_btn_{combo['id']}")
+                            
+                            if update_button:
+                                try:
+                                    # Update in database
+                                    database.update_user_combination(
+                                        combo['id'], 
+                                        played=played_status, 
+                                        result=result_text, 
+                                        notes=updated_notes
+                                    )
+                                    
+                                    # Reload saved combinations
+                                    saved_combos = database.get_user_saved_combinations()
+                                    st.session_state.saved_combinations = saved_combos
+                                    
+                                    st.success("Combination updated successfully!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error updating combination: {str(e)}")
                 else:
                     st.info("You don't have any saved combinations yet. Use the form on the left to save your first combination.")
             else:
