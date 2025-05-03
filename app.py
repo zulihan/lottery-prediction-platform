@@ -1287,6 +1287,29 @@ else:
     with tabs[5]:  # This is the correct index for My Combinations
         st.header("My Combinations")
         
+        # Initialize combinations loading state if not already done
+        if 'my_combinations_loaded' not in st.session_state:
+            st.session_state.my_combinations_loaded = False
+            
+        # Load all combinations from the database if not already loaded
+        if not st.session_state.my_combinations_loaded:
+            with st.spinner("Loading all combinations from database..."):
+                try:
+                    # Get all available strategies from the database
+                    all_strategies = []
+                    for strat in ['Frequency Strategy', 'Risk/Reward Strategy', 'Coverage Strategy', 'Bayesian Strategy', 'Mixed Strategy']:
+                        combos = database.get_generated_combinations(strategy=strat)
+                        if combos and len(combos) > 0:
+                            all_strategies.append(strat)
+                            st.session_state.generated_combinations[strat] = combos
+                    
+                    if all_strategies:
+                        st.success(f"Successfully loaded combinations for {len(all_strategies)} strategies!")
+                    st.session_state.my_combinations_loaded = True
+                except Exception as e:
+                    st.error(f"Error loading combinations: {str(e)}")
+                    st.session_state.my_combinations_loaded = True  # Mark as loaded anyway to prevent repeated attempts
+        
         # Create sub-tabs for different types of combinations
         my_tabs = st.tabs(["Generated Combinations", "Saved Combinations"])
         
