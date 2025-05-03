@@ -1017,7 +1017,7 @@ else:
                 st.write(f"The star combination **{', '.join(str(s) for s in top_combo)}** appears **{deviation:.2f}x** more often than expected by chance.")
         
     # Visualizations tab continued
-    with tabs[3]:
+    with tabs[3]:  # Still the visualizations tab
         if viz_type == "Number Heatmap":
             st.subheader("Number Frequency Heatmap")
             
