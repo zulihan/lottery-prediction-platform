@@ -17,7 +17,15 @@ from strategy_testing import StrategyTester
 from combination_analysis import analyze_full_combinations, analyze_number_combinations, analyze_star_combinations
 
 # Initialize database tables if they don't exist
-database.init_db()
+try:
+    database.init_db()
+except Exception as e:
+    st.error(f"Error initializing database: {str(e)}")
+    st.warning("Running in offline mode. Some database-dependent features will be disabled.")
+
+# Create a flag to track database status
+if 'db_available' not in st.session_state:
+    st.session_state.db_available = database.DB_AVAILABLE
 
 # Page configuration
 st.set_page_config(
@@ -1290,9 +1298,14 @@ else:
         # Initialize combinations loading state if not already done
         if 'my_combinations_loaded' not in st.session_state:
             st.session_state.my_combinations_loaded = False
+        
+        # Check if database is available before attempting to load
+        if not st.session_state.db_available:
+            st.warning("Database is not currently available. Combinations cannot be loaded.")
+            st.session_state.my_combinations_loaded = True  # Prevent further loading attempts
             
-        # Load all combinations from the database if not already loaded
-        if not st.session_state.my_combinations_loaded:
+        # Load all combinations from the database if not already loaded and DB is available
+        elif not st.session_state.my_combinations_loaded:
             with st.spinner("Loading all combinations from database..."):
                 try:
                     # Get all available strategies from the database
@@ -1409,9 +1422,16 @@ else:
             # Initialize session state for saved combinations
             if 'saved_combinations_loaded' not in st.session_state:
                 st.session_state.saved_combinations_loaded = False
+                
+            # Check if database is available before attempting to load
+            if not st.session_state.db_available:
+                st.warning("Database is not currently available. Saved combinations cannot be loaded.")
+                st.session_state.saved_combinations_loaded = True  # Prevent further loading attempts
+                if 'saved_combinations' not in st.session_state:
+                    st.session_state.saved_combinations = []
             
-            # Add a button to load saved combinations from database
-            if not st.session_state.saved_combinations_loaded:
+            # Add a button to load saved combinations from database if DB is available
+            elif not st.session_state.saved_combinations_loaded:
                 if st.button("Load Saved Combinations from Database"):
                     try:
                         # Get saved combinations from database
@@ -1426,6 +1446,8 @@ else:
                             st.info("No saved combinations found in the database.")
                     except Exception as e:
                         st.error(f"Error loading saved combinations: {str(e)}")
+                        st.session_state.saved_combinations = []
+                        st.session_state.saved_combinations_loaded = True  # Prevent repeated attempts
             
             # Display two columns: left for creating new saved combinations, right for displaying existing ones
             col1, col2 = st.columns([1, 2])
@@ -1463,28 +1485,32 @@ else:
                     submitted = st.form_submit_button("Save Combination")
                 
                 if submitted:
-                    # Check for duplicates in the numbers
-                    numbers = all_num_inputs
-                    stars = [star1, star2]
-                    
-                    if len(set(numbers)) != 5:
-                        st.error("Main numbers must be unique!")
-                    elif len(set(stars)) != 2:
-                        st.error("Star numbers must be unique!")
+                    # First check if database is available
+                    if not st.session_state.db_available:
+                        st.error("Cannot save combination: Database is not available.")
                     else:
-                        try:
-                            # Save to database
-                            saved_id = database.save_user_combination(numbers, stars, strategy, notes)
-                            
-                            # Reload saved combinations to include the new one
-                            saved_combos = database.get_user_saved_combinations()
-                            st.session_state.saved_combinations = saved_combos
-                            st.session_state.saved_combinations_loaded = True
-                            
-                            st.success("Combination saved successfully!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error saving combination: {str(e)}")
+                        # Check for duplicates in the numbers
+                        numbers = all_num_inputs
+                        stars = [star1, star2]
+                        
+                        if len(set(numbers)) != 5:
+                            st.error("Main numbers must be unique!")
+                        elif len(set(stars)) != 2:
+                            st.error("Star numbers must be unique!")
+                        else:
+                            try:
+                                # Save to database
+                                saved_id = database.save_user_combination(numbers, stars, strategy, notes)
+                                
+                                # Reload saved combinations to include the new one
+                                saved_combos = database.get_user_saved_combinations()
+                                st.session_state.saved_combinations = saved_combos
+                                st.session_state.saved_combinations_loaded = True
+                                
+                                st.success("Combination saved successfully!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error saving combination: {str(e)}")
         
         with col2:
             st.subheader("Your Saved Combinations")
@@ -1541,23 +1567,27 @@ else:
                             update_button = st.button("Update Combination", key=f"update_btn_{combo['id']}")
                             
                             if update_button:
-                                try:
-                                    # Update in database
-                                    database.update_user_combination(
-                                        combo['id'], 
-                                        played=played_status, 
-                                        result=result_text, 
-                                        notes=updated_notes
-                                    )
-                                    
-                                    # Reload saved combinations
-                                    saved_combos = database.get_user_saved_combinations()
-                                    st.session_state.saved_combinations = saved_combos
-                                    
-                                    st.success("Combination updated successfully!")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error updating combination: {str(e)}")
+                                # First check if database is available
+                                if not st.session_state.db_available:
+                                    st.error("Cannot update combination: Database is not available.")
+                                else:
+                                    try:
+                                        # Update in database
+                                        database.update_user_combination(
+                                            combo['id'], 
+                                            played=played_status, 
+                                            result=result_text, 
+                                            notes=updated_notes
+                                        )
+                                        
+                                        # Reload saved combinations
+                                        saved_combos = database.get_user_saved_combinations()
+                                        st.session_state.saved_combinations = saved_combos
+                                        
+                                        st.success("Combination updated successfully!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error updating combination: {str(e)}")
                 else:
                     st.info("You don't have any saved combinations yet. Use the form on the left to save your first combination.")
             else:

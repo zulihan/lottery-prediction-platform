@@ -17,17 +17,33 @@ logger = logging.getLogger(__name__)
 # Get database URL from environment variable
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Flag to track if database is available
+DB_AVAILABLE = True
+
 # Create SQLAlchemy engine with improved connection pooling
-engine = create_engine(
-    DATABASE_URL,
-    isolation_level="AUTOCOMMIT",
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=1800,  # Recycle connections after 30 minutes
-    pool_pre_ping=True,  # Verify connections before using them
-    poolclass=QueuePool
-)
+try:
+    engine = create_engine(
+        DATABASE_URL,
+        isolation_level="AUTOCOMMIT",
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=1800,  # Recycle connections after 30 minutes
+        pool_pre_ping=True,  # Verify connections before using them
+        poolclass=QueuePool,
+        connect_args={'connect_timeout': 10}
+    )
+    # Test connection quickly
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    logger.info("Successfully connected to database")
+except Exception as e:
+    logger.error(f"Database connection failed: {str(e)}")
+    # Create a dummy engine for SQLAlchemy metadata
+    import sqlite3
+    engine = create_engine('sqlite:///:memory:', connect_args={'check_same_thread': False})
+    DB_AVAILABLE = False
 
 # Create a scoped session to manage connections properly
 Session = scoped_session(sessionmaker(bind=engine, autoflush=True, autocommit=False))
@@ -182,9 +198,20 @@ class StrategyTestResult(Base):
 
 def init_db():
     """Initialize the database by creating all tables if they don't exist"""
-    # Create tables if they don't exist
-    Base.metadata.create_all(engine)
-    print("Database initialized and tables created.")
+    global DB_AVAILABLE
+    try:
+        # Only attempt to create tables if database is available
+        if DB_AVAILABLE:
+            Base.metadata.create_all(engine)
+            print("Database initialized and tables created.")
+        else:
+            print("Database is not available. Running in offline mode.")
+            logger.warning("Database is not available. Running in offline mode.")
+    except Exception as e:
+        print(f"Error initializing database: {str(e)}")
+        logger.error(f"Error initializing database: {str(e)}")
+        # Mark database as unavailable
+        DB_AVAILABLE = False
 
 def load_drawings_from_dataframe(df):
     """
