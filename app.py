@@ -205,6 +205,7 @@ else:
         "Visualizations",
         "Combination Analysis",
         "My Combinations",
+        "All Generated Combinations",
         "Strategy Testing"
     ])
     
@@ -1229,7 +1230,7 @@ else:
                 st.warning("Please generate combinations using the Bayesian model strategy first to see probability updates.")
     
     # Generated Combinations tab
-    with tabs[5]:
+    with tabs[6]:  # This is now the correct index
         st.header("All Generated Combinations")
         
         if len(st.session_state.generated_combinations) > 0:
@@ -1283,7 +1284,7 @@ else:
             st.info("No combinations have been generated yet. Go to the Strategy Generation tab to create some.")
     
     # My Combinations tab
-    with tabs[5]:
+    with tabs[5]:  # This is the correct index for My Combinations
         st.header("My Combinations")
         
         # Create sub-tabs for different types of combinations
@@ -1554,7 +1555,7 @@ else:
                 st.info("Click the 'Load Saved Combinations from Database' button to view your saved combinations.")
                 
     # Strategy Testing tab
-    with tabs[6]:
+    with tabs[7]:  # Updated for correct index
         st.header("Strategy A/B Testing")
         
         st.markdown("""
