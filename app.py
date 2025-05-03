@@ -1474,41 +1474,31 @@ else:
                             numbers = combo['numbers']
                             stars = combo['stars']
                             
-                            col1, col2 = st.columns([3, 1])
-                            
-                            with col1:
-                                # Display main numbers with colored balls
-                                st.markdown("<div style='display:flex; gap:10px;'>", unsafe_allow_html=True)
-                                for num in sorted(numbers):
-                                    st.markdown(
-                                        f"<div style='background-color:#1E88E5; color:white; width:40px; height:40px; "
-                                        f"border-radius:50%; display:flex; align-items:center; justify-content:center; "
-                                        f"font-weight:bold;'>{num}</div>",
-                                        unsafe_allow_html=True
-                                    )
-                                st.markdown("</div>", unsafe_allow_html=True)
+                            # Display main numbers with colored balls
+                            st.markdown("<h4>Numbers</h4>", unsafe_allow_html=True)
+                            numbers_html = "<div style='display:flex; gap:10px;'>"
+                            for num in sorted(numbers):
+                                numbers_html += f"<div style='background-color:#1E88E5; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;'>{num}</div>"
+                            numbers_html += "</div>"
+                            st.markdown(numbers_html, unsafe_allow_html=True)
                                 
-                                # Display star numbers with yellow stars
-                                st.markdown("<div style='display:flex; gap:10px; margin-top:10px;'>", unsafe_allow_html=True)
-                                for star in sorted(stars):
-                                    st.markdown(
-                                        f"<div style='background-color:#FFD700; color:#333; width:40px; height:40px; "
-                                        f"border-radius:50%; display:flex; align-items:center; justify-content:center; "
-                                        f"font-weight:bold;'>{star}</div>",
-                                        unsafe_allow_html=True
-                                    )
-                                st.markdown("</div>", unsafe_allow_html=True)
+                            # Display star numbers with yellow stars
+                            st.markdown("<h4>Stars</h4>", unsafe_allow_html=True)
+                            stars_html = "<div style='display:flex; gap:10px; margin-top:10px;'>"
+                            for star in sorted(stars):
+                                stars_html += f"<div style='background-color:#FFD700; color:#333; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;'>{star}</div>"
+                            stars_html += "</div>"
+                            st.markdown(stars_html, unsafe_allow_html=True)
                             
-                            with col2:
-                                # Display if it was played and the result
-                                played = combo.get('played', False)
-                                result = combo.get('result', 'Not played yet')
-                                
-                                if played:
-                                    st.success("✓ Played")
-                                    st.write(f"Result: {result}")
-                                else:
-                                    st.warning("⧖ Not played")
+                            # Display if it was played and the result
+                            played = combo.get('played', False)
+                            result = combo.get('result', 'Not played yet')
+                            
+                            if played:
+                                st.success("✓ Played")
+                                st.write(f"Result: {result}")
+                            else:
+                                st.warning("⧖ Not played")
                             
                             # Display strategy and notes
                             if combo.get('strategy'):
@@ -1519,14 +1509,9 @@ else:
                             
                             # Form to update combination status
                             with st.form(key=f"update_form_{combo['id']}"):
-                                col1, col2 = st.columns(2)
-                                
-                                with col1:
-                                    played_status = st.checkbox("Played?", value=combo.get('played', False))
-                                
-                                with col2:
-                                    result_text = st.text_input("Result", value=combo.get('result', ''))
-                                
+                                # Use two separate fields instead of columns
+                                played_status = st.checkbox("Played?", value=combo.get('played', False))
+                                result_text = st.text_input("Result", value=combo.get('result', ''))
                                 updated_notes = st.text_area("Update Notes", value=combo.get('notes', ''))
                                 
                                 update_submitted = st.form_submit_button("Update")
