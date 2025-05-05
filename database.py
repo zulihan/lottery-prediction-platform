@@ -405,7 +405,7 @@ def save_generated_combination(numbers, stars, strategy, score, target_draw_date
     numbers : list
         List of 5 main numbers
     stars : list
-        List of 2 star numbers
+        List of 2 or 3 star numbers
     strategy : str
         Strategy used to generate the combination
     score : float or numpy.float64
@@ -573,7 +573,7 @@ def save_user_combination(numbers, stars, strategy=None, notes=None, played_date
     numbers : list
         List of 5 main numbers
     stars : list
-        List of 2 star numbers
+        List of 2 or 3 star numbers
     strategy : str, optional
         Strategy that generated this combination
     notes : str, optional

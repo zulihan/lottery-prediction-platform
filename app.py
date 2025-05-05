@@ -795,11 +795,30 @@ else:
                     score = combo.get('score', 'N/A')
                     strategy_name = combo.get('strategy', strategy_type)
                     
-                    # For Multi-Strategy, show which strategy generated each combination
-                    if strategy_type == "Multi-Strategy":
-                        st.markdown(f"### Combination {i+1} - {strategy_name}")
+                    # Show combination number, strategy and target date if available
+                    target_date = combo.get('target_draw_date', 'Not specified')
+                    strategy_display = combo.get('strategy', strategy_type)
+                    
+                    if target_date and target_date != 'Not specified':
+                        # Format the date and determine day of week
+                        if isinstance(target_date, str):
+                            try:
+                                date_obj = datetime.datetime.strptime(target_date, '%Y-%m-%d').date()
+                                day_name = date_obj.strftime('%A')
+                                formatted_date = f"{day_name} {target_date}"
+                            except:
+                                formatted_date = target_date
+                        else:
+                            try:
+                                day_name = target_date.strftime('%A')
+                                formatted_date = f"{day_name} {target_date}"
+                            except:
+                                formatted_date = str(target_date)
+                                
+                        st.markdown(f"### Combination {i+1} - {strategy_display}")
+                        st.markdown(f"**For draw on:** {formatted_date}")
                     else:
-                        st.markdown(f"### Combination {i+1}")
+                        st.markdown(f"### Combination {i+1} - {strategy_display}")
                     
                     # Display main numbers with colored balls
                     st.markdown("<div style='display:flex; gap:10px;'>", unsafe_allow_html=True)
@@ -839,22 +858,26 @@ else:
                     numbers_str = ', '.join(map(str, sorted(combo['numbers'])))
                     stars_str = ', '.join(map(str, sorted(combo['stars'])))
                     
-                    # For Multi-Strategy, include the strategy that generated each combination
-                    if strategy_type == "Multi-Strategy":
-                        export_data.append({
-                            'Combination': i+1,
-                            'Strategy': combo.get('strategy', 'Unknown'),
-                            'Numbers': numbers_str,
-                            'Stars': stars_str,
-                            'Score': combo.get('score', 'N/A')
-                        })
-                    else:
-                        export_data.append({
-                            'Combination': i+1,
-                            'Numbers': numbers_str,
-                            'Stars': stars_str,
-                            'Score': combo.get('score', 'N/A')
-                        })
+                    # Include target draw date if available
+                    target_date = combo.get('target_draw_date', '')
+                    
+                    # Create a dictionary to hold the data
+                    export_combo = {
+                        'Combination': i+1,
+                        'Numbers': numbers_str,
+                        'Stars': stars_str,
+                        'Score': combo.get('score', 'N/A')
+                    }
+                    
+                    # Add strategy if it's multi-strategy or available
+                    if strategy_type == "Multi-Strategy" or combo.get('strategy'):
+                        export_combo['Strategy'] = combo.get('strategy', strategy_type)
+                    
+                    # Add target draw date if available
+                    if target_date:
+                        export_combo['Target Draw Date'] = target_date
+                    
+                    export_data.append(export_combo)
                 
                 export_df = pd.DataFrame(export_data)
                 
@@ -1472,11 +1495,13 @@ else:
                                     all_num_inputs.append(num)
                     
                     st.markdown("**Star Numbers (1-12)**")
-                    col1, col2 = st.columns(2)
+                    col1, col2, col3 = st.columns(3)
                     with col1:
                         star1 = st.number_input("Star 1", min_value=1, max_value=12, key="save_star_1")
                     with col2:
                         star2 = st.number_input("Star 2", min_value=1, max_value=12, key="save_star_2")
+                    with col3:
+                        star3 = st.number_input("Star 3", min_value=1, max_value=12, key="save_star_3")
                     
                     # Additional fields
                     strategy = st.text_input("Strategy (optional)", "")
@@ -1491,11 +1516,11 @@ else:
                     else:
                         # Check for duplicates in the numbers
                         numbers = all_num_inputs
-                        stars = [star1, star2]
+                        stars = [star1, star2, star3]
                         
                         if len(set(numbers)) != 5:
                             st.error("Main numbers must be unique!")
-                        elif len(set(stars)) != 2:
+                        elif len(set(stars)) != 3:
                             st.error("Star numbers must be unique!")
                         else:
                             try:
