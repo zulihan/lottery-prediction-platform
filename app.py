@@ -205,6 +205,27 @@ with st.sidebar:
 if not st.session_state.data_loaded:
     st.info("Please upload Euromillions historical data or load sample data to start.")
 else:
+    # Set up navigation for tabs
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = "Data Overview"
+    
+    # Define the tabs with their names
+    tab_names = [
+        "Data Overview", 
+        "Statistical Analysis", 
+        "Strategy Generation",
+        "Visualizations",
+        "Combination Analysis",
+        "My Combinations",
+        "All Generated Combinations",
+        "Strategy Testing"
+    ]
+    
+    # Get current active tab index
+    active_tab_index = 0
+    if st.session_state.active_tab in tab_names:
+        active_tab_index = tab_names.index(st.session_state.active_tab)
+    
     # Create tabs for different functionalities
     tabs = st.tabs([
         "Data Overview", 
@@ -1581,38 +1602,30 @@ else:
                             if combo.get('notes'):
                                 st.write(f"**Notes:** {combo['notes']}")
                             
-                            # Update combination status section - Using non-form approach
+                            # Update combination status section - completely separate from any form
                             st.markdown("### Update Combination")
                             
-                            # Create a unique form key for each combination
-                            form_key = f"update_form_{combo['id']}"
+                            # Create unique keys for this combination
+                            played_key = f"played_{combo['id']}"
+                            result_key = f"result_{combo['id']}"
+                            notes_key = f"notes_{combo['id']}"
                             
-                            # Store current state in session state
-                            if form_key not in st.session_state:
-                                st.session_state[form_key] = {
-                                    'played': combo.get('played', False),
-                                    'result': combo.get('result', ''),
-                                    'notes': combo.get('notes', '')
-                                }
+                            # Initialize the session state variables if they don't exist
+                            if played_key not in st.session_state:
+                                st.session_state[played_key] = combo.get('played', False)
+                            if result_key not in st.session_state:
+                                st.session_state[result_key] = combo.get('result', '')
+                            if notes_key not in st.session_state:
+                                st.session_state[notes_key] = combo.get('notes', '')
                             
-                            # Create update form
-                            st.checkbox("Mark as Played", 
-                                      value=st.session_state[form_key]['played'],
-                                      key=f"played_{combo['id']}",
-                                      on_change=lambda: setattr(st.session_state[form_key], 'played', st.session_state[f"played_{combo['id']}"]))
-                            
-                            st.text_input("Result", 
-                                       value=st.session_state[form_key]['result'],
-                                       key=f"result_{combo['id']}",
-                                       on_change=lambda: setattr(st.session_state[form_key], 'result', st.session_state[f"result_{combo['id']}"]))
-                            
-                            st.text_area("Update Notes", 
-                                      value=st.session_state[form_key]['notes'],
-                                      key=f"notes_{combo['id']}",
-                                      on_change=lambda: setattr(st.session_state[form_key], 'notes', st.session_state[f"notes_{combo['id']}"]))
+                            # Create the form inputs without any callbacks
+                            st.checkbox("Mark as Played", value=st.session_state[played_key], key=played_key)
+                            st.text_input("Result", value=st.session_state[result_key], key=result_key)
+                            st.text_area("Update Notes", value=st.session_state[notes_key], key=notes_key)
                             
                             # Create the update button outside any form
                             update_button = st.button("Update Combination", key=f"update_btn_{combo['id']}")
+                            
                             
                             if update_button:
                                 # First check if database is available
@@ -1632,6 +1645,11 @@ else:
                                         saved_combos = database.get_user_saved_combinations()
                                         st.session_state.saved_combinations = saved_combos
                                         
+                                        # Set flag to return to Saved Combinations tab after rerun
+                                        st.session_state.active_tab = "My Combinations"
+                                        st.session_state.active_subtab = "Saved Combinations"
+                                        
+                                        # Show success message after returning to tab
                                         st.success("Combination updated successfully!")
                                         st.rerun()
                                     except Exception as e:
