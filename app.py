@@ -1581,14 +1581,37 @@ else:
                             if combo.get('notes'):
                                 st.write(f"**Notes:** {combo['notes']}")
                             
-                            # Update combination status section
+                            # Update combination status section - Using non-form approach
                             st.markdown("### Update Combination")
                             
-                            # Use individual input widgets without a form
-                            played_status = st.checkbox("Mark as Played", value=combo.get('played', False), key=f"played_{combo['id']}")
-                            result_text = st.text_input("Result", value=combo.get('result', ''), key=f"result_{combo['id']}")
-                            updated_notes = st.text_area("Update Notes", value=combo.get('notes', ''), key=f"notes_{combo['id']}")
+                            # Create a unique form key for each combination
+                            form_key = f"update_form_{combo['id']}"
                             
+                            # Store current state in session state
+                            if form_key not in st.session_state:
+                                st.session_state[form_key] = {
+                                    'played': combo.get('played', False),
+                                    'result': combo.get('result', ''),
+                                    'notes': combo.get('notes', '')
+                                }
+                            
+                            # Create update form
+                            st.checkbox("Mark as Played", 
+                                      value=st.session_state[form_key]['played'],
+                                      key=f"played_{combo['id']}",
+                                      on_change=lambda: setattr(st.session_state[form_key], 'played', st.session_state[f"played_{combo['id']}"]))
+                            
+                            st.text_input("Result", 
+                                       value=st.session_state[form_key]['result'],
+                                       key=f"result_{combo['id']}",
+                                       on_change=lambda: setattr(st.session_state[form_key], 'result', st.session_state[f"result_{combo['id']}"]))
+                            
+                            st.text_area("Update Notes", 
+                                      value=st.session_state[form_key]['notes'],
+                                      key=f"notes_{combo['id']}",
+                                      on_change=lambda: setattr(st.session_state[form_key], 'notes', st.session_state[f"notes_{combo['id']}"]))
+                            
+                            # Create the update button outside any form
                             update_button = st.button("Update Combination", key=f"update_btn_{combo['id']}")
                             
                             if update_button:
@@ -1597,12 +1620,12 @@ else:
                                     st.error("Cannot update combination: Database is not available.")
                                 else:
                                     try:
-                                        # Update in database
+                                        # Update in database using session state values
                                         database.update_user_combination(
                                             combo['id'], 
-                                            played=played_status, 
-                                            result=result_text, 
-                                            notes=updated_notes
+                                            played=st.session_state[f"played_{combo['id']}"], 
+                                            result=st.session_state[f"result_{combo['id']}"], 
+                                            notes=st.session_state[f"notes_{combo['id']}"]
                                         )
                                         
                                         # Reload saved combinations
