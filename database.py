@@ -44,6 +44,10 @@ except Exception as e:
     import sqlite3
     engine = create_engine('sqlite:///:memory:', connect_args={'check_same_thread': False})
     DB_AVAILABLE = False
+    
+    # When using SQLite in-memory fallback, we need to create the tables
+    # But we can't do this here yet because Base class is defined later in this file
+    logger.warning("Running in offline mode with SQLite memory database")
 
 # Create a scoped session to manage connections properly
 Session = scoped_session(sessionmaker(bind=engine, autoflush=True, autocommit=False))
@@ -200,13 +204,13 @@ def init_db():
     """Initialize the database by creating all tables if they don't exist"""
     global DB_AVAILABLE
     try:
-        # Only attempt to create tables if database is available
+        # Attempt to create tables whether in online or offline mode
+        Base.metadata.create_all(engine)
         if DB_AVAILABLE:
-            Base.metadata.create_all(engine)
             print("Database initialized and tables created.")
         else:
-            print("Database is not available. Running in offline mode.")
-            logger.warning("Database is not available. Running in offline mode.")
+            print("SQLite memory database initialized for offline mode.")
+            logger.info("SQLite memory database initialized for offline mode.")
     except Exception as e:
         print(f"Error initializing database: {str(e)}")
         logger.error(f"Error initializing database: {str(e)}")
