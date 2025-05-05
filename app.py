@@ -1367,8 +1367,25 @@ else:
                     st.error(f"Error loading combinations: {str(e)}")
                     st.session_state.my_combinations_loaded = True  # Mark as loaded anyway to prevent repeated attempts
         
+        # Set up subtab navigation
+        if 'active_subtab' not in st.session_state:
+            st.session_state.active_subtab = "Generated Combinations"
+        
+        # Check if we should switch to Saved Combinations based on previous action
+        if st.session_state.get('return_to_saved_tab', False):
+            st.session_state.active_subtab = "Saved Combinations"
+            st.session_state.return_to_saved_tab = False
+            st.success("Combination updated successfully!")
+        
         # Create sub-tabs for different types of combinations
-        my_tabs = st.tabs(["Generated Combinations", "Saved Combinations"])
+        subtab_names = ["Generated Combinations", "Saved Combinations"]
+        
+        # Set the active subtab index
+        active_subtab_index = 0
+        if st.session_state.active_subtab in subtab_names:
+            active_subtab_index = subtab_names.index(st.session_state.active_subtab)
+        
+        my_tabs = st.tabs(subtab_names)
         
         # Generated Combinations tab
         with my_tabs[0]:
@@ -1553,7 +1570,12 @@ else:
                                 st.session_state.saved_combinations = saved_combos
                                 st.session_state.saved_combinations_loaded = True
                                 
-                                st.success("Combination saved successfully!")
+                                # Set flag to return to Saved Combinations tab after rerun
+                                st.session_state.active_tab = "My Combinations"
+                                st.session_state.active_subtab = "Saved Combinations"
+                                st.session_state.return_to_saved_tab = True
+                                
+                                # Rerun to apply the changes
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Error saving combination: {str(e)}")
@@ -1648,9 +1670,9 @@ else:
                                         # Set flag to return to Saved Combinations tab after rerun
                                         st.session_state.active_tab = "My Combinations"
                                         st.session_state.active_subtab = "Saved Combinations"
+                                        st.session_state.return_to_saved_tab = True
                                         
-                                        # Show success message after returning to tab
-                                        st.success("Combination updated successfully!")
+                                        # Rerun to apply the changes
                                         st.rerun()
                                     except Exception as e:
                                         st.error(f"Error updating combination: {str(e)}")
