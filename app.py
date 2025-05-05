@@ -1559,12 +1559,13 @@ else:
                             # Update combination status section
                             st.markdown("### Update Combination")
                             
-                            # Use individual input widgets instead of a form
-                            played_status = st.checkbox("Mark as Played", value=combo.get('played', False), key=f"played_{combo['id']}")
-                            result_text = st.text_input("Result", value=combo.get('result', ''), key=f"result_{combo['id']}")
-                            updated_notes = st.text_area("Update Notes", value=combo.get('notes', ''), key=f"notes_{combo['id']}")
-                            
-                            update_button = st.button("Update Combination", key=f"update_btn_{combo['id']}")
+                            with st.form(key=f"update_form_{combo['id']}"):
+                                # Use individual input widgets inside a form
+                                played_status = st.checkbox("Mark as Played", value=combo.get('played', False), key=f"played_{combo['id']}")
+                                result_text = st.text_input("Result", value=combo.get('result', ''), key=f"result_{combo['id']}")
+                                updated_notes = st.text_area("Update Notes", value=combo.get('notes', ''), key=f"notes_{combo['id']}")
+                                
+                                update_button = st.form_submit_button("Update Combination")
                             
                             if update_button:
                                 # First check if database is available
