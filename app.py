@@ -1037,34 +1037,43 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
         st.header("Strategy Generation")
         st.write("DEBUG: Strategy Generation tab is active")
         
-        # Check preconditions and show messages without using 'return'
-        strategy_tab_should_continue = True
+        # Simple startup message for debugging
+        st.info("Strategy Generation Tab is loading...")
         
+        # Check which lottery is active
         if st.session_state.active_lottery == "French Loto":
+            st.write("French Loto strategy generation")
             if not st.session_state.french_loto_data_loaded:
                 st.warning("⚠️ Please load French Loto data first from the Data Management sidebar!")
-                strategy_tab_should_continue = False
             elif 'french_loto_strategy' not in st.session_state:
                 st.error("⚠️ French Loto strategy module not initialized. Go to Data Management and load data!")
-                strategy_tab_should_continue = False
         elif st.session_state.active_lottery == "Euromillions":
+            st.write("Euromillions strategy generation")
             if not st.session_state.data_loaded:
                 st.warning("⚠️ Please load Euromillions data first from the Data Management sidebar!")
-                strategy_tab_should_continue = False
                 
-        # Continue only if conditions are met
-        if strategy_tab_should_continue:
-            col1, col2 = st.columns([1, 2])
+        # Add a basic strategy generator for debugging
+        st.subheader("Basic Strategy Generator")
+        
+        strategy_choice = st.selectbox(
+            "Select Strategy Type",
+            ["Frequency-Based", "Random", "Balanced"]
+        )
+        
+        num_combinations = st.number_input("Number of combinations", 1, 10, 3)
+        
+        if st.button("Generate Combinations"):
+            st.write(f"Selected strategy: {strategy_choice}")
+            st.write(f"Will generate {num_combinations} combinations")
             
-            with col1:
-                st.subheader("Strategy Parameters")
-                
-                strategy_type = st.selectbox(
-                    "Select Strategy",
-                    ["Frequency Strategy", "Mixed Strategy", "Temporal Strategy", "Stratified Sampling", "Coverage Strategy", 
-                     "Risk/Reward Optimization", "Bayesian Model", "Markov Chain Model", "Time Series Model", "Anti-Cognitive Bias",
-                     "Multi-Strategy"]
-                )
+            # Show sample data
+            st.subheader("Sample Generated Combinations")
+            for i in range(num_combinations):
+                numbers = [i+1, i+10, i+20, i+30, i+40]
+                stars = [i+1, i+2]
+                st.write(f"Combination {i+1}: Numbers {numbers}, Stars {stars}")
+            
+# End of Strategy Generation tab
                 
                 num_combinations = st.number_input("Number of combinations to generate", 1, 20, 5)
                 
