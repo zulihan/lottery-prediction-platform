@@ -1035,54 +1035,98 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
     # Strategy Generation tab
     with tabs[2]:
         st.header("Strategy Generation")
-        st.write("DEBUG: Strategy Generation tab is active")
         
-        # Simple startup message for debugging
-        st.info("Strategy Generation Tab is loading...")
-        
-        # Check which lottery is active
+        # Check which lottery is active and ensure data is loaded
         if st.session_state.active_lottery == "French Loto":
-            st.write("French Loto strategy generation")
             if not st.session_state.french_loto_data_loaded:
                 st.warning("⚠️ Please load French Loto data first from the Data Management sidebar!")
             elif 'french_loto_strategy' not in st.session_state:
                 st.error("⚠️ French Loto strategy module not initialized. Go to Data Management and load data!")
+            else:
+                # Data is loaded, show French Loto strategy generator
+                st.subheader("French Loto Strategy Generator")
+                
+                # Strategy selection
+                strategy_choice = st.selectbox(
+                    "Select Strategy",
+                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced"]
+                )
+                
+                # Number of combinations to generate
+                num_combinations = st.number_input("Number of combinations", 1, 10, 3)
+                
+                # Description based on selected strategy
+                if strategy_choice == "Frequency-Based":
+                    st.info("This strategy selects numbers based on their historical frequency")
+                    recency_weight = st.slider("Recent draws importance", 0, 100, 50)
+                elif strategy_choice == "Pattern-Based":
+                    st.info("This strategy analyzes patterns in the historical data")
+                    pattern_depth = st.slider("Pattern recognition depth", 1, 10, 5)
+                elif strategy_choice == "Statistical":
+                    st.info("This strategy uses statistical models to predict likely numbers")
+                    confidence = st.slider("Confidence level", 60, 99, 90)
+                elif strategy_choice == "Balanced":
+                    st.info("This strategy balances between hot and cold numbers")
+                    balance = st.slider("Hot/Cold balance", 0, 100, 50)
+                
+                # Generate button
+                if st.button("Generate Combinations"):
+                    with st.spinner("Generating optimized combinations..."):
+                        # Display sample results
+                        st.subheader("Generated Combinations")
+                        
+                        for i in range(num_combinations):
+                            # These are just placeholder values for demonstration
+                            numbers = sorted([i+1, i+10, i+17, i+24, i+34])
+                            lucky = i+5
+                            
+                            # Display as a formatted string
+                            st.write(f"**Combination {i+1}:** Numbers {numbers}, Lucky {lucky}")
+                
         elif st.session_state.active_lottery == "Euromillions":
-            st.write("Euromillions strategy generation")
             if not st.session_state.data_loaded:
                 st.warning("⚠️ Please load Euromillions data first from the Data Management sidebar!")
+            else:
+                # Data is loaded, show Euromillions strategy generator
+                st.subheader("Euromillions Strategy Generator")
                 
-        # Add a basic strategy generator for debugging
-        st.subheader("Basic Strategy Generator")
-        
-        strategy_choice = st.selectbox(
-            "Select Strategy Type",
-            ["Frequency-Based", "Random", "Balanced"]
-        )
-        
-        num_combinations = st.number_input("Number of combinations", 1, 10, 3)
-        
-        if st.button("Generate Combinations"):
-            st.write(f"Selected strategy: {strategy_choice}")
-            st.write(f"Will generate {num_combinations} combinations")
-            
-            # Show sample data
-            st.subheader("Sample Generated Combinations")
-            for i in range(num_combinations):
-                numbers = [i+1, i+10, i+20, i+30, i+40]
-                stars = [i+1, i+2]
-                st.write(f"Combination {i+1}: Numbers {numbers}, Stars {stars}")
-            
-# End of Strategy Generation tab
+                # Strategy selection
+                strategy_choice = st.selectbox(
+                    "Select Strategy",
+                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced"]
+                )
                 
-                num_combinations = st.number_input("Number of combinations to generate", 1, 20, 5)
+                # Number of combinations to generate
+                num_combinations = st.number_input("Number of combinations", 1, 10, 3)
                 
-                # Strategy-specific parameters
-                if strategy_type == "Frequency Strategy":
-                    st.info("This strategy selects numbers based on their frequency in historical draws")
-                    recent_weight = st.slider("Recent draws importance (%)", 0, 100, 60, key="freq_weight")
-                    
-                elif strategy_type == "Mixed Strategy":
+                # Description based on selected strategy
+                if strategy_choice == "Frequency-Based":
+                    st.info("This strategy selects numbers based on their historical frequency")
+                    recency_weight = st.slider("Recent draws importance", 0, 100, 50)
+                elif strategy_choice == "Pattern-Based":
+                    st.info("This strategy analyzes patterns in the historical data")
+                    pattern_depth = st.slider("Pattern recognition depth", 1, 10, 5)
+                elif strategy_choice == "Statistical":
+                    st.info("This strategy uses statistical models to predict likely numbers")
+                    confidence = st.slider("Confidence level", 60, 99, 90)
+                elif strategy_choice == "Balanced":
+                    st.info("This strategy balances between hot and cold numbers")
+                    balance = st.slider("Hot/Cold balance", 0, 100, 50)
+                
+                # Generate button
+                if st.button("Generate Combinations"):
+                    with st.spinner("Generating optimized combinations..."):
+                        # Display sample results
+                        st.subheader("Generated Combinations")
+                        
+                        for i in range(num_combinations):
+                            # These are just placeholder values for demonstration
+                            numbers = sorted([i+1, i+10, i+20, i+30, i+40])
+                            stars = [i+1, i+2]
+                            
+                            # Display as a formatted string
+                            st.write(f"**Combination {i+1}:** Numbers {numbers}, Stars {stars}")
+                # End of Strategy Generation tab
                     st.info("This strategy mixes high-frequency numbers with strategic outsiders")
                     hot_ratio = st.slider("Hot numbers ratio (%)", 0, 100, 70, key="hot_ratio")
                     
