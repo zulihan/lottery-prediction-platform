@@ -47,7 +47,7 @@ def main():
     print(f"Importing French Loto data from {input_file}...")
     
     # Import the data
-    count = process_french_csv.import_french_loto_file(input_file)
+    count = process_french_csv.import_french_loto_file(input_file, skip_future_dates=True)
     
     print(f"Successfully imported {count} records from {input_file}")
     

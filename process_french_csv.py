@@ -9,13 +9,14 @@ import numpy as np
 from datetime import datetime
 import database
 
-def process_french_loto_csv(file_path):
+def process_french_loto_csv(file_path, skip_future_dates=True):
     """
     Process French Loto CSV files with DD/MM/YYYY date format
     and specific column structure
     
     Args:
         file_path: Path to the CSV file
+        skip_future_dates: If True, skip records with dates in the future
         
     Returns:
         Processed DataFrame ready for database import
@@ -63,6 +64,19 @@ def process_french_loto_csv(file_path):
             except Exception as e:
                 print(f"Error converting dates: {str(e)}")
                 return None
+                
+    # Filter out future dates if requested
+    if skip_future_dates:
+        today = pd.Timestamp.now().normalize()  # Get today's date without time component
+        future_dates_count = (data['date'] > today).sum()
+        if future_dates_count > 0:
+            print(f"Filtering out {future_dates_count} records with future dates")
+            data = data[data['date'] <= today]
+            if len(data) == 0:
+                print("No records remaining after filtering out future dates")
+                return None
+            
+    print(f"Processed {len(data)} records from {file_path}")
     
     # Create renamed dataframe with standardized column names
     renamed_data = pd.DataFrame()
@@ -186,20 +200,21 @@ def import_to_database(data):
     print(f"Successfully imported {count} records")
     return count
 
-def import_french_loto_file(file_path):
+def import_french_loto_file(file_path, skip_future_dates=True):
     """
     Main function to process and import a French Loto file
     
     Args:
         file_path: Path to the CSV file
+        skip_future_dates: If True, skip records with dates in the future
         
     Returns:
         Number of records imported
     """
     # Process the data
-    processed_data = process_french_loto_csv(file_path)
+    processed_data = process_french_loto_csv(file_path, skip_future_dates=skip_future_dates)
     
     # Import to database
-    count = import_to_database(processed_data)
+    count = import_to_database(processed_data) if processed_data is not None else 0
     
     return count
