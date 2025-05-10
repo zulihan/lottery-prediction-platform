@@ -386,10 +386,14 @@ def main():
     check_table_columns()
     
     # Import data (use smaller batch size to avoid timeouts)
+    # Focus specifically on 2017 data
     imported = import_loto2017_csv(
         filename='attached_assets/loto2017.csv',
         batch_size=25,
-        max_rows=None  # Import all records
+        max_rows=None,  # Import all records
+        # Focus on 2017 data
+        start_date="2017-01-01",
+        end_date="2017-12-31"
     )
     
     logger.info(f"Successfully imported {imported} records")
