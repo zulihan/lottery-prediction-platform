@@ -1036,6 +1036,15 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
     with tabs[2]:
         st.header("Strategy Generation")
         
+        # Debug information
+        st.write("Debug info:")
+        st.write(f"Active lottery: {st.session_state.active_lottery}")
+        if st.session_state.active_lottery == "French Loto":
+            st.write(f"French Loto data loaded: {st.session_state.french_loto_data_loaded}")
+            st.write(f"French Loto strategy initialized: {'french_loto_strategy' in st.session_state}")
+            if 'french_loto_strategy' in st.session_state:
+                st.write(f"Strategy type: {type(st.session_state.french_loto_strategy)}")
+        
         col1, col2 = st.columns([1, 2])
         
         with col1:
