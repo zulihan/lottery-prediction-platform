@@ -383,12 +383,12 @@ def main():
     
     # Continue importing from where we left off
     # Only include historical data before 2023
-    # Focus specifically on remaining 2020-2021 records
+    # Focus specifically on remaining 2020 records
     imported = import_loto_201911_csv(
         filename='attached_assets/loto_201911.csv',
         batch_size=25,
         max_rows=None,  # Import all valid historical records
-        start_row=225,  # Skip more rows as we've processed them
+        start_row=300,  # Skip more rows as we've processed them
         cutoff_date="2023-01-01"  # Only records before 2023 (historical)
     )
     
