@@ -1,94 +1,200 @@
-#!/usr/bin/env python3
 """
-Script to import old French Loto data from the CSV file for 1976-2008
+Script to specifically import the old French Loto data file (loto.csv)
 """
-import os
-import sys
+
 import pandas as pd
-import old_loto_importer
 import database
 from sqlalchemy import text
+import os
+from datetime import datetime
+import logging
 
-def clear_existing_data():
-    """Clear existing French Loto data from the database"""
-    conn = None
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def clear_french_loto_table():
+    """
+    Delete all records from the french_loto_drawings table
+    """
+    conn = database.get_db_connection()
+    
+    if conn is None:
+        print("Error: Could not connect to database")
+        return False
+    
     try:
-        # Get a fresh connection
-        conn = database.get_db_connection()
         # Delete all records
         result = conn.execute(text("DELETE FROM french_loto_drawings"))
-        # Commit the transaction
+        
+        deleted_count = result.rowcount
         conn.commit()
-        print(f"Deleted {result.rowcount} existing French Loto drawings from database")
+        
+        print(f"Successfully deleted {deleted_count} French Loto drawings from the table")
         return True
+        
     except Exception as e:
-        print(f"Error clearing French Loto data: {e}")
-        if conn:
-            try:
-                conn.rollback()
-            except:
-                pass
+        print(f"Error clearing French Loto table: {str(e)}")
         return False
     finally:
-        if conn:
-            try:
-                conn.close()
-            except:
-                pass
+        conn.close()
 
-def main():
-    # Initialize the database
-    database.init_db()
+def import_loto_csv(filename='attached_assets/loto.csv', batch_size=50):
+    """
+    Import data from the loto.csv file
+    """
+    print(f"Processing French Loto file: {filename}")
     
-    # Check if input file exists
-    input_file = "attached_assets/loto.csv"
-    if not os.path.exists(input_file):
-        print(f"Error: Input file {input_file} not found")
-        sys.exit(1)
-    
-    # Handle command line arguments
-    if len(sys.argv) > 1 and sys.argv[1] == "--force":
-        # Skip confirmation if --force flag is provided
-        print("Force flag detected, clearing data without confirmation")
-    else:
-        try:
-            # Ask for confirmation before clearing data
-            confirm = input("This will clear all existing French Loto data. Continue? (y/n): ")
-            if confirm.lower() != 'y':
-                print("Import cancelled")
-                sys.exit(0)
-        except EOFError:
-            # If running in a non-interactive environment, assume yes
-            print("Running in non-interactive mode, assuming yes")
-    
-    # Clear existing data
-    if not clear_existing_data():
-        sys.exit(1)
-    
-    print(f"Importing French Loto data from {input_file}...")
-    
-    # Import the data
-    count = old_loto_importer.import_old_loto_file(input_file)
-    
-    print(f"Successfully imported {count} records from {input_file}")
-    
-    # Verify the import
-    session = database.get_session()
     try:
-        total_count = session.query(database.FrenchLotoDrawing).count()
-        print(f"Total French Loto drawings in database: {total_count}")
+        # Read the CSV file
+        df = pd.read_csv(filename, sep=';', dtype=str, encoding='utf-8')
+        record_count = len(df)
+        print(f"Read {record_count} records from {filename}")
         
-        # Get the date range
-        min_date = session.query(database.FrenchLotoDrawing.date).order_by(database.FrenchLotoDrawing.date.asc()).first()
-        max_date = session.query(database.FrenchLotoDrawing.date).order_by(database.FrenchLotoDrawing.date.desc()).first()
+        # Get columns
+        columns = df.columns.tolist()
+        print(f"Columns: {', '.join(columns[:10])}...")
         
-        if min_date and max_date:
-            print(f"Date range: {min_date[0]} to {max_date[0]}")
+        number_cols = ['boule_1', 'boule_2', 'boule_3', 'boule_4', 'boule_5']
+        lucky_col = 'boule_complementaire'
+        date_col = 'date_de_tirage'
+        draw_col = '1er_ou_2eme_tirage'
+        
+        # Check if columns exist
+        for col in number_cols + [lucky_col, date_col]:
+            if col not in columns:
+                print(f"ERROR: Required column {col} not found in the file")
+                return 0
+        
+        print(f"Using column mapping: numbers={number_cols}, lucky={lucky_col}, date={date_col}")
+        
+        # Process in batches
+        successful_imports = 0
+        errors = 0
+        
+        for i in range(0, record_count, batch_size):
+            end_idx = min(i + batch_size, record_count)
+            batch = df.iloc[i:end_idx]
+            print(f"Processing batch {i+1} to {end_idx} of {record_count}")
             
+            for _, row in batch.iterrows():
+                try:
+                    # Parse date - format is YYYYMMDD
+                    date_str = str(row[date_col]).strip()
+                    draw_date = datetime.strptime(date_str, '%Y%m%d').date()
+                    
+                    # Get numbers
+                    numbers = []
+                    for col in number_cols:
+                        num_str = str(row[col]).strip()
+                        if not num_str or not num_str.isdigit():
+                            raise ValueError(f"Invalid number: '{num_str}' in column {col}")
+                        numbers.append(int(num_str))
+                    
+                    # Get lucky number
+                    lucky_str = str(row[lucky_col]).strip()
+                    if not lucky_str or not lucky_str.isdigit():
+                        raise ValueError(f"Invalid lucky number: '{lucky_str}'")
+                    lucky = int(lucky_str)
+                    
+                    # Determine draw number (1=1st draw, 2=2nd draw)
+                    draw_num = 1
+                    if draw_col in row:
+                        draw_value = str(row[draw_col]).strip()
+                        if draw_value == '2':
+                            draw_num = 2
+                    
+                    # Add to database
+                    success = database.add_french_loto_drawing_with_details(
+                        date=draw_date,
+                        numbers=numbers,
+                        lucky=lucky,
+                        draw_num=draw_num
+                    )
+                    
+                    if success:
+                        successful_imports += 1
+                        if successful_imports % 100 == 0:
+                            print(f"Successfully imported {successful_imports} records")
+                    else:
+                        errors += 1
+                        
+                except Exception as e:
+                    errors += 1
+                    if errors < 10:  # Limit error messages
+                        print(f"Error processing row: {e}")
+        
+        print(f"Import completed. Successful: {successful_imports}, Errors: {errors}")
+        return successful_imports
+        
+    except Exception as e:
+        print(f"Error processing file: {e}")
+        return 0
+
+def verify_import():
+    """
+    Verify the import by showing basic statistics
+    """
+    conn = database.get_db_connection()
+    
+    if conn is None:
+        print("Error: Could not connect to database")
+        return
+    
+    try:
+        # Get era statistics
+        result = conn.execute(text("""
+            SELECT 
+            CASE 
+                WHEN EXTRACT(YEAR FROM date) < 1980 THEN '1976-1979'
+                WHEN EXTRACT(YEAR FROM date) < 1990 THEN '1980-1989'
+                WHEN EXTRACT(YEAR FROM date) < 2000 THEN '1990-1999'
+                WHEN EXTRACT(YEAR FROM date) < 2010 THEN '2000-2009'
+                WHEN EXTRACT(YEAR FROM date) < 2020 THEN '2010-2019'
+                ELSE '2020+'
+            END AS era,
+            COUNT(*) AS draw_count,
+            MIN(date) AS earliest_date,
+            MAX(date) AS latest_date
+            FROM french_loto_drawings
+            GROUP BY era
+            ORDER BY earliest_date
+        """))
+        
+        print("\nFrench Loto Import Summary:")
+        print("-------------------------")
+        for row in result:
+            print(f"{row.era}: {row.draw_count} drawings from {row.earliest_date} to {row.latest_date}")
+        
+        # Get total count
+        result = conn.execute(text("SELECT COUNT(*) AS total FROM french_loto_drawings"))
+        total = result.fetchone().total
+        
+        print(f"\nTotal French Loto drawings in database: {total}")
+        
     except Exception as e:
         print(f"Error verifying import: {e}")
     finally:
-        session.close()
+        conn.close()
+
+def main():
+    """
+    Main function: clear table and import loto.csv
+    """
+    print("Clearing French Loto table...")
+    if clear_french_loto_table():
+        print("Table cleared successfully")
+    else:
+        print("Failed to clear table")
+        return
+    
+    print("\nImporting loto.csv...")
+    imported = import_loto_csv()
+    
+    print(f"\nImported {imported} records from loto.csv")
+    
+    if imported > 0:
+        verify_import()
 
 if __name__ == "__main__":
     main()
