@@ -8,7 +8,7 @@ import os
 import io
 import json
 from datetime import datetime, date, timedelta
-from database import init_db, get_connection, get_engine
+from database import init_db, get_db_connection
 import logging
 
 # Import strategy and analysis tools
@@ -72,9 +72,14 @@ def main():
             
             if st.button("Load Euromillions Data"):
                 try:
-                    engine = get_engine()
-                    query = "SELECT * FROM euromillions_drawings ORDER BY draw_date DESC"
-                    data = pd.read_sql(query, engine)
+                    # Get database connection
+                    conn = get_db_connection()
+                    if conn is None:
+                        st.error("❌ Could not connect to database!")
+                        return
+                    
+                    query = "SELECT * FROM euromillions_drawings ORDER BY date DESC"
+                    data = pd.read_sql(query, conn)
                     
                     if data is not None and not data.empty:
                         st.session_state.processed_data = data
@@ -94,9 +99,14 @@ def main():
             
             if st.button("Load French Loto Data"):
                 try:
-                    engine = get_engine()
-                    query = "SELECT * FROM french_loto_drawings ORDER BY draw_date DESC"
-                    data = pd.read_sql(query, engine)
+                    # Get database connection
+                    conn = get_db_connection()
+                    if conn is None:
+                        st.error("❌ Could not connect to database!")
+                        return
+                    
+                    query = "SELECT * FROM french_loto_drawings ORDER BY date DESC"
+                    data = pd.read_sql(query, conn)
                     
                     if data is not None and not data.empty:
                         st.session_state.french_loto_data = data
@@ -145,12 +155,17 @@ def main():
                         )
                 with col2:
                     if st.button("Export to Excel"):
-                        buffer = io.BytesIO()
-                        with pd.ExcelWriter(buffer) as writer:
-                            data.to_excel(writer, index=False)
+                        # Convert DataFrame to Excel
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                            data.to_excel(writer, index=False, sheet_name='Euromillions')
+                            writer.close()
+                            
+                        # Prepare for download
+                        excel_data = output.getvalue()
                         st.download_button(
                             label="Download Excel",
-                            data=buffer.getvalue(),
+                            data=excel_data,
                             file_name="euromillions_data.xlsx",
                             mime="application/vnd.ms-excel"
                         )
@@ -176,12 +191,17 @@ def main():
                         )
                 with col2:
                     if st.button("Export to Excel"):
-                        buffer = io.BytesIO()
-                        with pd.ExcelWriter(buffer) as writer:
-                            data.to_excel(writer, index=False)
+                        # Convert DataFrame to Excel
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                            data.to_excel(writer, index=False, sheet_name='FrenchLoto')
+                            writer.close()
+                            
+                        # Prepare for download
+                        excel_data = output.getvalue()
                         st.download_button(
                             label="Download Excel",
-                            data=buffer.getvalue(),
+                            data=excel_data,
                             file_name="french_loto_data.xlsx",
                             mime="application/vnd.ms-excel"
                         )
