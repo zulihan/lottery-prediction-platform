@@ -214,6 +214,26 @@ class FrenchLotoStatistics:
         
         return top_pairs
     
+    def get_hot_numbers(self, count=10):
+        """
+        Get the most frequently drawn main numbers as a Series
+        
+        Args:
+            count: Number of frequent numbers to return
+            
+        Returns:
+            pandas.Series: Most frequent numbers with their frequencies
+        """
+        if not hasattr(self, 'main_number_freq'):
+            self.analyze_frequencies()
+            
+        # Convert to pandas Series for easier display in the Streamlit app
+        hot_numbers = pd.Series(
+            {k: v for i, (k, v) in enumerate(self.main_number_freq.items()) if i < count}
+        )
+        
+        return hot_numbers
+            
     def get_most_frequent_numbers(self, count=5):
         """
         Get the most frequently drawn main numbers
@@ -273,6 +293,203 @@ class FrenchLotoStatistics:
             self.analyze_frequencies()
             
         return list(self.lucky_number_freq.keys())[-count:]
+        
+    def get_hot_lucky_numbers(self, count=5):
+        """
+        Get the most frequently drawn lucky numbers as a Series
+        
+        Args:
+            count: Number of frequent lucky numbers to return
+            
+        Returns:
+            pandas.Series: Most frequent lucky numbers with their frequencies
+        """
+        if not hasattr(self, 'lucky_number_freq'):
+            self.analyze_frequencies()
+            
+        # Convert to pandas Series for easier display in the Streamlit app
+        hot_lucky = pd.Series(
+            {k: v for i, (k, v) in enumerate(self.lucky_number_freq.items()) if i < count}
+        )
+        
+        return hot_lucky
+        
+    def get_cold_numbers(self, count=10):
+        """
+        Get the least frequently drawn numbers as a Series
+        
+        Args:
+            count: Number of cold numbers to return
+            
+        Returns:
+            pandas.Series: Least frequent numbers with their frequencies
+        """
+        if not hasattr(self, 'main_number_freq'):
+            self.analyze_frequencies()
+        
+        # Get the least frequent numbers
+        cold_numbers_dict = dict(sorted(self.main_number_freq.items(), key=lambda x: x[1]))
+        
+        # Convert to pandas Series for easier display in the Streamlit app
+        cold_numbers = pd.Series(
+            {k: v for i, (k, v) in enumerate(cold_numbers_dict.items()) if i < count}
+        )
+        
+        return cold_numbers
+        
+    def get_cold_lucky_numbers(self, count=5):
+        """
+        Get the least frequently drawn lucky numbers as a Series
+        
+        Args:
+            count: Number of cold lucky numbers to return
+            
+        Returns:
+            pandas.Series: Least frequent lucky numbers with their frequencies
+        """
+        if not hasattr(self, 'lucky_number_freq'):
+            self.analyze_frequencies()
+        
+        # Get the least frequent lucky numbers
+        cold_lucky_dict = dict(sorted(self.lucky_number_freq.items(), key=lambda x: x[1]))
+        
+        # Convert to pandas Series for easier display in the Streamlit app
+        cold_lucky = pd.Series(
+            {k: v for i, (k, v) in enumerate(cold_lucky_dict.items()) if i < count}
+        )
+        
+        return cold_lucky
+        
+    def calculate_even_odd_distribution(self):
+        """
+        Calculate the distribution of even and odd numbers
+        
+        Returns:
+            pandas.DataFrame: Distribution of even/odd combinations
+        """
+        if self.data is None or len(self.data) == 0:
+            return pd.DataFrame()
+            
+        # Get column names for main numbers
+        main_cols = ['n1', 'n2', 'n3', 'n4', 'n5']
+        if 'n1' not in self.data.columns and 'number1' in self.data.columns:
+            main_cols = ['number1', 'number2', 'number3', 'number4', 'number5']
+            
+        # Create a dictionary to store counts of different even/odd combinations
+        even_odd_dist = {
+            '0 Even - 5 Odd': 0,
+            '1 Even - 4 Odd': 0,
+            '2 Even - 3 Odd': 0,
+            '3 Even - 2 Odd': 0,
+            '4 Even - 1 Odd': 0,
+            '5 Even - 0 Odd': 0
+        }
+        
+        # Count combinations
+        for _, row in self.data.iterrows():
+            even_count = sum(1 for col in main_cols if int(row[col]) % 2 == 0)
+            odd_count = 5 - even_count
+            key = f"{even_count} Even - {odd_count} Odd"
+            even_odd_dist[key] += 1
+            
+        # Convert to DataFrame
+        dist_df = pd.DataFrame({
+            'Combination': list(even_odd_dist.keys()),
+            'Count': list(even_odd_dist.values())
+        })
+        
+        # Calculate percentage
+        dist_df['Percentage'] = (dist_df['Count'] / len(self.data) * 100).round(2)
+        
+        return dist_df
+        
+    def calculate_sum_distribution(self):
+        """
+        Calculate the distribution of sum of drawn numbers
+        
+        Returns:
+            pandas.DataFrame: Sum distribution grouped into ranges
+        """
+        if self.data is None or len(self.data) == 0:
+            return pd.DataFrame()
+            
+        # Get column names for main numbers
+        main_cols = ['n1', 'n2', 'n3', 'n4', 'n5']
+        if 'n1' not in self.data.columns and 'number1' in self.data.columns:
+            main_cols = ['number1', 'number2', 'number3', 'number4', 'number5']
+            
+        # Calculate sum for each drawing
+        self.data['sum'] = self.data[main_cols].sum(axis=1)
+        
+        # Create ranges for grouping
+        ranges = [
+            (0, 90), (91, 100), (101, 110), (111, 120), 
+            (121, 130), (131, 140), (141, 150), (151, 160), 
+            (161, 170), (171, 180), (181, 245)
+        ]
+        
+        # Create bins and labels
+        bins = [r[0] for r in ranges] + [ranges[-1][1] + 1]
+        labels = [f"{r[0]}-{r[1]}" for r in ranges]
+        
+        # Group by range
+        self.data['sum_range'] = pd.cut(self.data['sum'], bins=bins, labels=labels, right=False)
+        sum_dist = self.data['sum_range'].value_counts().sort_index()
+        
+        # Convert to DataFrame
+        dist_df = pd.DataFrame({
+            'Range': sum_dist.index,
+            'Count': sum_dist.values
+        })
+        
+        # Calculate percentage
+        dist_df['Percentage'] = (dist_df['Count'] / len(self.data) * 100).round(2)
+        
+        return dist_df
+        
+    def calculate_range_distribution(self):
+        """
+        Calculate the distribution of numbers across different ranges
+        
+        Returns:
+            pandas.DataFrame: Distribution of numbers across ranges
+        """
+        if self.data is None or len(self.data) == 0:
+            return pd.DataFrame()
+            
+        # Get column names for main numbers
+        main_cols = ['n1', 'n2', 'n3', 'n4', 'n5']
+        if 'n1' not in self.data.columns and 'number1' in self.data.columns:
+            main_cols = ['number1', 'number2', 'number3', 'number4', 'number5']
+            
+        # Define ranges
+        ranges = [
+            (1, 9), (10, 19), (20, 29), (30, 39), (40, 49)
+        ]
+        
+        # Initialize counters for each range
+        range_counts = {f"{r[0]}-{r[1]}": 0 for r in ranges}
+        
+        # Count numbers in each range
+        for _, row in self.data.iterrows():
+            for col in main_cols:
+                num = int(row[col])
+                for r in ranges:
+                    if r[0] <= num <= r[1]:
+                        range_counts[f"{r[0]}-{r[1]}"] += 1
+                        break
+        
+        # Convert to DataFrame
+        dist_df = pd.DataFrame({
+            'Range': list(range_counts.keys()),
+            'Count': list(range_counts.values())
+        })
+        
+        # Calculate percentage
+        total_numbers = len(self.data) * 5  # Total numbers drawn
+        dist_df['Percentage'] = (dist_df['Count'] / total_numbers * 100).round(2)
+        
+        return dist_df
     
     def generate_basic_statistics(self):
         """
