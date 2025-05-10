@@ -99,28 +99,50 @@ def import_nouveau_loto_csv(filename='attached_assets/nouveau_loto.csv', batch_s
                     existing = result.fetchone()
                     
                     if existing:
-                        logger.debug(f"Record for {draw_date} (draw #{draw_num}) already exists, skipping")
+                        logger.info(f"Record for {draw_date} (draw #{draw_num}) already exists, skipping")
                         continue
+                        
+                    # Additional logging for debugging
+                    logger.info(f"Preparing to insert record for {draw_date} with numbers: {number1}, {number2}, {number3}, {number4}, {number5}, {lucky_number}")
                     
                     # Insert record
-                    insert_query = text("""
-                        INSERT INTO french_loto_drawings 
-                        (date, n1, n2, n3, n4, n5, lucky, draw_num)
-                        VALUES (:date, :n1, :n2, :n3, :n4, :n5, :lucky, :draw_num)
-                    """)
-                    
-                    conn.execute(insert_query, {
-                        "date": draw_date,
-                        "n1": number1,
-                        "n2": number2,
-                        "n3": number3,
-                        "n4": number4,
-                        "n5": number5,
-                        "lucky": lucky_number,
-                        "draw_num": draw_num
-                    })
-                    
-                    inserted += 1
+                    try:
+                        insert_query = text("""
+                            INSERT INTO french_loto_drawings 
+                            (date, n1, n2, n3, n4, n5, lucky, draw_num)
+                            VALUES (:date, :n1, :n2, :n3, :n4, :n5, :lucky, :draw_num)
+                        """)
+                        
+                        params = {
+                            "date": draw_date,
+                            "n1": number1,
+                            "n2": number2,
+                            "n3": number3,
+                            "n4": number4,
+                            "n5": number5,
+                            "lucky": lucky_number,
+                            "draw_num": draw_num
+                        }
+                        
+                        logger.info(f"Running insert query with params: {params}")
+                        conn.execute(insert_query, params)
+                        
+                        # Verify the insert worked
+                        verify_query = text("""
+                            SELECT id FROM french_loto_drawings 
+                            WHERE date = :date AND n1 = :n1 AND n2 = :n2 AND n3 = :n3 
+                                AND n4 = :n4 AND n5 = :n5 AND lucky = :lucky
+                        """)
+                        verify_result = conn.execute(verify_query, params).fetchone()
+                        
+                        if verify_result:
+                            logger.info(f"Successfully inserted record ID: {verify_result[0]}")
+                            inserted += 1
+                        else:
+                            logger.warning(f"Insert seemed to succeed but record not found in verification query")
+                    except Exception as e:
+                        logger.error(f"Error during insert operation: {e}")
+                        # Continue processing other records
                     
                 except Exception as e:
                     logger.error(f"Error inserting row for {row.get('date', 'unknown date')}: {e}")
@@ -183,6 +205,22 @@ def main():
     if not os.path.exists(filename):
         logger.error(f"File {filename} not found")
         return
+    
+    # Check the table structure to ensure we have the correct columns
+    conn = database.get_db_connection()
+    if conn is not None:
+        try:
+            query = text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'french_loto_drawings'
+            """)
+            result = conn.execute(query)
+            columns = [row[0] for row in result.fetchall()]
+            logger.info(f"Columns in french_loto_drawings table: {columns}")
+            conn.close()
+        except Exception as e:
+            logger.error(f"Error checking table structure: {e}")
     
     # Import data with a limit to avoid timeout
     # We're starting with 100 records for initial testing
