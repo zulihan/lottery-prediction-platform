@@ -67,11 +67,12 @@ def process_french_loto_csv(file_path, skip_future_dates=True):
                 
     # Filter out future dates if requested
     if skip_future_dates:
-        today = pd.Timestamp.now().normalize()  # Get today's date without time component
-        future_dates_count = (data['date'] > today).sum()
+        # Use a fixed reference date of 2023-01-01 since our environment time might be in the future
+        reference_date = pd.Timestamp('2023-01-01').normalize()
+        future_dates_count = (data['date'] > reference_date).sum()
         if future_dates_count > 0:
-            print(f"Filtering out {future_dates_count} records with future dates")
-            data = data[data['date'] <= today]
+            print(f"Filtering out {future_dates_count} records with dates after {reference_date.date()}")
+            data = data[data['date'] <= reference_date]
             if len(data) == 0:
                 print("No records remaining after filtering out future dates")
                 return None

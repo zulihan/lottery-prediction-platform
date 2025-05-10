@@ -1058,10 +1058,10 @@ def add_french_loto_drawing(date, numbers, lucky, day_of_week=None, skip_future_
             # If it's still not a date object, try to convert with str
             date = datetime.strptime(str(date), '%Y-%m-%d').date()
         
-        # Skip future dates if requested
-        today = datetime.now().date()
-        if skip_future_dates and date > today:
-            logger.info(f"Skipping future French Loto drawing for date {date}")
+        # Skip future dates if requested using a fixed reference date
+        reference_date = datetime(2023, 1, 1).date()
+        if skip_future_dates and date > reference_date:
+            logger.info(f"Skipping French Loto drawing with date {date} after reference date {reference_date}")
             return False
             
         # Check if this drawing already exists
@@ -1141,10 +1141,10 @@ def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None,
             # If it's still not a date object, try to convert with str
             date = datetime.strptime(str(date), '%Y-%m-%d').date()
             
-        # Skip future dates if requested
-        today = datetime.now().date()
-        if skip_future_dates and date > today:
-            logger.info(f"Skipping future French Loto drawing for date {date}, draw {draw_num}")
+        # Skip future dates if requested using a fixed reference date
+        reference_date = datetime(2023, 1, 1).date()
+        if skip_future_dates and date > reference_date:
+            logger.info(f"Skipping French Loto drawing with date {date}, draw {draw_num} after reference date {reference_date}")
             return False
             
         # Convert draw_num to int if needed
