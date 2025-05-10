@@ -718,21 +718,11 @@ elif st.session_state.active_lottery == "French Loto" and st.session_state.frenc
             
             # Display even/odd distribution
             st.subheader("Even/Odd Distribution")
-            even_odd_dist = st.session_state.french_loto_statistics.calculate_even_odd_distribution()
+            even_odd_df = st.session_state.french_loto_statistics.calculate_even_odd_distribution()
             
-            if even_odd_dist is not None and not isinstance(even_odd_dist, str):
-                # Format data for display
-                even_odd_df = pd.DataFrame({
-                    'Type': ['0 Even', '1 Even', '2 Even', '3 Even', '4 Even', '5 Even'],
-                    'Percentage': [
-                        even_odd_dist.get((0, 5), 0),
-                        even_odd_dist.get((1, 4), 0),
-                        even_odd_dist.get((2, 3), 0),
-                        even_odd_dist.get((3, 2), 0),
-                        even_odd_dist.get((4, 1), 0),
-                        even_odd_dist.get((5, 0), 0)
-                    ]
-                })
+            if even_odd_df is not None and not isinstance(even_odd_df, str) and not even_odd_df.empty:
+                # Rename and simplify columns for display
+                even_odd_df['Type'] = even_odd_df['Combination'].str.split(' -').str[0]
                 
                 # Display as a pie chart
                 fig = px.pie(
@@ -748,14 +738,12 @@ elif st.session_state.active_lottery == "French Loto" and st.session_state.frenc
             
             # Display sum distribution
             st.subheader("Sum Distribution")
-            sum_dist = st.session_state.french_loto_statistics.calculate_sum_distribution()
+            sum_df = st.session_state.french_loto_statistics.calculate_sum_distribution()
             
-            if sum_dist is not None and not isinstance(sum_dist, str):
-                # Convert to DataFrame for display
-                sum_df = pd.DataFrame(sum_dist.items(), columns=['Sum Range', 'Percentage'])
-                
-                # Sort by sum range
-                sum_df = sum_df.sort_values('Sum Range')
+            if sum_df is not None and not isinstance(sum_df, str) and not sum_df.empty:
+                # Rename columns to match expected format
+                if 'Range' in sum_df.columns:
+                    sum_df = sum_df.rename(columns={'Range': 'Sum Range'})
                 
                 # Display as a bar chart
                 fig = px.bar(
@@ -772,15 +760,9 @@ elif st.session_state.active_lottery == "French Loto" and st.session_state.frenc
             
             # Display number range distribution
             st.subheader("Number Range Distribution")
-            range_dist = st.session_state.french_loto_statistics.calculate_range_distribution()
+            range_df = st.session_state.french_loto_statistics.calculate_range_distribution()
             
-            if range_dist is not None and not isinstance(range_dist, str):
-                # Convert to DataFrame for display
-                range_df = pd.DataFrame(range_dist.items(), columns=['Range', 'Percentage'])
-                
-                # Sort by range
-                range_df = range_df.sort_values('Range')
-                
+            if range_df is not None and not isinstance(range_df, str) and not range_df.empty:
                 # Display as a bar chart
                 fig = px.bar(
                     range_df,
