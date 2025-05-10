@@ -1180,39 +1180,47 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
                 with st.spinner("Generating optimized combinations..."):
                     # Generate combinations based on the selected strategy
                     try:
+                        # Get the appropriate strategy object based on active lottery
+                        strategy_obj = st.session_state.euromillions_strategy if st.session_state.active_lottery == "Euromillions" else st.session_state.french_loto_strategy
+                        
+                        if strategy_obj is None:
+                            st.error("Strategy object not initialized. Please load data first.")
+                            # Skip to the end of the try block
+                            raise ValueError("Strategy object not initialized")
+                            
                         if strategy_type == "Frequency Strategy":
-                            combinations = st.session_state.strategies.frequency_strategy(
+                            combinations = strategy_obj.frequency_strategy(
                                 num_combinations=num_combinations,
                                 recent_weight=recent_weight/100
                             )
                         elif strategy_type == "Mixed Strategy":
-                            combinations = st.session_state.strategies.mixed_strategy(
+                            combinations = strategy_obj.mixed_strategy(
                                 num_combinations=num_combinations,
                                 hot_ratio=hot_ratio/100
                             )
                         elif strategy_type == "Temporal Strategy":
-                            combinations = st.session_state.strategies.temporal_strategy(
+                            combinations = strategy_obj.temporal_strategy(
                                 num_combinations=num_combinations,
                                 lookback_period=lookback_period
                             )
                         elif strategy_type == "Stratified Sampling":
-                            combinations = st.session_state.strategies.stratified_sampling_strategy(
+                            combinations = strategy_obj.stratified_sampling_strategy(
                                 num_combinations=num_combinations,
                                 strata_type=strata_type,
                                 balance_factor=balance_factor
                             )
                         elif strategy_type == "Coverage Strategy":
-                            combinations = st.session_state.strategies.coverage_strategy(
+                            combinations = strategy_obj.coverage_strategy(
                                 num_combinations=num_combinations,
                                 balanced=optimization_method == "Balanced Coverage"
                             )
                         elif strategy_type == "Risk/Reward Optimization":
-                            combinations = st.session_state.strategies.risk_reward_strategy(
+                            combinations = strategy_obj.risk_reward_strategy(
                                 num_combinations=num_combinations,
                                 risk_level=risk_level
                             )
                         elif strategy_type == "Bayesian Model":
-                            combinations = st.session_state.strategies.bayesian_strategy(
+                            combinations = strategy_obj.bayesian_strategy(
                                 num_combinations=num_combinations,
                                 recent_draws_count=recent_draws_count,
                                 prior_type=prior_type,
@@ -1220,42 +1228,42 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
                                 smoothing_factor=smoothing_factor
                             )
                         elif strategy_type == "Markov Chain Model":
-                            combinations = st.session_state.strategies.markov_strategy(
+                            combinations = strategy_obj.markov_strategy(
                                 num_combinations=num_combinations,
                                 lag=lag
                             )
                         elif strategy_type == "Time Series Model":
-                            combinations = st.session_state.strategies.time_series_strategy(
+                            combinations = strategy_obj.time_series_strategy(
                                 num_combinations=num_combinations,
                                 window_size=window_size
                             )
                         elif strategy_type == "Anti-Cognitive Bias":
-                            combinations = st.session_state.strategies.cognitive_bias_strategy(
+                            combinations = strategy_obj.cognitive_bias_strategy(
                                 num_combinations=num_combinations
                             )
                         elif strategy_type == "Multi-Strategy":
                             # Generate combinations for each strategy
                             all_strategies = {
-                                "Frequency Strategy": lambda: st.session_state.strategies.frequency_strategy(num_combinations=1, recent_weight=0.6),
-                                "Mixed Strategy": lambda: st.session_state.strategies.mixed_strategy(num_combinations=1, hot_ratio=0.7),
-                                "Temporal Strategy": lambda: st.session_state.strategies.temporal_strategy(num_combinations=1, lookback_period=30),
-                                "Stratified Sampling": lambda: st.session_state.strategies.stratified_sampling_strategy(
+                                "Frequency Strategy": lambda: strategy_obj.frequency_strategy(num_combinations=1, recent_weight=0.6),
+                                "Mixed Strategy": lambda: strategy_obj.mixed_strategy(num_combinations=1, hot_ratio=0.7),
+                                "Temporal Strategy": lambda: strategy_obj.temporal_strategy(num_combinations=1, lookback_period=30),
+                                "Stratified Sampling": lambda: strategy_obj.stratified_sampling_strategy(
                                     num_combinations=1,
                                     strata_type="pattern",  # Use pattern as default for multi-strategy approach
                                     balance_factor=0.7
                                 ),
-                                "Coverage Strategy": lambda: st.session_state.strategies.coverage_strategy(num_combinations=1, balanced=True),
-                                "Risk/Reward Optimization": lambda: st.session_state.strategies.risk_reward_strategy(num_combinations=1, risk_level=5),
-                                "Bayesian Model": lambda: st.session_state.strategies.bayesian_strategy(
+                                "Coverage Strategy": lambda: strategy_obj.coverage_strategy(num_combinations=1, balanced=True),
+                                "Risk/Reward Optimization": lambda: strategy_obj.risk_reward_strategy(num_combinations=1, risk_level=5),
+                                "Bayesian Model": lambda: strategy_obj.bayesian_strategy(
                                     num_combinations=1, 
                                     recent_draws_count=20,
                                     prior_type="empirical", 
                                     update_method="sequential",
                                     smoothing_factor=0.1
                                 ),
-                                "Markov Chain Model": lambda: st.session_state.strategies.markov_strategy(num_combinations=1, lag=1),
-                                "Time Series Model": lambda: st.session_state.strategies.time_series_strategy(num_combinations=1, window_size=10),
-                                "Anti-Cognitive Bias": lambda: st.session_state.strategies.cognitive_bias_strategy(num_combinations=1)
+                                "Markov Chain Model": lambda: strategy_obj.markov_strategy(num_combinations=1, lag=1),
+                                "Time Series Model": lambda: strategy_obj.time_series_strategy(num_combinations=1, window_size=10),
+                                "Anti-Cognitive Bias": lambda: strategy_obj.cognitive_bias_strategy(num_combinations=1)
                             }
                             
                             combinations = []
