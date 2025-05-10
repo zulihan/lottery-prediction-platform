@@ -1081,6 +1081,131 @@ def add_french_loto_drawing(date, numbers, lucky, day_of_week=None):
         session.close()
         
     return success
+    
+def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None, winners=None, prizes=None, total_amount=None, currency='EUR'):
+    """
+    Add a single French Loto drawing to the database with detailed winner and prize information
+    
+    Parameters:
+    -----------
+    date : datetime.date, pandas.Timestamp, or str
+        The date of the drawing
+    numbers : list
+        List of 5 main numbers
+    lucky : int
+        The lucky number
+    day_of_week : str, optional
+        The day of the week for the drawing
+    winners : dict, optional
+        Dictionary of winners at each rank (rank1, rank2, etc.)
+    prizes : dict, optional
+        Dictionary of prize amounts at each rank (rank1, rank2, etc.)
+    total_amount : float, optional
+        Total prize pool amount
+    currency : str, optional
+        Currency of the prizes (EUR, FRF, etc.)
+        
+    Returns:
+    --------
+    bool
+        True if the drawing was added successfully
+    """
+    session = get_session()
+    success = False
+    
+    try:
+        # Convert date to a consistent datetime.date object format
+        if isinstance(date, str):
+            date = datetime.strptime(date, '%Y-%m-%d').date()
+        elif hasattr(date, 'date') and callable(getattr(date, 'date')):  # Handle pandas Timestamp
+            date = date.date()
+        elif not isinstance(date, type(datetime.now().date())):
+            # If it's still not a date object, try to convert with str
+            date = datetime.strptime(str(date), '%Y-%m-%d').date()
+            
+        # Check if this drawing already exists
+        existing = session.query(FrenchLotoDrawing).filter_by(date=date).first()
+        if existing:
+            logger.info(f"French Loto drawing for date {date} already exists, updating with details")
+            
+            # Update existing drawing with more details
+            if winners:
+                existing.winners_rank1 = winners.get('rank1', 0)
+                existing.winners_rank2 = winners.get('rank2', 0)
+                existing.winners_rank3 = winners.get('rank3', 0)
+                existing.winners_rank4 = winners.get('rank4', 0)
+                existing.winners_rank5 = winners.get('rank5', 0)
+                existing.winners_rank6 = winners.get('rank6', 0)
+                existing.winners_rank7 = winners.get('rank7', 0)
+            
+            if prizes:
+                existing.prize_rank1 = prizes.get('rank1', 0.0)
+                existing.prize_rank2 = prizes.get('rank2', 0.0)
+                existing.prize_rank3 = prizes.get('rank3', 0.0)
+                existing.prize_rank4 = prizes.get('rank4', 0.0)
+                existing.prize_rank5 = prizes.get('rank5', 0.0)
+                existing.prize_rank6 = prizes.get('rank6', 0.0)
+                existing.prize_rank7 = prizes.get('rank7', 0.0)
+            
+            if total_amount is not None:
+                existing.total_amount = total_amount
+                
+            if currency:
+                existing.currency = currency
+                
+            # Update draw info as well
+            existing.n1 = numbers[0]
+            existing.n2 = numbers[1]
+            existing.n3 = numbers[2]
+            existing.n4 = numbers[3]
+            existing.n5 = numbers[4]
+            existing.lucky = lucky
+            
+            if day_of_week:
+                existing.day_of_week = day_of_week
+                
+            session.commit()
+            success = True
+        else:
+            # Create new drawing with all details
+            drawing = FrenchLotoDrawing(
+                date=date,
+                day_of_week=day_of_week,
+                n1=numbers[0],
+                n2=numbers[1],
+                n3=numbers[2],
+                n4=numbers[3],
+                n5=numbers[4],
+                lucky=lucky,
+                winners_rank1=winners.get('rank1', 0) if winners else 0,
+                winners_rank2=winners.get('rank2', 0) if winners else 0,
+                winners_rank3=winners.get('rank3', 0) if winners else 0,
+                winners_rank4=winners.get('rank4', 0) if winners else 0,
+                winners_rank5=winners.get('rank5', 0) if winners else 0,
+                winners_rank6=winners.get('rank6', 0) if winners else 0,
+                winners_rank7=winners.get('rank7', 0) if winners else 0,
+                prize_rank1=prizes.get('rank1', 0.0) if prizes else 0.0,
+                prize_rank2=prizes.get('rank2', 0.0) if prizes else 0.0,
+                prize_rank3=prizes.get('rank3', 0.0) if prizes else 0.0,
+                prize_rank4=prizes.get('rank4', 0.0) if prizes else 0.0,
+                prize_rank5=prizes.get('rank5', 0.0) if prizes else 0.0,
+                prize_rank6=prizes.get('rank6', 0.0) if prizes else 0.0,
+                prize_rank7=prizes.get('rank7', 0.0) if prizes else 0.0,
+                total_amount=total_amount if total_amount is not None else 0.0,
+                currency=currency
+            )
+            
+            session.add(drawing)
+            session.commit()
+            success = True
+            logger.info(f"Added French Loto drawing with details for {date}")
+    except Exception as e:
+        logger.error(f"Error adding French Loto drawing with details: {str(e)}")
+        session.rollback()
+    finally:
+        session.close()
+        
+    return success
 
 def save_french_loto_prediction(numbers, lucky, strategy, score):
     """

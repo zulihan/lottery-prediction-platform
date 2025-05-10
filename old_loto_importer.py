@@ -25,13 +25,33 @@ def process_old_loto_csv(file_path):
     # 'annee_numero_de_tirage', '1er_ou_2eme_tirage', 'jour_de_tirage', 'date_de_tirage', etc.
     
     # First, convert dates
+    # The date_de_tirage seems to be in format YYYYMMDD (e.g., 20081004)
+    # Direct extraction from this field
+    
     try:
-        # Convert date from DD/MM/YYYY format
-        data['date'] = pd.to_datetime(data['date_de_tirage'], dayfirst=True)
+        # First try to extract date directly from date_de_tirage field
+        # Format appears to be YYYYMMDD with no separators
+        data['date'] = pd.to_datetime(data['date_de_tirage'], format='%Y%m%d')
+        print("Successfully converted dates using format '%Y%m%d'")
     except Exception as e:
-        print(f"Error converting dates: {str(e)}")
-        # Try with the modified parser function if standard parsing fails
-        data['date'] = data['date_de_tirage'].apply(lambda x: parse_french_date(x))
+        print(f"Error converting dates with specific format: {str(e)}")
+        
+        try:
+            # Try with default pandas parsing as a fallback
+            data['date'] = pd.to_datetime(data['date_de_tirage'])
+            print("Successfully converted dates using pandas default parsing")
+        except Exception as e:
+            print(f"Error converting dates with pandas default: {str(e)}")
+            print("Falling back to manual date parsing...")
+            
+            # Extract year from annee_numero_de_tirage as a last resort
+            data['year'] = data['annee_numero_de_tirage'].astype(str).str[:4].astype(int)
+            
+            # If everything fails, manually parse each date with our custom function
+            data['date'] = data.apply(
+                lambda row: parse_french_date(row['date_de_tirage'], row['year']), 
+                axis=1
+            )
     
     # Get day of week from abbreviations
     day_of_week_map = {
@@ -43,7 +63,7 @@ def process_old_loto_csv(file_path):
         'SA': 'Saturday',
         'DI': 'Sunday'
     }
-    data['day_of_week'] = data['jour_de_tirage'].map(day_of_week_map)
+    data['day_of_week'] = data['jour_de_tirage'].apply(lambda x: day_of_week_map.get(x, ''))
     
     # Map the drawing numbers
     # In old format, they're called 'boule_1', 'boule_2', etc.
@@ -94,27 +114,55 @@ def process_old_loto_csv(file_path):
     
     return renamed_data
 
-def parse_french_date(date_str):
-    """Parse date string in various French formats"""
+def parse_french_date(date_str, year=None):
+    """
+    Parse date string in various French formats
+    
+    Args:
+        date_str: Date string in French format
+        year: Known year to use if not present in date string (extracted from annee_numero_de_tirage)
+    """
     try:
         # Try basic date parsing
-        return parse(date_str, dayfirst=True)
+        parsed_date = parse(date_str, dayfirst=True)
+        # If the extracted year is provided and doesn't match, override it
+        if year and parsed_date.year != year:
+            return datetime.date(year, parsed_date.month, parsed_date.day)
+        return parsed_date
     except:
         # Try with regex patterns for various formats
         patterns = [
             r'(\d{1,2})/(\d{1,2})/(\d{4})',  # DD/MM/YYYY
             r'(\d{1,2})-(\d{1,2})-(\d{4})',  # DD-MM-YYYY
-            r'(\d{1,2})\.(\d{1,2})\.(\d{4})'  # DD.MM.YYYY
+            r'(\d{1,2})\.(\d{1,2})\.(\d{4})',  # DD.MM.YYYY
+            r'(\d{1,2})/(\d{1,2})',  # DD/MM (year missing)
+            r'(\d{1,2})-(\d{1,2})',  # DD-MM (year missing)
+            r'(\d{1,2})\.(\d{1,2})'  # DD.MM (year missing)
         ]
         
         for pattern in patterns:
             match = re.search(pattern, date_str)
             if match:
-                day, month, year = match.groups()
-                return datetime.date(int(year), int(month), int(day))
+                groups = match.groups()
+                # If we have DD/MM/YYYY format
+                if len(groups) == 3:
+                    day, month, extracted_year = groups
+                    # Use the provided year if it conflicts with the extracted one
+                    use_year = year if year and int(extracted_year) != year else int(extracted_year)
+                    return datetime.date(use_year, int(month), int(day))
+                # If we have DD/MM format and year is provided
+                elif len(groups) == 2 and year:
+                    day, month = groups
+                    return datetime.date(year, int(month), int(day))
         
-        # If all else fails
-        return None
+        # If all else fails and we have a year, use it with January 1
+        if year:
+            print(f"Warning: Could not parse date '{date_str}', using January 1 of year {year}")
+            return datetime.date(year, 1, 1)
+        
+        # Absolute fallback
+        print(f"Warning: Could not parse date '{date_str}', using today's date")
+        return datetime.date.today()
 
 def clean_amount(amount_str):
     """Clean and convert prize amount strings to float values"""
