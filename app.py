@@ -15,6 +15,10 @@ from utils import get_download_link_csv, get_download_link_excel
 import database
 from strategy_testing import StrategyTester
 from combination_analysis import analyze_full_combinations, analyze_number_combinations, analyze_star_combinations
+# French Loto imports
+from french_loto_statistics import FrenchLotoStatistics
+from french_loto_strategy import FrenchLotoStrategy
+from french_loto_visualization import FrenchLotoVisualization
 
 # Initialize database tables if they don't exist
 try:
@@ -53,16 +57,56 @@ if 'generated_combinations' not in st.session_state:
 if 'combinations_loaded' not in st.session_state:
     st.session_state.combinations_loaded = False
 
+# French Loto session state
+if 'french_loto_data_loaded' not in st.session_state:
+    st.session_state.french_loto_data_loaded = False
+if 'french_loto_data' not in st.session_state:
+    st.session_state.french_loto_data = None
+if 'french_loto_statistics' not in st.session_state:
+    st.session_state.french_loto_statistics = None
+if 'french_loto_strategy' not in st.session_state:
+    st.session_state.french_loto_strategy = None
+if 'french_loto_visualization' not in st.session_state:
+    st.session_state.french_loto_visualization = None
+if 'french_loto_generated_combinations' not in st.session_state:
+    st.session_state.french_loto_generated_combinations = {}
+
+# Set active lottery type
+if 'active_lottery' not in st.session_state:
+    st.session_state.active_lottery = "Euromillions"
+
 # Title and introduction
-st.title("Euromillions Advanced Prediction Application")
-st.markdown("""
-This application uses advanced statistical and mathematical models to analyze Euromillions drawing history
-and generate optimized combinations. The app supports different prediction strategies based on frequency analysis,
-Markov chains, Bayesian methods, and more.
-""")
+if st.session_state.active_lottery == "Euromillions":
+    st.title("Euromillions Advanced Prediction Application")
+    st.markdown("""
+    This application uses advanced statistical and mathematical models to analyze Euromillions drawing history
+    and generate optimized combinations. The app supports different prediction strategies based on frequency analysis,
+    Markov chains, Bayesian methods, and more.
+    """)
+else:
+    st.title("French Loto Advanced Prediction Application")
+    st.markdown("""
+    This application uses advanced statistical and mathematical models to analyze French Loto drawing history
+    and generate optimized combinations. The French Loto uses 5 numbers (1-49) and 1 lucky number (1-10).
+    The app supports multiple prediction strategies for optimal results.
+    """)
 
 # Sidebar for data upload and configuration
 with st.sidebar:
+    st.header("Lottery Selection")
+    
+    # Radio button to select lottery type
+    lottery_type = st.radio(
+        "Select lottery type:",
+        ["Euromillions", "French Loto"],
+        index=0 if st.session_state.active_lottery == "Euromillions" else 1
+    )
+    
+    # Update session state if lottery type changed
+    if lottery_type != st.session_state.active_lottery:
+        st.session_state.active_lottery = lottery_type
+        st.rerun()
+    
     st.header("Data Management")
     
     data_source = st.radio(
