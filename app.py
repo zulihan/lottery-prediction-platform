@@ -238,7 +238,9 @@ def main():
                 # Strategy selection
                 strategy_choice = st.selectbox(
                     "Select Strategy",
-                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced"],
+                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced", 
+                     "Bayesian", "Risk/Reward", "Coverage", "Markov Chain", "Time Series", 
+                     "Anti-Cognitive Bias"],
                     key="french_loto_strategy_choice"
                 )
                 
@@ -248,16 +250,46 @@ def main():
                 # Description based on selected strategy
                 if strategy_choice == "Frequency-Based":
                     st.info("This strategy selects numbers based on their historical frequency")
-                    recency_weight = st.slider("Recent draws importance", 0, 100, 50, key="french_loto_recency_weight")
+                    recency_weight = st.slider("Recent draws importance", 0, 100, 50, key="french_loto_recency_weight") / 100.0
+                
                 elif strategy_choice == "Pattern-Based":
                     st.info("This strategy analyzes patterns in the historical data")
                     pattern_depth = st.slider("Pattern recognition depth", 1, 10, 5, key="french_loto_pattern_depth")
+                
                 elif strategy_choice == "Statistical":
                     st.info("This strategy uses statistical models to predict likely numbers")
                     confidence = st.slider("Confidence level", 60, 99, 90, key="french_loto_confidence")
+                
                 elif strategy_choice == "Balanced":
                     st.info("This strategy balances between hot and cold numbers")
-                    balance = st.slider("Hot/Cold balance", 0, 100, 50, key="french_loto_balance")
+                    balance = st.slider("Hot/Cold balance", 0, 100, 50, key="french_loto_balance") / 100.0
+                
+                elif strategy_choice == "Bayesian":
+                    st.info("This strategy uses Bayesian inference to estimate probabilities based on historical data and prior knowledge")
+                    recent_draws_count = st.slider("Number of recent draws to analyze", 5, 50, 20, key="french_loto_recent_draws")
+                    prior_strength = st.slider("Prior knowledge strength", 1, 10, 5, key="french_loto_prior_strength")
+                
+                elif strategy_choice == "Risk/Reward":
+                    st.info("This strategy balances between risk and potential reward")
+                    risk_level = st.slider("Risk level (1-10)", 1, 10, 5, key="french_loto_risk_level")
+                    st.info("Higher risk level = more unusual number combinations with potentially higher rewards")
+                
+                elif strategy_choice == "Coverage":
+                    st.info("This strategy maximizes coverage of potential winning combinations")
+                    balanced = st.checkbox("Use balanced coverage", True, key="french_loto_balanced_coverage")
+                    st.info("Balanced coverage ensures more even distribution across the number space")
+                
+                elif strategy_choice == "Markov Chain":
+                    st.info("This strategy uses Markov Chain models to predict numbers based on transition probabilities")
+                    lag = st.slider("Lag (order of the Markov model)", 1, 3, 1, key="french_loto_markov_lag")
+                
+                elif strategy_choice == "Time Series":
+                    st.info("This strategy uses time series analysis to identify cyclical patterns")
+                    window_size = st.slider("Window size for analysis", 5, 20, 10, key="french_loto_window_size")
+                
+                elif strategy_choice == "Anti-Cognitive Bias":
+                    st.info("This strategy avoids common cognitive biases in number selection")
+                    st.write("This strategy purposely avoids patterns that are commonly selected due to cognitive biases, such as birthday numbers, lucky numbers, visual patterns, etc.")
                 
                 # Generate button
                 if st.button("Generate Combinations", key="french_loto_generate"):
@@ -283,7 +315,9 @@ def main():
                 # Strategy selection
                 strategy_choice = st.selectbox(
                     "Select Strategy",
-                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced"],
+                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced", 
+                     "Bayesian", "Risk/Reward", "Coverage", "Markov Chain", "Time Series", 
+                     "Anti-Cognitive Bias"],
                     key="euromillions_strategy_choice"
                 )
                 
@@ -293,30 +327,162 @@ def main():
                 # Description based on selected strategy
                 if strategy_choice == "Frequency-Based":
                     st.info("This strategy selects numbers based on their historical frequency")
-                    recency_weight = st.slider("Recent draws importance", 0, 100, 50, key="euromillions_recency_weight")
+                    recency_weight = st.slider("Recent draws importance", 0, 100, 50, key="euromillions_recency_weight") / 100.0
+                
                 elif strategy_choice == "Pattern-Based":
                     st.info("This strategy analyzes patterns in the historical data")
                     pattern_depth = st.slider("Pattern recognition depth", 1, 10, 5, key="euromillions_pattern_depth")
+                
                 elif strategy_choice == "Statistical":
                     st.info("This strategy uses statistical models to predict likely numbers")
                     confidence = st.slider("Confidence level", 60, 99, 90, key="euromillions_confidence")
+                
                 elif strategy_choice == "Balanced":
                     st.info("This strategy balances between hot and cold numbers")
-                    balance = st.slider("Hot/Cold balance", 0, 100, 50, key="euromillions_balance")
+                    balance = st.slider("Hot/Cold balance", 0, 100, 50, key="euromillions_balance") / 100.0
+                
+                elif strategy_choice == "Bayesian":
+                    st.info("This strategy uses Bayesian inference to estimate probabilities based on historical data and prior knowledge")
+                    recent_draws_count = st.slider("Number of recent draws to analyze", 5, 50, 20, key="euromillions_recent_draws")
+                    prior_strength = st.slider("Prior knowledge strength", 1, 10, 5, key="euromillions_prior_strength")
+                
+                elif strategy_choice == "Risk/Reward":
+                    st.info("This strategy balances between risk and potential reward")
+                    risk_level = st.slider("Risk level (1-10)", 1, 10, 5, key="euromillions_risk_level")
+                    st.info("Higher risk level = more unusual number combinations with potentially higher rewards")
+                
+                elif strategy_choice == "Coverage":
+                    st.info("This strategy maximizes coverage of potential winning combinations")
+                    balanced = st.checkbox("Use balanced coverage", True, key="euromillions_balanced_coverage")
+                    st.info("Balanced coverage ensures more even distribution across the number space")
+                
+                elif strategy_choice == "Markov Chain":
+                    st.info("This strategy uses Markov Chain models to predict numbers based on transition probabilities")
+                    lag = st.slider("Lag (order of the Markov model)", 1, 3, 1, key="euromillions_markov_lag")
+                
+                elif strategy_choice == "Time Series":
+                    st.info("This strategy uses time series analysis to identify cyclical patterns")
+                    window_size = st.slider("Window size for analysis", 5, 20, 10, key="euromillions_window_size")
+                
+                elif strategy_choice == "Anti-Cognitive Bias":
+                    st.info("This strategy avoids common cognitive biases in number selection")
+                    st.write("This strategy purposely avoids patterns that are commonly selected due to cognitive biases, such as birthday numbers, lucky numbers, visual patterns, etc.")
                 
                 # Generate button
                 if st.button("Generate Combinations", key="euromillions_generate"):
                     with st.spinner("Generating optimized combinations..."):
-                        # Display sample results
-                        st.subheader("Generated Combinations")
-                        
-                        for i in range(num_combinations):
-                            # These are just placeholder values for demonstration
-                            numbers = sorted([i+1, i+10, i+20, i+30, i+40])
-                            stars = [i+1, i+2]
+                        try:
+                            # Check if we have the statistics and strategies objects
+                            if 'euromillions_stats' not in st.session_state:
+                                from statistics import EuromillionsStatistics
+                                st.session_state.euromillions_stats = EuromillionsStatistics(st.session_state.processed_data)
                             
-                            # Display as a formatted string
-                            st.write(f"**Combination {i+1}:** Numbers {numbers}, Stars {stars}")
+                            if 'euromillions_strategies' not in st.session_state:
+                                from strategies import PredictionStrategies
+                                st.session_state.euromillions_strategies = PredictionStrategies(st.session_state.euromillions_stats)
+                            
+                            # Call the appropriate strategy based on selection
+                            strategies = st.session_state.euromillions_strategies
+                            
+                            if strategy_choice == "Frequency-Based":
+                                combinations = strategies.frequency_strategy(num_combinations, recency_weight)
+                            
+                            elif strategy_choice == "Pattern-Based":
+                                # Map to temporal strategy
+                                combinations = strategies.temporal_strategy(num_combinations, pattern_depth * 5)
+                            
+                            elif strategy_choice == "Statistical":
+                                # Map to stratified strategy
+                                combinations = strategies.stratified_sampling_strategy(num_combinations, "range", confidence / 100.0)
+                            
+                            elif strategy_choice == "Balanced":
+                                # Map to mixed strategy
+                                combinations = strategies.mixed_strategy(num_combinations, balance)
+                            
+                            elif strategy_choice == "Bayesian":
+                                combinations = strategies.bayesian_strategy(num_combinations, recent_draws_count, prior_strength)
+                            
+                            elif strategy_choice == "Risk/Reward":
+                                combinations = strategies.risk_reward_strategy(num_combinations, risk_level)
+                            
+                            elif strategy_choice == "Coverage":
+                                combinations = strategies.coverage_strategy(num_combinations, balanced)
+                            
+                            elif strategy_choice == "Markov Chain":
+                                combinations = strategies.markov_strategy(num_combinations, lag)
+                            
+                            elif strategy_choice == "Time Series":
+                                combinations = strategies.time_series_strategy(num_combinations, window_size)
+                            
+                            elif strategy_choice == "Anti-Cognitive Bias":
+                                combinations = strategies.cognitive_bias_strategy(num_combinations)
+                            
+                            else:
+                                # Default to frequency strategy
+                                combinations = strategies.frequency_strategy(num_combinations)
+                            
+                            # Display the generated combinations
+                            st.subheader("Generated Combinations")
+                            
+                            for i, combo in enumerate(combinations):
+                                # Format numbers and stars for display
+                                numbers = combo['numbers'] if isinstance(combo['numbers'], list) else sorted([int(n) for n in combo['numbers'].strip('[]').split(',')])
+                                stars = combo['stars'] if isinstance(combo['stars'], list) else sorted([int(s) for s in combo['stars'].strip('[]').split(',')])
+                                
+                                # Style for the numbers and stars
+                                numbers_html = ' '.join([f'<span style="background-color:#f0f0f0; padding:5px; margin:2px; border-radius:50%;">{n}</span>' for n in sorted(numbers)])
+                                stars_html = ' '.join([f'<span style="background-color:#ffe066; padding:5px; margin:2px; border-radius:50%;">★{s}</span>' for s in sorted(stars)])
+                                
+                                # Display score
+                                score = combo.get('score', 0)
+                                score_text = f"<span style='color:{'green' if score > 70 else 'orange' if score > 50 else 'red'}'>{score:.1f}</span>"
+                                
+                                # Display combination with HTML
+                                st.markdown(f"**Combination {i+1}** (Score: {score_text}):<br> {numbers_html} | {stars_html}", unsafe_allow_html=True)
+                                
+                            # Option to save combinations
+                            if 'generated_combinations' not in st.session_state:
+                                st.session_state.generated_combinations = combinations
+                            else:
+                                st.session_state.generated_combinations = combinations
+                                
+                            if st.button("Save These Combinations to Database"):
+                                try:
+                                    import json
+                                    from database import get_session
+                                    from database import GeneratedCombination
+                                    from datetime import datetime
+                                    
+                                    session = get_session()
+                                    saved_count = 0
+                                    
+                                    for combo in combinations:
+                                        # Convert to proper format
+                                        numbers_str = json.dumps(sorted(combo['numbers'])) if isinstance(combo['numbers'], list) else json.dumps(sorted([int(n) for n in combo['numbers'].strip('[]').split(',')]))
+                                        stars_str = json.dumps(sorted(combo['stars'])) if isinstance(combo['stars'], list) else json.dumps(sorted([int(s) for s in combo['stars'].strip('[]').split(',')]))
+                                        
+                                        # Create new record
+                                        new_combo = GeneratedCombination(
+                                            created_at=datetime.now().date(),
+                                            numbers=numbers_str,
+                                            stars=stars_str,
+                                            strategy=strategy_choice,
+                                            score=float(combo.get('score', 0))
+                                        )
+                                        
+                                        session.add(new_combo)
+                                        saved_count += 1
+                                    
+                                    session.commit()
+                                    st.success(f"✅ Successfully saved {saved_count} combinations to database!")
+                                    
+                                except Exception as e:
+                                    st.error(f"❌ Error saving combinations: {str(e)}")
+                                finally:
+                                    session.close()
+                        except Exception as e:
+                            st.error(f"❌ Error generating combinations: {str(e)}")
+                            st.error("Please check that you have loaded data correctly and try again.")
 
     # Results Analysis tab
     with tabs[3]:
