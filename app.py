@@ -464,6 +464,339 @@ elif st.session_state.active_lottery == "French Loto" and st.session_state.frenc
         "All Generated Combinations"
     ])
     
+    # French Loto - Data Overview tab
+    with tabs[0]:
+        st.header("French Loto Data Overview")
+        
+        # Display data summary
+        st.subheader("Dataset Information")
+        
+        # Handle date range safely - convert to string format to avoid type comparison issues
+        min_date = "N/A"
+        max_date = "N/A"
+        if not st.session_state.french_loto_data.empty:
+            # First, ensure all date values are of the same type (convert timestamps to dates)
+            try:
+                date_column = st.session_state.french_loto_data['date'].copy()
+                if pd.api.types.is_datetime64_any_dtype(date_column):
+                    date_column = date_column.dt.date
+                min_date = date_column.min()
+                max_date = date_column.max()
+            except Exception as e:
+                st.warning(f"Could not process date range: {str(e)}")
+        
+        # Create two columns for summary information
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Total Number of Drawings", len(st.session_state.french_loto_data))
+            st.metric("Date Range", f"{min_date} to {max_date}")
+            
+        with col2:
+            if not st.session_state.french_loto_data.empty:
+                # Calculate number of unique combinations
+                try:
+                    unique_combinations = len(st.session_state.french_loto_data.drop_duplicates(subset=['n1', 'n2', 'n3', 'n4', 'n5', 'lucky']))
+                    st.metric("Unique Combinations", unique_combinations)
+                    
+                    # Calculate percentage of unique combinations
+                    unique_percentage = (unique_combinations / len(st.session_state.french_loto_data)) * 100
+                    st.metric("Percentage of Unique Combinations", f"{unique_percentage:.2f}%")
+                except Exception as e:
+                    st.warning(f"Could not calculate unique combinations: {str(e)}")
+        
+        # Display the most recent drawing
+        st.subheader("Most Recent French Loto Drawing")
+        if not st.session_state.french_loto_data.empty:
+            try:
+                # Sort by date to get the most recent
+                recent_data = st.session_state.french_loto_data.sort_values(by='date', ascending=False).iloc[0]
+                
+                # Extract the data
+                recent_date = recent_data['date']
+                recent_numbers = [recent_data['n1'], recent_data['n2'], recent_data['n3'], recent_data['n4'], recent_data['n5']]
+                recent_lucky = recent_data['lucky']
+                
+                # Format the display of recent numbers
+                numbers_display = " - ".join([str(int(n)) for n in recent_numbers])
+                day_of_week = recent_data.get('day_of_week', '')
+                
+                # Show the numbers in a visually appealing way
+                st.write(f"**Date:** {recent_date} ({day_of_week})")
+                
+                # Create columns for the numbers and lucky number
+                cols = st.columns(6)
+                for i, num in enumerate(recent_numbers):
+                    with cols[i]:
+                        st.markdown(f"<div style='background-color:#1E88E5; color:white; padding:15px; border-radius:50%; text-align:center; width:50px; height:50px; line-height:50px; margin:auto'><b>{int(num)}</b></div>", unsafe_allow_html=True)
+                
+                # Lucky number with different color
+                with cols[5]:
+                    st.markdown(f"<div style='background-color:#D81B60; color:white; padding:15px; border-radius:50%; text-align:center; width:50px; height:50px; line-height:50px; margin:auto'><b>{int(recent_lucky)}</b></div>", unsafe_allow_html=True)
+            
+            except Exception as e:
+                st.error(f"Error displaying recent drawing: {str(e)}")
+        
+        # Display the data table with filter options
+        st.subheader("French Loto Historical Data")
+        
+        # Add filter options
+        with st.expander("Filter Options"):
+            # Create date range filter
+            date_min = min_date if min_date != "N/A" else datetime.date(2017, 1, 1)
+            date_max = max_date if max_date != "N/A" else datetime.date.today()
+            
+            if isinstance(date_min, str):
+                date_min = datetime.date(2017, 1, 1)
+            if isinstance(date_max, str):
+                date_max = datetime.date.today()
+                
+            date_range = st.date_input(
+                "Select date range",
+                value=(date_min, date_max),
+                min_value=date_min,
+                max_value=date_max
+            )
+            
+            # Ensure we have a valid range
+            if len(date_range) == 2:
+                filtered_data = st.session_state.french_loto_data.copy()
+                
+                # Convert the date column to datetime for filtering
+                if not filtered_data.empty:
+                    try:
+                        if not pd.api.types.is_datetime64_any_dtype(filtered_data['date']):
+                            filtered_data['date'] = pd.to_datetime(filtered_data['date'])
+                            
+                        # Filter by date
+                        start_date, end_date = date_range
+                        filtered_data = filtered_data[(filtered_data['date'].dt.date >= start_date) & 
+                                                    (filtered_data['date'].dt.date <= end_date)]
+                        
+                        # Display the filtered data
+                        st.write(f"Showing {len(filtered_data)} drawings from {start_date} to {end_date}")
+                        
+                        # Format the data for display - include drawing numbers, lucky numbers and date
+                        if not filtered_data.empty:
+                            display_data = filtered_data[['date', 'n1', 'n2', 'n3', 'n4', 'n5', 'lucky']].copy()
+                            
+                            # Format the column names for better display
+                            display_data.columns = ['Date', 'Number 1', 'Number 2', 'Number 3', 'Number 4', 'Number 5', 'Lucky Number']
+                            
+                            # Display the data table
+                            st.dataframe(display_data.sort_values(by='Date', ascending=False), use_container_width=True)
+                        else:
+                            st.info("No data available for the selected date range.")
+                    except Exception as e:
+                        st.error(f"Error filtering data: {str(e)}")
+            else:
+                st.info("Please select a date range to filter the data.")
+                
+        # Add download options
+        st.subheader("Download Data")
+        col1, col2 = st.columns(2)
+        with col1:
+            if not st.session_state.french_loto_data.empty:
+                csv_data = st.session_state.french_loto_data.to_csv(index=False)
+                csv_link = get_download_link_csv(csv_data, "french_loto_data.csv", "Download CSV")
+                st.markdown(csv_link, unsafe_allow_html=True)
+        with col2:
+            if not st.session_state.french_loto_data.empty:
+                excel_link = get_download_link_excel(st.session_state.french_loto_data, "french_loto_data.xlsx", "Download Excel")
+                st.markdown(excel_link, unsafe_allow_html=True)
+    
+    # French Loto - Statistical Analysis tab
+    with tabs[1]:
+        st.header("French Loto Statistical Analysis")
+        
+        if st.session_state.french_loto_statistics is not None:
+            # Create two columns for the analysis
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Most Frequent Numbers")
+                # Get the most frequent numbers
+                hot_numbers = st.session_state.french_loto_statistics.get_hot_numbers(count=10)
+                
+                # Format the data for display
+                if hot_numbers is not None and not isinstance(hot_numbers, str):
+                    hot_numbers_df = pd.DataFrame({
+                        'Number': hot_numbers.index,
+                        'Frequency': hot_numbers.values
+                    })
+                    
+                    # Display as a bar chart
+                    fig = px.bar(
+                        hot_numbers_df,
+                        x='Number',
+                        y='Frequency',
+                        title='Top 10 Most Frequent Numbers',
+                        color='Frequency',
+                        color_continuous_scale='Blues'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No frequency data available.")
+            
+            with col2:
+                st.subheader("Most Frequent Lucky Numbers")
+                # Get the most frequent lucky numbers
+                hot_lucky = st.session_state.french_loto_statistics.get_hot_lucky_numbers(count=5)
+                
+                # Format the data for display
+                if hot_lucky is not None and not isinstance(hot_lucky, str):
+                    hot_lucky_df = pd.DataFrame({
+                        'Lucky Number': hot_lucky.index,
+                        'Frequency': hot_lucky.values
+                    })
+                    
+                    # Display as a bar chart
+                    fig = px.bar(
+                        hot_lucky_df,
+                        x='Lucky Number',
+                        y='Frequency',
+                        title='Top 5 Most Frequent Lucky Numbers',
+                        color='Frequency',
+                        color_continuous_scale='Reds'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No lucky number frequency data available.")
+            
+            # Display the least frequent numbers
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Least Frequent Numbers")
+                # Get the least frequent numbers
+                cold_numbers = st.session_state.french_loto_statistics.get_cold_numbers(count=10)
+                
+                # Format the data for display
+                if cold_numbers is not None and not isinstance(cold_numbers, str):
+                    cold_numbers_df = pd.DataFrame({
+                        'Number': cold_numbers.index,
+                        'Frequency': cold_numbers.values
+                    })
+                    
+                    # Display as a bar chart
+                    fig = px.bar(
+                        cold_numbers_df,
+                        x='Number',
+                        y='Frequency',
+                        title='Top 10 Least Frequent Numbers',
+                        color='Frequency',
+                        color_continuous_scale='Blues_r'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No frequency data available.")
+            
+            with col2:
+                st.subheader("Least Frequent Lucky Numbers")
+                # Get the least frequent lucky numbers
+                cold_lucky = st.session_state.french_loto_statistics.get_cold_lucky_numbers(count=5)
+                
+                # Format the data for display
+                if cold_lucky is not None and not isinstance(cold_lucky, str):
+                    cold_lucky_df = pd.DataFrame({
+                        'Lucky Number': cold_lucky.index,
+                        'Frequency': cold_lucky.values
+                    })
+                    
+                    # Display as a bar chart
+                    fig = px.bar(
+                        cold_lucky_df,
+                        x='Lucky Number',
+                        y='Frequency',
+                        title='Top 5 Least Frequent Lucky Numbers',
+                        color='Frequency',
+                        color_continuous_scale='Reds_r'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No lucky number frequency data available.")
+            
+            # Display even/odd distribution
+            st.subheader("Even/Odd Distribution")
+            even_odd_dist = st.session_state.french_loto_statistics.calculate_even_odd_distribution()
+            
+            if even_odd_dist is not None and not isinstance(even_odd_dist, str):
+                # Format data for display
+                even_odd_df = pd.DataFrame({
+                    'Type': ['0 Even', '1 Even', '2 Even', '3 Even', '4 Even', '5 Even'],
+                    'Percentage': [
+                        even_odd_dist.get((0, 5), 0),
+                        even_odd_dist.get((1, 4), 0),
+                        even_odd_dist.get((2, 3), 0),
+                        even_odd_dist.get((3, 2), 0),
+                        even_odd_dist.get((4, 1), 0),
+                        even_odd_dist.get((5, 0), 0)
+                    ]
+                })
+                
+                # Display as a pie chart
+                fig = px.pie(
+                    even_odd_df,
+                    values='Percentage',
+                    names='Type',
+                    title='Even/Odd Number Distribution',
+                    color_discrete_sequence=px.colors.sequential.Viridis
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No even/odd distribution data available.")
+            
+            # Display sum distribution
+            st.subheader("Sum Distribution")
+            sum_dist = st.session_state.french_loto_statistics.calculate_sum_distribution()
+            
+            if sum_dist is not None and not isinstance(sum_dist, str):
+                # Convert to DataFrame for display
+                sum_df = pd.DataFrame(sum_dist.items(), columns=['Sum Range', 'Percentage'])
+                
+                # Sort by sum range
+                sum_df = sum_df.sort_values('Sum Range')
+                
+                # Display as a bar chart
+                fig = px.bar(
+                    sum_df,
+                    x='Sum Range',
+                    y='Percentage',
+                    title='Distribution of Sum of Numbers',
+                    color='Percentage',
+                    color_continuous_scale='Viridis'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No sum distribution data available.")
+            
+            # Display number range distribution
+            st.subheader("Number Range Distribution")
+            range_dist = st.session_state.french_loto_statistics.calculate_range_distribution()
+            
+            if range_dist is not None and not isinstance(range_dist, str):
+                # Convert to DataFrame for display
+                range_df = pd.DataFrame(range_dist.items(), columns=['Range', 'Percentage'])
+                
+                # Sort by range
+                range_df = range_df.sort_values('Range')
+                
+                # Display as a bar chart
+                fig = px.bar(
+                    range_df,
+                    x='Range',
+                    y='Percentage',
+                    title='Distribution of Range Between Lowest and Highest Number',
+                    color='Percentage',
+                    color_continuous_scale='Viridis'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No range distribution data available.")
+        else:
+            st.warning("Statistical analysis not available. Please load French Loto data first.")
+    
+if st.session_state.active_lottery == "Euromillions" and st.session_state.data_loaded:
     # Data Overview tab
     with tabs[0]:
         st.header("Data Overview")
