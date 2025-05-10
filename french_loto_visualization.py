@@ -1,366 +1,482 @@
-import plotly.express as px
-import plotly.graph_objects as go
+"""
+Visualizations for French Loto data
+"""
+
 import pandas as pd
 import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import logging
+import datetime
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class FrenchLotoVisualization:
     """
-    Class for creating visualizations of French Loto data.
+    Class for creating visualizations of French Loto data
     """
     
     def __init__(self, data, statistics):
         """
-        Initialize with data and statistics.
+        Initialize with data and statistics
         
         Args:
-            data: DataFrame with French Loto data
+            data: pandas DataFrame containing French Loto data
             statistics: FrenchLotoStatistics object
         """
         self.data = data
         self.statistics = statistics
-    
-    def plot_number_frequency(self, weighted_freq=None):
-        """
-        Plot frequency of main numbers.
+        self.main_cols = ['n1', 'n2', 'n3', 'n4', 'n5']
+        self.lucky_col = 'lucky'
         
-        Args:
-            weighted_freq: Optional weighted frequency Series
+        # Check if we need to use alternative column names
+        if 'n1' not in self.data.columns and 'number1' in self.data.columns:
+            self.main_cols = ['number1', 'number2', 'number3', 'number4', 'number5']
             
-        Returns:
-            Plotly figure
+        if 'lucky' not in self.data.columns and 'lucky_number' in self.data.columns:
+            self.lucky_col = 'lucky_number'
+    
+    def plot_number_frequency(self):
         """
-        if weighted_freq is None:
-            weighted_freq = self.statistics.number_frequency
+        Create a bar chart of number frequencies
         
-        # Create a DataFrame for plotting
-        df = pd.DataFrame({
-            'Number': weighted_freq.index,
-            'Frequency': weighted_freq.values
+        Returns:
+            plotly.graph_objects.Figure
+        """
+        if not hasattr(self.statistics, 'main_number_freq'):
+            self.statistics.analyze_frequencies()
+            
+        # Get frequency data
+        main_freq = self.statistics.main_number_freq
+        
+        # Create dataframe for plotting
+        freq_df = pd.DataFrame({
+            'Number': list(main_freq.keys()),
+            'Frequency': list(main_freq.values())
         })
         
-        # Create the figure with Plotly
+        # Sort by number for this visualization
+        freq_df = freq_df.sort_values('Number')
+        
+        # Create figure
         fig = px.bar(
-            df,
-            x='Number',
+            freq_df, 
+            x='Number', 
             y='Frequency',
-            title='French Loto Number Frequency',
+            title='French Loto Number Frequency (1-49)',
+            labels={'Number': 'Number', 'Frequency': 'Times Drawn'},
             color='Frequency',
             color_continuous_scale='Viridis'
         )
         
-        # Update layout
+        # Customize layout
         fig.update_layout(
-            xaxis_title='Number (1-49)',
+            xaxis_title='Number',
             yaxis_title='Frequency',
-            xaxis=dict(tickmode='linear', dtick=5),
-            yaxis=dict(tickformat='.3f'),
-            height=500
+            hovermode='closest',
+            coloraxis_showscale=True,
+            height=500,
+            width=800
         )
         
         return fig
     
-    def plot_lucky_frequency(self, weighted_freq=None):
+    def plot_lucky_number_frequency(self):
         """
-        Plot frequency of lucky numbers.
+        Create a bar chart of lucky number frequencies
         
-        Args:
-            weighted_freq: Optional weighted frequency Series
-            
         Returns:
-            Plotly figure
+            plotly.graph_objects.Figure
         """
-        if weighted_freq is None:
-            weighted_freq = self.statistics.lucky_frequency
+        if not hasattr(self.statistics, 'lucky_number_freq'):
+            self.statistics.analyze_frequencies()
+            
+        # Get frequency data
+        lucky_freq = self.statistics.lucky_number_freq
         
-        # Create a DataFrame for plotting
-        df = pd.DataFrame({
-            'Lucky Number': weighted_freq.index,
-            'Frequency': weighted_freq.values
+        # Create dataframe for plotting
+        freq_df = pd.DataFrame({
+            'Lucky Number': list(lucky_freq.keys()),
+            'Frequency': list(lucky_freq.values())
         })
         
-        # Create the figure with Plotly
+        # Sort by number for this visualization
+        freq_df = freq_df.sort_values('Lucky Number')
+        
+        # Create figure
         fig = px.bar(
-            df,
-            x='Lucky Number',
+            freq_df, 
+            x='Lucky Number', 
             y='Frequency',
-            title='French Loto Lucky Number Frequency',
+            title='French Loto Lucky Number Frequency (1-10)',
+            labels={'Lucky Number': 'Lucky Number', 'Frequency': 'Times Drawn'},
             color='Frequency',
-            color_continuous_scale='Reds'
+            color_continuous_scale='Inferno'
         )
         
-        # Update layout
+        # Customize layout
         fig.update_layout(
-            xaxis_title='Lucky Number (1-10)',
+            xaxis_title='Lucky Number',
             yaxis_title='Frequency',
-            xaxis=dict(tickmode='linear', dtick=1),
-            yaxis=dict(tickformat='.3f'),
-            height=400
+            hovermode='closest',
+            height=400,
+            width=800
         )
         
         return fig
     
-    def plot_number_heatmap(self, recent_draws=100):
+    def plot_hot_cold_numbers(self):
         """
-        Create a heatmap of number occurrences in recent draws.
+        Create a visualization of hot and cold numbers
         
-        Args:
-            recent_draws: Number of recent draws to include
-            
         Returns:
-            Plotly figure
+            plotly.graph_objects.Figure
         """
-        if self.data.empty:
-            # Return empty figure if no data
-            return go.Figure()
+        hot_cold = self.statistics.hot_cold_numbers
         
-        # Get recent draws
-        recent_data = self.data.sort_values('date', ascending=False).head(recent_draws)
+        # Create a DataFrame with all numbers
+        all_numbers = pd.DataFrame({'Number': range(1, 50)})
         
-        # Create a matrix for the heatmap
-        matrix = np.zeros((10, 5))  # 10 rows, 5 columns for numbers
+        # Label hot and cold numbers
+        all_numbers['Status'] = 'Neutral'
+        all_numbers.loc[all_numbers['Number'].isin(hot_cold['hot_numbers']), 'Status'] = 'Hot'
+        all_numbers.loc[all_numbers['Number'].isin(hot_cold['cold_numbers']), 'Status'] = 'Cold'
         
-        # Fill the matrix with occurrence counts
-        for _, row in recent_data.iterrows():
-            for i, col in enumerate(['n1', 'n2', 'n3', 'n4', 'n5']):
-                num = row[col]
-                # Map number to position in matrix (1-49 -> 0-9 × 0-4)
-                r = (num - 1) // 5
-                c = i
-                if r < 10:  # Ensure we're within matrix bounds
-                    matrix[r, c] += 1
+        # Create color mapping
+        color_map = {'Hot': 'red', 'Cold': 'blue', 'Neutral': 'gray'}
         
-        # Create x and y labels
-        y_labels = [f"{i*5+1}-{i*5+5}" for i in range(10)]
-        x_labels = ["First", "Second", "Third", "Fourth", "Fifth"]
+        # Create figure
+        fig = px.scatter(
+            all_numbers,
+            x='Number',
+            y=[1] * len(all_numbers),  # All points at same y level
+            color='Status',
+            color_discrete_map=color_map,
+            title=f'Hot and Cold Numbers ({hot_cold["recent_period"]})',
+            size_max=15,
+            size=[10 if status == 'Neutral' else 15 for status in all_numbers['Status']],
+            hover_data={'Number': True, 'Status': True}
+        )
         
-        # Create the heatmap
+        # Customize layout
+        fig.update_layout(
+            xaxis_title='Number',
+            yaxis_visible=False,
+            yaxis_showticklabels=False,
+            height=300,
+            width=800,
+            showlegend=True
+        )
+        
+        # Update traces
+        fig.update_traces(
+            marker=dict(
+                line=dict(width=1, color='DarkSlateGrey')
+            )
+        )
+        
+        return fig
+    
+    def plot_hot_cold_lucky(self):
+        """
+        Create a visualization of hot and cold lucky numbers
+        
+        Returns:
+            plotly.graph_objects.Figure
+        """
+        hot_cold = self.statistics.hot_cold_numbers
+        
+        # Create a DataFrame with all lucky numbers
+        all_numbers = pd.DataFrame({'Lucky Number': range(1, 11)})
+        
+        # Label hot and cold numbers
+        all_numbers['Status'] = 'Neutral'
+        all_numbers.loc[all_numbers['Lucky Number'].isin(hot_cold['hot_lucky']), 'Status'] = 'Hot'
+        all_numbers.loc[all_numbers['Lucky Number'].isin(hot_cold['cold_lucky']), 'Status'] = 'Cold'
+        
+        # Create color mapping
+        color_map = {'Hot': 'red', 'Cold': 'blue', 'Neutral': 'gray'}
+        
+        # Create figure
+        fig = px.scatter(
+            all_numbers,
+            x='Lucky Number',
+            y=[1] * len(all_numbers),  # All points at same y level
+            color='Status',
+            color_discrete_map=color_map,
+            title=f'Hot and Cold Lucky Numbers ({hot_cold["recent_period"]})',
+            size_max=15,
+            size=[10 if status == 'Neutral' else 15 for status in all_numbers['Status']],
+            hover_data={'Lucky Number': True, 'Status': True}
+        )
+        
+        # Customize layout
+        fig.update_layout(
+            xaxis_title='Lucky Number',
+            yaxis_visible=False,
+            yaxis_showticklabels=False,
+            height=300,
+            width=800,
+            showlegend=True
+        )
+        
+        # Update traces
+        fig.update_traces(
+            marker=dict(
+                line=dict(width=1, color='DarkSlateGrey')
+            )
+        )
+        
+        return fig
+    
+    def plot_monthly_trends(self):
+        """
+        Plot trends over time by month
+        
+        Returns:
+            plotly.graph_objects.Figure
+        """
+        # Ensure date is datetime
+        if self.data['date'].dtype != 'datetime64[ns]':
+            self.data['date'] = pd.to_datetime(self.data['date'])
+        
+        # Create month and year columns
+        self.data['year'] = self.data['date'].dt.year
+        self.data['month'] = self.data['date'].dt.month
+        
+        # Group by year-month and count
+        monthly_counts = self.data.groupby(['year', 'month']).size().reset_index(name='count')
+        
+        # Create date column for x-axis
+        monthly_counts['date'] = pd.to_datetime(monthly_counts['year'].astype(str) + '-' + 
+                                             monthly_counts['month'].astype(str) + '-01')
+        
+        # Sort by date
+        monthly_counts = monthly_counts.sort_values('date')
+        
+        # Create figure
+        fig = px.line(
+            monthly_counts,
+            x='date',
+            y='count',
+            title='French Loto Drawings per Month',
+            labels={'count': 'Number of Drawings', 'date': 'Date'}
+        )
+        
+        # Customize layout
+        fig.update_layout(
+            xaxis_title='Date',
+            yaxis_title='Number of Drawings',
+            height=400,
+            width=800
+        )
+        
+        return fig
+    
+    def plot_number_heatmap(self):
+        """
+        Create a heatmap showing which numbers appear together
+        
+        Returns:
+            plotly.graph_objects.Figure
+        """
+        # Create an empty 49x49 matrix
+        matrix = np.zeros((49, 49))
+        
+        # Count co-occurrences
+        for _, row in self.data.iterrows():
+            numbers = [row[col] for col in self.main_cols]
+            for i, num1 in enumerate(numbers):
+                for j, num2 in enumerate(numbers):
+                    if i != j:  # Avoid counting a number with itself
+                        matrix[num1-1, num2-1] += 1
+        
+        # Create figure
         fig = go.Figure(data=go.Heatmap(
             z=matrix,
-            x=x_labels,
-            y=y_labels,
+            x=list(range(1, 50)),
+            y=list(range(1, 50)),
             colorscale='Viridis',
-            zmin=0,
-            zmax=matrix.max(),
-            hoverongaps=False,
             showscale=True,
-            colorbar=dict(title='Occurrences')
+            hoverongaps=False
         ))
         
-        # Update layout
+        # Customize layout
         fig.update_layout(
-            title=f'Number Occurrence Heatmap (Last {recent_draws} Draws)',
-            xaxis_title='Position in Draw',
-            yaxis_title='Number Range',
-            height=600
+            title='Number Co-occurrence Heatmap',
+            xaxis_title='Number',
+            yaxis_title='Number',
+            height=700,
+            width=700
         )
         
         return fig
     
-    def plot_even_odd_distribution(self):
+    def plot_pair_frequency(self):
         """
-        Plot distribution of even/odd numbers.
+        Plot the frequency of number pairs
         
         Returns:
-            Plotly figure
+            plotly.graph_objects.Figure
         """
-        if not hasattr(self.statistics, 'even_odd_distribution') or not self.statistics.even_odd_distribution:
-            # Return empty figure if no data
-            return go.Figure()
+        # Get the top pairs
+        top_pairs = self.statistics.pair_analysis
         
-        # Create a DataFrame for plotting
-        df = pd.DataFrame({
-            'Even Count': list(self.statistics.even_odd_distribution.keys()),
-            'Percentage': [v * 100 for v in self.statistics.even_odd_distribution.values()]
+        # Create dataframe for plotting
+        pair_df = pd.DataFrame({
+            'Pair': [f"{pair[0]}-{pair[1]}" for pair in top_pairs.keys()],
+            'Count': list(top_pairs.values())
         })
         
-        # Create the figure with Plotly
+        # Sort by frequency
+        pair_df = pair_df.sort_values('Count', ascending=False).head(15)
+        
+        # Create figure
         fig = px.bar(
-            df,
-            x='Even Count',
-            y='Percentage',
-            title='Distribution of Even Numbers in French Loto Draws',
-            color='Percentage',
-            color_continuous_scale='Blues'
+            pair_df,
+            x='Pair',
+            y='Count',
+            title='Most Frequent Number Pairs',
+            labels={'Pair': 'Number Pair', 'Count': 'Times Appeared Together'},
+            color='Count',
+            color_continuous_scale='Viridis'
         )
         
-        # Update layout
+        # Customize layout
         fig.update_layout(
-            xaxis_title='Number of Even Numbers in Draw',
-            yaxis_title='Percentage of Draws',
-            xaxis=dict(tickmode='linear', dtick=1),
-            yaxis=dict(tickformat='.1f', suffix='%'),
-            height=400
+            xaxis_title='Number Pair',
+            yaxis_title='Frequency',
+            height=500,
+            width=800
         )
         
         return fig
     
-    def plot_sum_distribution(self):
+    def plot_combination_dashboard(self, combinations):
         """
-        Plot distribution of sum of numbers.
-        
-        Returns:
-            Plotly figure
-        """
-        if not hasattr(self.statistics, 'sum_distribution') or not self.statistics.sum_distribution:
-            # Return empty figure if no data
-            return go.Figure()
-        
-        # Create a DataFrame for plotting
-        df = pd.DataFrame({
-            'Sum Range': list(self.statistics.sum_distribution.keys()),
-            'Percentage': [v * 100 for v in self.statistics.sum_distribution.values()]
-        })
-        
-        # Create the figure with Plotly
-        fig = px.bar(
-            df,
-            x='Sum Range',
-            y='Percentage',
-            title='Distribution of Sum of Numbers in French Loto Draws',
-            color='Percentage',
-            color_continuous_scale='Greens'
-        )
-        
-        # Update layout
-        fig.update_layout(
-            xaxis_title='Sum Range',
-            yaxis_title='Percentage of Draws',
-            yaxis=dict(tickformat='.1f', suffix='%'),
-            height=400
-        )
-        
-        return fig
-    
-    def plot_range_distribution(self):
-        """
-        Plot distribution of range between min and max number.
-        
-        Returns:
-            Plotly figure
-        """
-        if not hasattr(self.statistics, 'range_distribution') or not self.statistics.range_distribution:
-            # Return empty figure if no data
-            return go.Figure()
-        
-        # Create a DataFrame for plotting
-        df = pd.DataFrame({
-            'Range': list(self.statistics.range_distribution.keys()),
-            'Percentage': [v * 100 for v in self.statistics.range_distribution.values()]
-        })
-        
-        # Create the figure with Plotly
-        fig = px.bar(
-            df,
-            x='Range',
-            y='Percentage',
-            title='Distribution of Range between Min and Max Number',
-            color='Percentage',
-            color_continuous_scale='Purples'
-        )
-        
-        # Update layout
-        fig.update_layout(
-            xaxis_title='Range',
-            yaxis_title='Percentage of Draws',
-            yaxis=dict(tickformat='.1f', suffix='%'),
-            height=400
-        )
-        
-        return fig
-    
-    def plot_draws_by_day(self):
-        """
-        Plot number of draws by day of the week.
-        
-        Returns:
-            Plotly figure
-        """
-        if self.data.empty or 'day_of_week' not in self.data.columns:
-            # Return empty figure if no data
-            return go.Figure()
-        
-        # Create a DataFrame for plotting
-        day_counts = self.data['day_of_week'].value_counts()
-        
-        # Define order of days
-        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        
-        # Reindex to ensure all days are included and in correct order
-        day_counts = day_counts.reindex(day_order, fill_value=0)
-        
-        # Create the figure with Plotly
-        fig = px.bar(
-            x=day_counts.index,
-            y=day_counts.values,
-            title='Number of French Loto Draws by Day of Week',
-            color=day_counts.values,
-            color_continuous_scale='Oranges'
-        )
-        
-        # Update layout
-        fig.update_layout(
-            xaxis_title='Day of Week',
-            yaxis_title='Number of Draws',
-            height=400
-        )
-        
-        return fig
-    
-    def plot_timeline(self, metric='winning_numbers'):
-        """
-        Plot timeline of draws with selected metric.
+        Create a dashboard visualization for generated combinations
         
         Args:
-            metric: What to visualize ('winning_numbers' or 'lucky_numbers')
+            combinations: List of combination dictionaries
             
         Returns:
-            Plotly figure
+            plotly.graph_objects.Figure
         """
-        if self.data.empty:
-            # Return empty figure if no data
-            return go.Figure()
+        # Create subplots
+        fig = make_subplots(
+            rows=len(combinations), 
+            cols=1,
+            subplot_titles=[f"Combination {i+1}: {combo['strategy']}" for i, combo in enumerate(combinations)],
+            vertical_spacing=0.1
+        )
         
-        # Sort data by date
-        sorted_data = self.data.sort_values('date')
+        # Color map for strategies
+        strategy_colors = {
+            "Frequency-based": "blue",
+            "Hot-Cold Balance": "purple",
+            "Balanced Range": "green",
+            "Pattern Analysis": "orange"
+        }
         
-        if metric == 'winning_numbers':
-            # Create a figure with 5 scatter traces, one for each number
-            fig = go.Figure()
+        # Add combinations to the plot
+        for i, combo in enumerate(combinations):
+            main_nums = combo['main_numbers']
+            lucky = combo['lucky_number']
+            score = combo['score']
+            strategy = combo['strategy']
             
-            for i, col in enumerate(['n1', 'n2', 'n3', 'n4', 'n5']):
-                fig.add_trace(go.Scatter(
-                    x=sorted_data['date'],
-                    y=sorted_data[col],
+            # Background color for each combination based on score
+            score_color = f"rgba(255, {255 - int(score*2)}, 0, 0.1)"
+            
+            # Main numbers
+            for num in main_nums:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[num],
+                        y=[0],
+                        mode='markers',
+                        marker=dict(
+                            symbol='circle',
+                            size=30,
+                            color=strategy_colors.get(strategy, 'blue'),
+                            line=dict(color='black', width=1)
+                        ),
+                        text=f"{num}",
+                        textposition="middle center",
+                        name=f"Main {num}",
+                        showlegend=False,
+                        hoverinfo='text',
+                        hovertext=f"Number: {num}"
+                    ),
+                    row=i+1, col=1
+                )
+            
+            # Lucky number
+            fig.add_trace(
+                go.Scatter(
+                    x=[lucky],
+                    y=[0],
                     mode='markers',
-                    name=f'Number {i+1}',
-                    marker=dict(size=8)
-                ))
+                    marker=dict(
+                        symbol='star',
+                        size=35,
+                        color='gold',
+                        line=dict(color='black', width=1)
+                    ),
+                    text=f"{lucky}",
+                    textposition="middle center",
+                    name=f"Lucky {lucky}",
+                    showlegend=False,
+                    hoverinfo='text',
+                    hovertext=f"Lucky Number: {lucky}"
+                ),
+                row=i+1, col=1
+            )
             
-            title = 'Timeline of Winning Numbers'
-            y_title = 'Number (1-49)'
+            # Score text
+            fig.add_annotation(
+                x=35,
+                y=0,
+                text=f"Score: {score}/100",
+                showarrow=False,
+                font=dict(size=14, color="black"),
+                row=i+1, col=1
+            )
             
-        else:  # lucky_numbers
-            # Create a figure with 1 scatter trace for lucky numbers
-            fig = go.Figure()
+            # Add a background for each combination
+            fig.add_shape(
+                type="rect",
+                x0=0,
+                y0=-0.5,
+                x1=50,
+                y1=0.5,
+                fillcolor=score_color,
+                line=dict(width=0),
+                row=i+1, col=1
+            )
             
-            fig.add_trace(go.Scatter(
-                x=sorted_data['date'],
-                y=sorted_data['lucky'],
-                mode='markers',
-                name='Lucky Number',
-                marker=dict(size=8, color='red')
-            ))
-            
-            title = 'Timeline of Lucky Numbers'
-            y_title = 'Lucky Number (1-10)'
+            # Update axes for each subplot
+            fig.update_xaxes(
+                title="Numbers",
+                range=[0, 50],
+                row=i+1, col=1
+            )
+            fig.update_yaxes(
+                visible=False,
+                range=[-0.5, 0.5],
+                row=i+1, col=1
+            )
         
-        # Update layout
+        # Customize overall layout
         fig.update_layout(
-            title=title,
-            xaxis_title='Date',
-            yaxis_title=y_title,
-            height=500,
-            showlegend=True
+            title="French Loto Optimized Combinations",
+            height=200 * len(combinations),
+            width=800,
+            showlegend=False,
+            margin=dict(t=50, l=50, r=50, b=50),
         )
         
         return fig
