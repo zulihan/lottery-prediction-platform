@@ -4,7 +4,7 @@ import time
 import json
 import logging
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Date, Float, Boolean, ForeignKey, Table, MetaData, inspect
+from sqlalchemy import create_engine, Column, Integer, String, Date, Float, Boolean, ForeignKey, Table, MetaData, inspect, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, scoped_session
 from sqlalchemy.pool import QueuePool
@@ -221,7 +221,8 @@ class FrenchLotoDrawing(Base):
     __tablename__ = 'french_loto_drawings'
     
     id = Column(Integer, primary_key=True)
-    date = Column(Date, nullable=False, unique=True)
+    date = Column(Date, nullable=False)
+    draw_num = Column(Integer, default=1)  # For days with multiple draws (1=first, 2=second)
     day_of_week = Column(String(20))
     n1 = Column(Integer, nullable=False)
     n2 = Column(Integer, nullable=False)
@@ -253,6 +254,11 @@ class FrenchLotoDrawing(Base):
     
     # Currency (FRF for French francs before 2002, EUR for euros after)
     currency = Column(String(10))
+    
+    # Add unique constraint for date + draw_num
+    __table_args__ = (
+        UniqueConstraint('date', 'draw_num', name='unique_french_loto_drawing'),
+    )
     
     def __repr__(self):
         return f"<FrenchLotoDrawing(date='{self.date}', numbers=[{self.n1},{self.n2},{self.n3},{self.n4},{self.n5}], lucky={self.lucky})>"

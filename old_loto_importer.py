@@ -71,6 +71,9 @@ def process_old_loto_csv(file_path):
     renamed_data['date'] = data['date']
     renamed_data['day_of_week'] = data['day_of_week']
     
+    # Add draw number (1er_ou_2eme_tirage) - 1=first, 2=second draw of the day
+    renamed_data['draw_num'] = data['1er_ou_2eme_tirage'].astype(int)
+    
     # Standardize the ball columns
     renamed_data['n1'] = data['boule_1'].astype(int)
     renamed_data['n2'] = data['boule_2'].astype(int)
@@ -194,6 +197,7 @@ def import_to_database(data):
         numbers = [int(row['n1']), int(row['n2']), int(row['n3']), int(row['n4']), int(row['n5'])]
         lucky = int(row['lucky'])
         day_of_week = row.get('day_of_week', '')
+        draw_num = int(row.get('draw_num', 1))  # Default to 1 if not provided
         
         # Prepare winner data
         winners = {
@@ -232,7 +236,8 @@ def import_to_database(data):
             winners,
             prizes,
             total_amount,
-            currency
+            currency,
+            draw_num
         )
         
         if success:
