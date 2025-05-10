@@ -301,7 +301,8 @@ class FrenchLotoStrategy:
                 strat = strategy
             
             # Generate the combination
-            main_numbers, lucky_number, strategy_used = self.generate_optimized_combination(strat)
+            result = self.generate_optimized_combination(strat)
+            main_numbers, lucky_number, strategy_used = result
             
             # Create a hashable representation to check for duplicates
             combo_key = tuple(sorted(main_numbers + [lucky_number]))
@@ -438,7 +439,8 @@ class FrenchLotoStrategy:
                 strategy_name = "Low Risk"
             elif risk_factor < 0.7:
                 # Medium risk - balanced approach
-                main_numbers, lucky_number = self.generate_optimized_combination("balanced")
+                # Use frequency-based with medium weight
+                main_numbers, lucky_number = self.generate_frequency_based(strength=0.5)
                 strategy_name = "Medium Risk"
             else:
                 # High risk - more random selections

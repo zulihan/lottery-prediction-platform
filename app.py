@@ -1178,136 +1178,153 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
             
             if generate_button:
                 with st.spinner("Generating optimized combinations..."):
-                    # Generate combinations based on the selected strategy
                     try:
+                        # Generate combinations based on the selected strategy
+                        # Add debug log
+                        st.write(f"Active lottery: {st.session_state.active_lottery}")
+                        
                         # Get the appropriate strategy object based on active lottery
-                        strategy_obj = st.session_state.euromillions_strategy if st.session_state.active_lottery == "Euromillions" else st.session_state.french_loto_strategy
+                        strategy_obj = None
+                        if st.session_state.active_lottery == "Euromillions":
+                            if 'euromillions_strategy' in st.session_state and st.session_state.euromillions_strategy:
+                                strategy_obj = st.session_state.euromillions_strategy
+                                st.write("Using Euromillions strategy")
+                            else:
+                                st.error("Euromillions strategy object not initialized. Please load data first.")
+                        else:
+                            st.write("Trying to use French Loto strategy")
+                            if 'french_loto_strategy' in st.session_state and st.session_state.french_loto_strategy:
+                                strategy_obj = st.session_state.french_loto_strategy
+                                st.write(f"French Loto strategy initialized: {type(strategy_obj)}")
+                            else:
+                                st.error("French Loto strategy object is None or not initialized. Please load data first.")
                         
                         if strategy_obj is None:
-                            st.error("Strategy object not initialized. Please load data first.")
-                            # Skip to the end of the try block
-                            raise ValueError("Strategy object not initialized")
+                            st.warning("Strategy object not initialized. Please make sure to load data first.")
+                        else:
+                            # Continue with the strategy object
+                            st.write(f"Strategy object type: {type(strategy_obj)}")
+                                
+                            if strategy_type == "Frequency Strategy":
+                                combinations = strategy_obj.frequency_strategy(
+                                    num_combinations=num_combinations,
+                                    recent_weight=recent_weight/100
+                                )
+                            elif strategy_type == "Mixed Strategy":
+                                combinations = strategy_obj.mixed_strategy(
+                                    num_combinations=num_combinations,
+                                    hot_ratio=hot_ratio/100
+                                )
+                            elif strategy_type == "Temporal Strategy":
+                                combinations = strategy_obj.temporal_strategy(
+                                    num_combinations=num_combinations,
+                                    lookback_period=lookback_period
+                                )
+                            elif strategy_type == "Stratified Sampling":
+                                combinations = strategy_obj.stratified_sampling_strategy(
+                                    num_combinations=num_combinations,
+                                    strata_type=strata_type,
+                                    balance_factor=balance_factor
+                                )
+                            elif strategy_type == "Coverage Strategy":
+                                combinations = strategy_obj.coverage_strategy(
+                                    num_combinations=num_combinations,
+                                    balanced=optimization_method == "Balanced Coverage"
+                                )
+                            elif strategy_type == "Risk/Reward Optimization":
+                                combinations = strategy_obj.risk_reward_strategy(
+                                    num_combinations=num_combinations,
+                                    risk_level=risk_level
+                                )
+                            elif strategy_type == "Bayesian Model":
+                                combinations = strategy_obj.bayesian_strategy(
+                                    num_combinations=num_combinations,
+                                    recent_draws_count=recent_draws_count,
+                                    prior_type=prior_type,
+                                    update_method=update_method,
+                                    smoothing_factor=smoothing_factor
+                                )
+                            elif strategy_type == "Markov Chain Model":
+                                combinations = strategy_obj.markov_strategy(
+                                    num_combinations=num_combinations,
+                                    lag=lag
+                                )
+                            elif strategy_type == "Time Series Model":
+                                combinations = strategy_obj.time_series_strategy(
+                                    num_combinations=num_combinations,
+                                    window_size=window_size
+                                )
+                            elif strategy_type == "Anti-Cognitive Bias":
+                                combinations = strategy_obj.cognitive_bias_strategy(
+                                    num_combinations=num_combinations
+                                )
+                            elif strategy_type == "Multi-Strategy":
+                                # Generate combinations for each strategy
+                                all_strategies = {
+                                    "Frequency Strategy": lambda: strategy_obj.frequency_strategy(num_combinations=1, recent_weight=0.6),
+                                    "Mixed Strategy": lambda: strategy_obj.mixed_strategy(num_combinations=1, hot_ratio=0.7),
+                                    "Temporal Strategy": lambda: strategy_obj.temporal_strategy(num_combinations=1, lookback_period=30),
+                                    "Stratified Sampling": lambda: strategy_obj.stratified_sampling_strategy(
+                                        num_combinations=1,
+                                        strata_type="pattern",  # Use pattern as default for multi-strategy approach
+                                        balance_factor=0.7
+                                    ),
+                                    "Coverage Strategy": lambda: strategy_obj.coverage_strategy(num_combinations=1, balanced=True),
+                                    "Risk/Reward Optimization": lambda: strategy_obj.risk_reward_strategy(num_combinations=1, risk_level=5),
+                                    "Bayesian Model": lambda: strategy_obj.bayesian_strategy(
+                                        num_combinations=1, 
+                                        recent_draws_count=20,
+                                        prior_type="empirical", 
+                                        update_method="sequential",
+                                        smoothing_factor=0.1
+                                    ),
+                                    "Markov Chain Model": lambda: strategy_obj.markov_strategy(num_combinations=1, lag=1),
+                                    "Time Series Model": lambda: strategy_obj.time_series_strategy(num_combinations=1, window_size=10),
+                                    "Anti-Cognitive Bias": lambda: strategy_obj.cognitive_bias_strategy(num_combinations=1)
+                                }
+                                
+                                combinations = []
+                                strategy_progress = st.progress(0.0)
+                                
+                                for i, (strategy_name, strategy_fn) in enumerate(all_strategies.items()):
+                                    try:
+                                        st.write(f"Generating combinations using {strategy_name}...")
+                                        strategy_combos = strategy_fn()
+                                        
+                                        # Add strategy name to each combination
+                                        for combo in strategy_combos:
+                                            combo['strategy'] = strategy_name
+                                        
+                                        combinations.extend(strategy_combos)
+                                        
+                                        # Store these combinations in their respective strategy too
+                                        st.session_state.generated_combinations[strategy_name] = strategy_combos
+                                        
+                                        # Update progress
+                                        strategy_progress.progress((i + 1) / len(all_strategies))
+                                    except Exception as e:
+                                        st.warning(f"Error generating combinations for {strategy_name}: {str(e)}")
                             
-                        if strategy_type == "Frequency Strategy":
-                            combinations = strategy_obj.frequency_strategy(
-                                num_combinations=num_combinations,
-                                recent_weight=recent_weight/100
-                            )
-                        elif strategy_type == "Mixed Strategy":
-                            combinations = strategy_obj.mixed_strategy(
-                                num_combinations=num_combinations,
-                                hot_ratio=hot_ratio/100
-                            )
-                        elif strategy_type == "Temporal Strategy":
-                            combinations = strategy_obj.temporal_strategy(
-                                num_combinations=num_combinations,
-                                lookback_period=lookback_period
-                            )
-                        elif strategy_type == "Stratified Sampling":
-                            combinations = strategy_obj.stratified_sampling_strategy(
-                                num_combinations=num_combinations,
-                                strata_type=strata_type,
-                                balance_factor=balance_factor
-                            )
-                        elif strategy_type == "Coverage Strategy":
-                            combinations = strategy_obj.coverage_strategy(
-                                num_combinations=num_combinations,
-                                balanced=optimization_method == "Balanced Coverage"
-                            )
-                        elif strategy_type == "Risk/Reward Optimization":
-                            combinations = strategy_obj.risk_reward_strategy(
-                                num_combinations=num_combinations,
-                                risk_level=risk_level
-                            )
-                        elif strategy_type == "Bayesian Model":
-                            combinations = strategy_obj.bayesian_strategy(
-                                num_combinations=num_combinations,
-                                recent_draws_count=recent_draws_count,
-                                prior_type=prior_type,
-                                update_method=update_method,
-                                smoothing_factor=smoothing_factor
-                            )
-                        elif strategy_type == "Markov Chain Model":
-                            combinations = strategy_obj.markov_strategy(
-                                num_combinations=num_combinations,
-                                lag=lag
-                            )
-                        elif strategy_type == "Time Series Model":
-                            combinations = strategy_obj.time_series_strategy(
-                                num_combinations=num_combinations,
-                                window_size=window_size
-                            )
-                        elif strategy_type == "Anti-Cognitive Bias":
-                            combinations = strategy_obj.cognitive_bias_strategy(
-                                num_combinations=num_combinations
-                            )
-                        elif strategy_type == "Multi-Strategy":
-                            # Generate combinations for each strategy
-                            all_strategies = {
-                                "Frequency Strategy": lambda: strategy_obj.frequency_strategy(num_combinations=1, recent_weight=0.6),
-                                "Mixed Strategy": lambda: strategy_obj.mixed_strategy(num_combinations=1, hot_ratio=0.7),
-                                "Temporal Strategy": lambda: strategy_obj.temporal_strategy(num_combinations=1, lookback_period=30),
-                                "Stratified Sampling": lambda: strategy_obj.stratified_sampling_strategy(
-                                    num_combinations=1,
-                                    strata_type="pattern",  # Use pattern as default for multi-strategy approach
-                                    balance_factor=0.7
-                                ),
-                                "Coverage Strategy": lambda: strategy_obj.coverage_strategy(num_combinations=1, balanced=True),
-                                "Risk/Reward Optimization": lambda: strategy_obj.risk_reward_strategy(num_combinations=1, risk_level=5),
-                                "Bayesian Model": lambda: strategy_obj.bayesian_strategy(
-                                    num_combinations=1, 
-                                    recent_draws_count=20,
-                                    prior_type="empirical", 
-                                    update_method="sequential",
-                                    smoothing_factor=0.1
-                                ),
-                                "Markov Chain Model": lambda: strategy_obj.markov_strategy(num_combinations=1, lag=1),
-                                "Time Series Model": lambda: strategy_obj.time_series_strategy(num_combinations=1, window_size=10),
-                                "Anti-Cognitive Bias": lambda: strategy_obj.cognitive_bias_strategy(num_combinations=1)
-                            }
+                            # Store the generated combinations
+                            st.session_state.generated_combinations[strategy_type] = combinations
                             
-                            combinations = []
-                            strategy_progress = st.progress(0.0)
+                            # Also save to the database
+                            for combo in combinations:
+                                numbers = combo['numbers']
+                                stars = combo['stars']
+                                score = combo.get('score', 0.0)
+                                database.save_generated_combination(numbers, stars, strategy_type, score)
                             
-                            for i, (strategy_name, strategy_fn) in enumerate(all_strategies.items()):
-                                try:
-                                    st.write(f"Generating combinations using {strategy_name}...")
-                                    strategy_combos = strategy_fn()
-                                    
-                                    # Add strategy name to each combination
-                                    for combo in strategy_combos:
-                                        combo['strategy'] = strategy_name
-                                    
-                                    combinations.extend(strategy_combos)
-                                    
-                                    # Store these combinations in their respective strategy too
-                                    st.session_state.generated_combinations[strategy_name] = strategy_combos
-                                    
-                                    # Update progress
-                                    strategy_progress.progress((i + 1) / len(all_strategies))
-                                except Exception as e:
-                                    st.warning(f"Error generating combinations for {strategy_name}: {str(e)}")
-                        
-                        # Store the generated combinations
-                        st.session_state.generated_combinations[strategy_type] = combinations
-                        
-                        # Also save to the database
-                        for combo in combinations:
-                            numbers = combo['numbers']
-                            stars = combo['stars']
-                            score = combo.get('score', 0.0)
-                            database.save_generated_combination(numbers, stars, strategy_type, score)
-                        
-                        st.success(f"Successfully generated {num_combinations} combinations and saved to database!")
+                            st.success(f"Successfully generated {num_combinations} combinations and saved to database!")
                     except Exception as e:
                         st.error(f"Error generating combinations: {str(e)}")
-        
-        with col2:
-            st.subheader("Generated Combinations")
             
-            # Add Score/Confidence explanation
-            with st.expander("What does Score/Confidence mean?"):
-                st.markdown("""
+            with col2:
+                st.subheader("Generated Combinations")
+                
+                # Add Score/Confidence explanation
+                with st.expander("What does Score/Confidence mean?"):
+                    st.markdown("""
                 **Score/Confidence** represents how strongly the algorithm believes in this combination based on the strategy used:
                 
                 - **Higher values** indicate combinations more likely to appear according to the algorithm
