@@ -116,20 +116,68 @@ with st.sidebar:
     
     uploaded_file = None
     if data_source == "Upload CSV file":
-        uploaded_file = st.file_uploader("Upload Euromillions historical data (CSV)", type=["csv"])
-        
-        if uploaded_file is not None:
-            try:
-                data = pd.read_csv(uploaded_file)
-                st.session_state.data_processor = DataProcessor(data)
-                st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
-                st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
-                st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
-                st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
-                st.session_state.data_loaded = True
-                st.success("Data successfully loaded and processed!")
-            except Exception as e:
-                st.error(f"Error loading data: {str(e)}")
+        if st.session_state.active_lottery == "Euromillions":
+            uploaded_file = st.file_uploader("Upload Euromillions historical data (CSV)", type=["csv"])
+            
+            if uploaded_file is not None:
+                try:
+                    data = pd.read_csv(uploaded_file)
+                    st.session_state.data_processor = DataProcessor(data)
+                    st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
+                    st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
+                    st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
+                    st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
+                    st.session_state.data_loaded = True
+                    st.success("Euromillions data successfully loaded and processed!")
+                except Exception as e:
+                    st.error(f"Error loading data: {str(e)}")
+        else:  # French Loto
+            uploaded_file = st.file_uploader("Upload French Loto historical data (CSV)", type=["csv"])
+            
+            if uploaded_file is not None:
+                try:
+                    data = pd.read_csv(uploaded_file)
+                    # Process French Loto data directly with database functions
+                    from process_french_loto import process_csv_file
+                    processed_data = process_csv_file(uploaded_file)
+                    
+                    # Load processed data into database
+                    if not processed_data.empty:
+                        conn = database.get_db_connection()
+                        if conn:
+                            # Save to the database and get count of new records
+                            count = 0
+                            for _, row in processed_data.iterrows():
+                                # Extract data
+                                date = row['date']
+                                numbers = [row['n1'], row['n2'], row['n3'], row['n4'], row['n5']]
+                                lucky = row['lucky']
+                                day_of_week = row.get('day_of_week', '')
+                                
+                                # Add to database
+                                success = database.add_french_loto_drawing(date, numbers, lucky, day_of_week)
+                                if success:
+                                    count += 1
+                            
+                            # Load statistical objects
+                            st.session_state.french_loto_data = database.get_french_loto_drawings()
+                            st.session_state.french_loto_statistics = FrenchLotoStatistics(st.session_state.french_loto_data)
+                            st.session_state.french_loto_strategy = FrenchLotoStrategy(st.session_state.french_loto_statistics)
+                            st.session_state.french_loto_visualization = FrenchLotoVisualization(
+                                st.session_state.french_loto_data, 
+                                st.session_state.french_loto_statistics
+                            )
+                            st.session_state.french_loto_data_loaded = True
+                            
+                            st.success(f"Added {count} new French Loto drawings to the database!")
+                        else:
+                            st.error("Could not connect to database")
+                    else:
+                        st.error("No valid data found in the uploaded file")
+                        
+                except Exception as e:
+                    st.error(f"Error loading French Loto data: {str(e)}")
+                    
     else:
         data_option = st.radio(
             "Data source options:",
@@ -138,32 +186,128 @@ with st.sidebar:
         
         if st.button("Load Data"):
             try:
-                if data_option == "Load from database":
-                    # Try to load data from the database
-                    db_data = database.get_all_drawings()
-                    if not db_data.empty:
-                        st.session_state.data_processor = DataProcessor(db_data)
+                if st.session_state.active_lottery == "Euromillions":
+                    if data_option == "Load from database":
+                        # Try to load Euromillions data from the database
+                        db_data = database.get_all_drawings()
+                        if not db_data.empty:
+                            st.session_state.data_processor = DataProcessor(db_data)
+                            st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
+                            st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
+                            st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
+                            st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
+                            st.session_state.data_loaded = True
+                            st.success(f"Successfully loaded {len(db_data)} Euromillions records from database!")
+                        else:
+                            st.warning("No Euromillions data found in the database. Try loading the sample CSV data first.")
+                    
+                    elif data_option == "Load sample CSV":
+                        # Load sample Euromillions data from the sample_data directory
+                        data = pd.read_csv("sample_data/sample_euromillions.csv")
+                        st.session_state.data_processor = DataProcessor(data)
                         st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
                         st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
                         st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
                         st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
                         st.session_state.data_loaded = True
-                        st.success(f"Successfully loaded {len(db_data)} records from database!")
-                    else:
-                        st.warning("No data found in the database. Try loading the sample CSV data first.")
+                        st.success(f"Successfully loaded {len(data)} Euromillions records from sample CSV!")
                 
-                elif data_option == "Load sample CSV":
-                    # Load sample data from the sample_data directory
-                    data = pd.read_csv("sample_data/sample_euromillions.csv")
-                    st.session_state.data_processor = DataProcessor(data)
-                    st.session_state.euromillions_data = st.session_state.data_processor.get_processed_data()
-                    st.session_state.statistics = EuromillionsStatistics(st.session_state.euromillions_data)
-                    st.session_state.strategies = PredictionStrategies(st.session_state.statistics)
-                    st.session_state.visualization = DataVisualization(st.session_state.euromillions_data, st.session_state.statistics)
-                    st.session_state.data_loaded = True
-                    st.success(f"Successfully loaded {len(data)} records from sample CSV!")
+                else:  # French Loto
+                    if data_option == "Load from database":
+                        # Try to load French Loto data from the database
+                        french_loto_data = database.get_french_loto_drawings()
+                        if not french_loto_data.empty:
+                            st.session_state.french_loto_data = french_loto_data
+                            st.session_state.french_loto_statistics = FrenchLotoStatistics(french_loto_data)
+                            st.session_state.french_loto_strategy = FrenchLotoStrategy(st.session_state.french_loto_statistics)
+                            st.session_state.french_loto_visualization = FrenchLotoVisualization(
+                                french_loto_data, 
+                                st.session_state.french_loto_statistics
+                            )
+                            st.session_state.french_loto_data_loaded = True
+                            st.success(f"Successfully loaded {len(french_loto_data)} French Loto records from database!")
+                        else:
+                            st.warning("No French Loto data found in the database. Try loading a CSV file first.")
+                    
+                    elif data_option == "Load sample CSV":
+                        # Load sample French Loto data 
+                        try:
+                            # First check if we have a sample file in the sample_data directory
+                            data = pd.read_csv("sample_data/sample_french_loto.csv")
+                            # If we found data, process it
+                            if not data.empty:
+                                # Load into database
+                                count = 0
+                                for _, row in data.iterrows():
+                                    # Extract data and prepare for database
+                                    date = row['date']
+                                    numbers = [row['n1'], row['n2'], row['n3'], row['n4'], row['n5']]
+                                    lucky = row['lucky']
+                                    day_of_week = row.get('day_of_week', '')
+                                    
+                                    # Add to database
+                                    success = database.add_french_loto_drawing(date, numbers, lucky, day_of_week)
+                                    if success:
+                                        count += 1
+                                
+                                # Then load from database for display
+                                french_loto_data = database.get_french_loto_drawings()
+                                st.session_state.french_loto_data = french_loto_data
+                                st.session_state.french_loto_statistics = FrenchLotoStatistics(french_loto_data)
+                                st.session_state.french_loto_strategy = FrenchLotoStrategy(st.session_state.french_loto_statistics)
+                                st.session_state.french_loto_visualization = FrenchLotoVisualization(
+                                    french_loto_data, 
+                                    st.session_state.french_loto_statistics
+                                )
+                                st.session_state.french_loto_data_loaded = True
+                                st.success(f"Successfully loaded {count} new French Loto records from sample CSV!")
+                            else:
+                                st.error("Sample French Loto data file was empty.")
+                        except FileNotFoundError:
+                            # If sample file doesn't exist, try importing from attached_assets
+                            st.info("No sample file found. Attempting to import French Loto data from attached_assets...")
+                            from import_loto_data import import_loto_data
+                            count = import_loto_data()
+                            if count > 0:
+                                # Then load from database for display
+                                french_loto_data = database.get_french_loto_drawings()
+                                st.session_state.french_loto_data = french_loto_data
+                                st.session_state.french_loto_statistics = FrenchLotoStatistics(french_loto_data)
+                                st.session_state.french_loto_strategy = FrenchLotoStrategy(st.session_state.french_loto_statistics)
+                                st.session_state.french_loto_visualization = FrenchLotoVisualization(
+                                    french_loto_data, 
+                                    st.session_state.french_loto_statistics
+                                )
+                                st.session_state.french_loto_data_loaded = True
+                                st.success(f"Successfully imported and loaded {count} French Loto records!")
+                            else:
+                                st.error("No French Loto sample data found to import.")
+                        except Exception as e:
+                            st.error(f"Error loading French Loto sample data: {str(e)}")
+                    
+                    else:  # Load both for French Loto
+                        # First handle loading French Loto data
+                        st.info("Loading and merging French Loto data sources...")
+                        # Try to import from attached_assets
+                        from import_loto_data import import_loto_data
+                        count = import_loto_data()
+                        if count > 0:
+                            # Then load from database for display
+                            french_loto_data = database.get_french_loto_drawings()
+                            st.session_state.french_loto_data = french_loto_data
+                            st.session_state.french_loto_statistics = FrenchLotoStatistics(french_loto_data)
+                            st.session_state.french_loto_strategy = FrenchLotoStrategy(st.session_state.french_loto_statistics)
+                            st.session_state.french_loto_visualization = FrenchLotoVisualization(
+                                french_loto_data, 
+                                st.session_state.french_loto_statistics
+                            )
+                            st.session_state.french_loto_data_loaded = True
+                            st.success(f"Successfully loaded {count} French Loto records from merged sources!")
+                        else:
+                            st.error("Failed to merge French Loto data sources.")
                 
-                else:  # Load both
+                if st.session_state.active_lottery == "Euromillions" and data_option == "Load both":
+                    # Load both for Euromillions
                     # Load sample data from CSV
                     csv_data = pd.read_csv("sample_data/sample_euromillions.csv")
                     
@@ -246,31 +390,53 @@ with st.sidebar:
                         st.error(f"Error adding new draw: {str(e)}")
 
 # Main content area
-if not st.session_state.data_loaded:
-    st.info("Please upload Euromillions historical data or load sample data to start.")
+if st.session_state.active_lottery == "Euromillions":
+    # Euromillions content
+    if not st.session_state.data_loaded:
+        st.info("Please upload Euromillions historical data or load sample data to start.")
+    else:
+        # Set up navigation for tabs
+        if 'active_tab' not in st.session_state:
+            st.session_state.active_tab = "Data Overview"
+        
+        # Define the tabs with their names
+        tab_names = [
+            "Data Overview", 
+            "Statistical Analysis", 
+            "Strategy Generation",
+            "Visualizations",
+            "Combination Analysis",
+            "My Combinations",
+            "All Generated Combinations",
+            "Strategy Testing"
+        ]
 else:
-    # Set up navigation for tabs
-    if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = "Data Overview"
+    # French Loto content
+    if not st.session_state.french_loto_data_loaded:
+        st.info("Please upload French Loto historical data or load sample data to start.")
+    else:
+        # Set up navigation for tabs
+        if 'french_loto_active_tab' not in st.session_state:
+            st.session_state.french_loto_active_tab = "Data Overview"
+        
+        # Define the tabs with their names
+        tab_names = [
+            "Data Overview", 
+            "Statistical Analysis", 
+            "Strategy Generation",
+            "Visualizations",
+            "Combination Analysis",
+            "My Combinations",
+            "All Generated Combinations"
+        ]
     
-    # Define the tabs with their names
-    tab_names = [
-        "Data Overview", 
-        "Statistical Analysis", 
-        "Strategy Generation",
-        "Visualizations",
-        "Combination Analysis",
-        "My Combinations",
-        "All Generated Combinations",
-        "Strategy Testing"
-    ]
-    
-    # Get current active tab index
+if st.session_state.active_lottery == "Euromillions" and st.session_state.data_loaded:
+    # Get current active tab index for Euromillions
     active_tab_index = 0
     if st.session_state.active_tab in tab_names:
         active_tab_index = tab_names.index(st.session_state.active_tab)
     
-    # Create tabs for different functionalities
+    # Create tabs for Euromillions functionalities
     tabs = st.tabs([
         "Data Overview", 
         "Statistical Analysis", 
@@ -280,6 +446,22 @@ else:
         "My Combinations",
         "All Generated Combinations",
         "Strategy Testing"
+    ])
+elif st.session_state.active_lottery == "French Loto" and st.session_state.french_loto_data_loaded:
+    # Get current active tab index for French Loto
+    french_loto_active_tab_index = 0
+    if st.session_state.french_loto_active_tab in tab_names:
+        french_loto_active_tab_index = tab_names.index(st.session_state.french_loto_active_tab)
+    
+    # Create tabs for French Loto functionalities
+    tabs = st.tabs([
+        "Data Overview", 
+        "Statistical Analysis", 
+        "Strategy Generation",
+        "Visualizations",
+        "Combination Analysis",
+        "My Combinations",
+        "All Generated Combinations"
     ])
     
     # Data Overview tab
