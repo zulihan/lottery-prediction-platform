@@ -1088,7 +1088,7 @@ def add_french_loto_drawing(date, numbers, lucky, day_of_week=None):
         
     return success
     
-def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None, winners=None, prizes=None, total_amount=None, currency='EUR'):
+def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None, winners=None, prizes=None, total_amount=None, currency='EUR', draw_num=1):
     """
     Add a single French Loto drawing to the database with detailed winner and prize information
     
@@ -1110,6 +1110,8 @@ def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None,
         Total prize pool amount
     currency : str, optional
         Currency of the prizes (EUR, FRF, etc.)
+    draw_num : int, optional
+        The draw number for this date (1=first draw, 2=second draw)
         
     Returns:
     --------
@@ -1129,10 +1131,13 @@ def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None,
             # If it's still not a date object, try to convert with str
             date = datetime.strptime(str(date), '%Y-%m-%d').date()
             
-        # Check if this drawing already exists
-        existing = session.query(FrenchLotoDrawing).filter_by(date=date).first()
+        # Convert draw_num to int if needed
+        draw_num = int(draw_num)
+            
+        # Check if this drawing already exists for this date and draw number
+        existing = session.query(FrenchLotoDrawing).filter_by(date=date, draw_num=draw_num).first()
         if existing:
-            logger.info(f"French Loto drawing for date {date} already exists, updating with details")
+            logger.info(f"French Loto drawing for date {date} draw {draw_num} already exists, updating with details")
             
             # Update existing drawing with more details
             if winners:
@@ -1176,6 +1181,7 @@ def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None,
             # Create new drawing with all details
             drawing = FrenchLotoDrawing(
                 date=date,
+                draw_num=draw_num,
                 day_of_week=day_of_week,
                 n1=numbers[0],
                 n2=numbers[1],
@@ -1204,7 +1210,7 @@ def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None,
             session.add(drawing)
             session.commit()
             success = True
-            logger.info(f"Added French Loto drawing with details for {date}")
+            logger.info(f"Added French Loto drawing with details for {date}, draw {draw_num}")
     except Exception as e:
         logger.error(f"Error adding French Loto drawing with details: {str(e)}")
         session.rollback()
