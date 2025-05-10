@@ -1023,7 +1023,7 @@ def get_french_loto_drawings(max_retries=3):
         finally:
             session.close()
 
-def add_french_loto_drawing(date, numbers, lucky, day_of_week=None):
+def add_french_loto_drawing(date, numbers, lucky, day_of_week=None, skip_future_dates=True):
     """
     Add a new French Loto drawing to the database
     
@@ -1037,6 +1037,8 @@ def add_french_loto_drawing(date, numbers, lucky, day_of_week=None):
         Lucky number
     day_of_week : str, optional
         Day of the week
+    skip_future_dates : bool, optional
+        If True, will not add drawings with dates in the future
         
     Returns:
     --------
@@ -1055,6 +1057,12 @@ def add_french_loto_drawing(date, numbers, lucky, day_of_week=None):
         elif not isinstance(date, type(datetime.now().date())):
             # If it's still not a date object, try to convert with str
             date = datetime.strptime(str(date), '%Y-%m-%d').date()
+        
+        # Skip future dates if requested
+        today = datetime.now().date()
+        if skip_future_dates and date > today:
+            logger.info(f"Skipping future French Loto drawing for date {date}")
+            return False
             
         # Check if this drawing already exists
         existing = session.query(FrenchLotoDrawing).filter_by(date=date).first()
@@ -1088,7 +1096,7 @@ def add_french_loto_drawing(date, numbers, lucky, day_of_week=None):
         
     return success
     
-def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None, winners=None, prizes=None, total_amount=None, currency='EUR', draw_num=1):
+def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None, winners=None, prizes=None, total_amount=None, currency='EUR', draw_num=1, skip_future_dates=True):
     """
     Add a single French Loto drawing to the database with detailed winner and prize information
     
@@ -1112,6 +1120,8 @@ def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None,
         Currency of the prizes (EUR, FRF, etc.)
     draw_num : int, optional
         The draw number for this date (1=first draw, 2=second draw)
+    skip_future_dates : bool, optional
+        If True, will not add drawings with dates in the future
         
     Returns:
     --------
@@ -1130,6 +1140,12 @@ def add_french_loto_drawing_with_details(date, numbers, lucky, day_of_week=None,
         elif not isinstance(date, type(datetime.now().date())):
             # If it's still not a date object, try to convert with str
             date = datetime.strptime(str(date), '%Y-%m-%d').date()
+            
+        # Skip future dates if requested
+        today = datetime.now().date()
+        if skip_future_dates and date > today:
+            logger.info(f"Skipping future French Loto drawing for date {date}, draw {draw_num}")
+            return False
             
         # Convert draw_num to int if needed
         draw_num = int(draw_num)
