@@ -11,16 +11,30 @@ from sqlalchemy import text
 
 def clear_existing_data():
     """Clear existing French Loto data from the database"""
+    conn = None
     try:
+        # Get a fresh connection
         conn = database.get_db_connection()
-        with conn.begin():
-            result = conn.execute(text("DELETE FROM french_loto_drawings"))
-            print(f"Deleted {result.rowcount} existing French Loto drawings from database")
-        conn.close()
+        # Delete all records
+        result = conn.execute(text("DELETE FROM french_loto_drawings"))
+        # Commit the transaction
+        conn.commit()
+        print(f"Deleted {result.rowcount} existing French Loto drawings from database")
         return True
     except Exception as e:
         print(f"Error clearing French Loto data: {e}")
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
         return False
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def main():
     # Initialize the database
@@ -32,11 +46,20 @@ def main():
         print(f"Error: Input file {input_file} not found")
         sys.exit(1)
     
-    # Ask for confirmation before clearing data
-    confirm = input("This will clear all existing French Loto data. Continue? (y/n): ")
-    if confirm.lower() != 'y':
-        print("Import cancelled")
-        sys.exit(0)
+    # Handle command line arguments
+    if len(sys.argv) > 1 and sys.argv[1] == "--force":
+        # Skip confirmation if --force flag is provided
+        print("Force flag detected, clearing data without confirmation")
+    else:
+        try:
+            # Ask for confirmation before clearing data
+            confirm = input("This will clear all existing French Loto data. Continue? (y/n): ")
+            if confirm.lower() != 'y':
+                print("Import cancelled")
+                sys.exit(0)
+        except EOFError:
+            # If running in a non-interactive environment, assume yes
+            print("Running in non-interactive mode, assuming yes")
     
     # Clear existing data
     if not clear_existing_data():
