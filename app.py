@@ -1036,54 +1036,62 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
     with tabs[2]:
         st.header("Strategy Generation")
         
-        # Debug information
-        st.write("Debug info:")
-        st.write(f"Active lottery: {st.session_state.active_lottery}")
+        # Check preconditions and show messages without using 'return'
+        strategy_tab_should_continue = True
+        
         if st.session_state.active_lottery == "French Loto":
-            st.write(f"French Loto data loaded: {st.session_state.french_loto_data_loaded}")
-            st.write(f"French Loto strategy initialized: {'french_loto_strategy' in st.session_state}")
-            if 'french_loto_strategy' in st.session_state:
-                st.write(f"Strategy type: {type(st.session_state.french_loto_strategy)}")
-        
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            st.subheader("Strategy Parameters")
+            if not st.session_state.french_loto_data_loaded:
+                st.warning("⚠️ Please load French Loto data first from the Data Management sidebar!")
+                strategy_tab_should_continue = False
+            elif 'french_loto_strategy' not in st.session_state:
+                st.error("⚠️ French Loto strategy module not initialized. Go to Data Management and load data!")
+                strategy_tab_should_continue = False
+        elif st.session_state.active_lottery == "Euromillions":
+            if not st.session_state.data_loaded:
+                st.warning("⚠️ Please load Euromillions data first from the Data Management sidebar!")
+                strategy_tab_should_continue = False
+                
+        # Continue only if conditions are met
+        if strategy_tab_should_continue:
+            col1, col2 = st.columns([1, 2])
             
-            strategy_type = st.selectbox(
-                "Select Strategy",
-                ["Frequency Strategy", "Mixed Strategy", "Temporal Strategy", "Stratified Sampling", "Coverage Strategy", 
-                 "Risk/Reward Optimization", "Bayesian Model", "Markov Chain Model", "Time Series Model", "Anti-Cognitive Bias",
-                 "Multi-Strategy"]
-            )
-            
-            num_combinations = st.number_input("Number of combinations to generate", 1, 20, 5)
-            
-            # Strategy-specific parameters
-            if strategy_type == "Frequency Strategy":
-                st.info("This strategy selects numbers based on their frequency in historical draws")
-                recent_weight = st.slider("Recent draws importance (%)", 0, 100, 60, key="freq_weight")
+            with col1:
+                st.subheader("Strategy Parameters")
                 
-            elif strategy_type == "Mixed Strategy":
-                st.info("This strategy mixes high-frequency numbers with strategic outsiders")
-                hot_ratio = st.slider("Hot numbers ratio (%)", 0, 100, 70, key="hot_ratio")
-                
-            elif strategy_type == "Temporal Strategy":
-                st.info("This strategy considers temporal patterns and cycles")
-                lookback_period = st.slider("Lookback period (draws)", 10, 100, 30, key="lookback")
-                
-            elif strategy_type == "Stratified Sampling":
-                st.info("This strategy ensures balanced distribution across different number properties")
-                
-                # Add new stratification type options
-                strata_type = st.selectbox(
-                    "Stratification Type",
-                    [
-                        "range", "even_odd", "prime_composite", 
-                        "hot_cold", "decade", "pattern"
-                    ],
-                    help="Choose how to stratify your number selection"
+                strategy_type = st.selectbox(
+                    "Select Strategy",
+                    ["Frequency Strategy", "Mixed Strategy", "Temporal Strategy", "Stratified Sampling", "Coverage Strategy", 
+                     "Risk/Reward Optimization", "Bayesian Model", "Markov Chain Model", "Time Series Model", "Anti-Cognitive Bias",
+                     "Multi-Strategy"]
                 )
+                
+                num_combinations = st.number_input("Number of combinations to generate", 1, 20, 5)
+                
+                # Strategy-specific parameters
+                if strategy_type == "Frequency Strategy":
+                    st.info("This strategy selects numbers based on their frequency in historical draws")
+                    recent_weight = st.slider("Recent draws importance (%)", 0, 100, 60, key="freq_weight")
+                    
+                elif strategy_type == "Mixed Strategy":
+                    st.info("This strategy mixes high-frequency numbers with strategic outsiders")
+                    hot_ratio = st.slider("Hot numbers ratio (%)", 0, 100, 70, key="hot_ratio")
+                    
+                elif strategy_type == "Temporal Strategy":
+                    st.info("This strategy considers temporal patterns and cycles")
+                    lookback_period = st.slider("Lookback period (draws)", 10, 100, 30, key="lookback")
+                    
+                elif strategy_type == "Stratified Sampling":
+                    st.info("This strategy ensures balanced distribution across different number properties")
+                    
+                    # Add new stratification type options
+                    strata_type = st.selectbox(
+                        "Stratification Type",
+                        [
+                            "range", "even_odd", "prime_composite", 
+                            "hot_cold", "decade", "pattern"
+                        ],
+                        help="Choose how to stratify your number selection"
+                    )
                 
                 # Add balance factor slider
                 balance_factor = st.slider(
@@ -1110,223 +1118,226 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
                 elif strata_type == "pattern":
                     st.info("Pattern stratification selects numbers based on their mathematical properties and patterns.")
                 
-            elif strategy_type == "Coverage Strategy":
-                st.info("This strategy optimizes to cover as many possible winning combinations as possible")
-                optimization_method = st.selectbox(
-                    "Optimization Method",
-                    ["Maximize Coverage", "Balanced Coverage"]
-                )
-                
-            elif strategy_type == "Risk/Reward Optimization":
-                st.info("This strategy focuses on combinations that might be less played by others")
-                risk_level = st.slider("Risk level", 1, 10, 5, key="risk_level")
-                
-            elif strategy_type == "Bayesian Model":
-                st.info("This strategy uses Bayesian probability theory to predict numbers based on prior probabilities and recent evidence.")
-                
-                # Extended Bayesian parameters
-                st.subheader("Bayesian Inference Parameters")
-                
-                # Draws selection
-                recent_draws_count = st.slider("Recent draws to consider", 5, 50, 20, key="bayes_draws")
-                
-                # Prior type selection
-                prior_type = st.selectbox(
-                    "Prior Distribution Type",
-                    ["empirical", "uniform", "informative"],
-                    help="Select the type of prior distribution to use",
-                    key="bayes_prior"
-                )
-                
-                # Update method selection
-                update_method = st.selectbox(
-                    "Probability Update Method",
-                    ["standard", "sequential", "adaptive"],
-                    help="Select the method for updating probabilities",
-                    key="bayes_update"
-                )
-                
-                # Smoothing factor
-                smoothing_factor = st.slider(
-                    "Smoothing Factor", 
-                    0.01, 1.0, 0.1, 0.01,
-                    help="Laplace smoothing factor to handle zero probabilities",
-                    key="bayes_smoothing"
-                )
-                
-                # Show explanation based on selections
-                if prior_type == "empirical":
-                    st.info("Empirical prior: Uses historical frequencies from past drawings as the basis for probabilities")
-                elif prior_type == "uniform":
-                    st.info("Uniform prior: Assumes all numbers have equal probability initially (useful when you believe past frequencies aren't predictive)")
-                elif prior_type == "informative":
-                    st.info("Informative prior: Incorporates external knowledge about number patterns and player psychology")
+                elif strategy_type == "Coverage Strategy":
+                    st.info("This strategy optimizes to cover as many possible winning combinations as possible")
+                    optimization_method = st.selectbox(
+                        "Optimization Method",
+                        ["Maximize Coverage", "Balanced Coverage"]
+                    )
                     
-                if update_method == "standard":
-                    st.info("Standard update: Classic Bayesian update using all evidence at once")
-                elif update_method == "sequential":
-                    st.info("Sequential update: Updates probabilities draw by draw, which can better capture patterns of sequential changes")
-                elif update_method == "adaptive":
-                    st.info("Adaptive update: Gives more weight to recent draws, adapting to potential trends or shifts in drawing patterns")
+                elif strategy_type == "Risk/Reward Optimization":
+                    st.info("This strategy focuses on combinations that might be less played by others")
+                    risk_level = st.slider("Risk level", 1, 10, 5, key="risk_level")
                 
-            elif strategy_type == "Markov Chain Model":
-                st.info("This strategy uses Markov chain transition probabilities to predict the next draw based on previous draws")
-                lag = st.slider("Lag (number of previous draws to consider)", 1, 5, 1, key="markov_lag")
+                elif strategy_type == "Bayesian Model":
+                    st.info("This strategy uses Bayesian probability theory to predict numbers based on prior probabilities and recent evidence.")
+                    
+                    # Extended Bayesian parameters
+                    st.subheader("Bayesian Inference Parameters")
+                    
+                    # Draws selection
+                    recent_draws_count = st.slider("Recent draws to consider", 5, 50, 20, key="bayes_draws")
+                    
+                    # Prior type selection
+                    prior_type = st.selectbox(
+                        "Prior Distribution Type",
+                        ["empirical", "uniform", "informative"],
+                        help="Select the type of prior distribution to use",
+                        key="bayes_prior"
+                    )
                 
-            elif strategy_type == "Time Series Model":
-                st.info("This strategy analyzes time series patterns to find cycles and predict numbers due to appear")
-                window_size = st.slider("Analysis window size", 5, 30, 10, key="ts_window")
+                    # Update method selection
+                    update_method = st.selectbox(
+                        "Probability Update Method",
+                        ["standard", "sequential", "adaptive"],
+                        help="Select the method for updating probabilities",
+                        key="bayes_update"
+                    )
+                    
+                    # Smoothing factor
+                    smoothing_factor = st.slider(
+                        "Smoothing Factor", 
+                        0.01, 1.0, 0.1, 0.01,
+                        help="Laplace smoothing factor to handle zero probabilities",
+                        key="bayes_smoothing"
+                    )
+                    
+                    # Show explanation based on selections
+                    if prior_type == "empirical":
+                        st.info("Empirical prior: Uses historical frequencies from past drawings as the basis for probabilities")
+                    elif prior_type == "uniform":
+                        st.info("Uniform prior: Assumes all numbers have equal probability initially (useful when you believe past frequencies aren't predictive)")
+                    elif prior_type == "informative":
+                        st.info("Informative prior: Incorporates external knowledge about number patterns and player psychology")
+                    
+                    if update_method == "standard":
+                        st.info("Standard update: Classic Bayesian update using all evidence at once")
+                    elif update_method == "sequential":
+                        st.info("Sequential update: Updates probabilities draw by draw, which can better capture patterns of sequential changes")
+                    elif update_method == "adaptive":
+                        st.info("Adaptive update: Gives more weight to recent draws, adapting to potential trends or shifts in drawing patterns")
                 
-            elif strategy_type == "Anti-Cognitive Bias":
-                st.info("This strategy generates combinations that avoid common cognitive biases most players have when selecting numbers")
-            elif strategy_type == "Multi-Strategy":
-                st.info("This approach generates combinations using ALL strategies at once, giving you a diverse set of combinations based on different mathematical and statistical approaches.")
-                st.warning("Note: This will generate 1 combination from each strategy!")
+                elif strategy_type == "Markov Chain Model":
+                    st.info("This strategy uses Markov chain transition probabilities to predict the next draw based on previous draws")
+                    lag = st.slider("Lag (number of previous draws to consider)", 1, 5, 1, key="markov_lag")
+                    
+                elif strategy_type == "Time Series Model":
+                    st.info("This strategy analyzes time series patterns to find cycles and predict numbers due to appear")
+                    window_size = st.slider("Analysis window size", 5, 30, 10, key="ts_window")
+                    
+                elif strategy_type == "Anti-Cognitive Bias":
+                    st.info("This strategy generates combinations that avoid common cognitive biases most players have when selecting numbers")
+                elif strategy_type == "Multi-Strategy":
+                    st.info("This approach generates combinations using ALL strategies at once, giving you a diverse set of combinations based on different mathematical and statistical approaches.")
+                    st.warning("Note: This will generate 1 combination from each strategy!")
             
-            generate_button = st.button("Generate Combinations")
-            
-            if generate_button:
-                with st.spinner("Generating optimized combinations..."):
-                    try:
-                        # Generate combinations based on the selected strategy
-                        # Add debug log
-                        st.write(f"Active lottery: {st.session_state.active_lottery}")
-                        
-                        # Get the appropriate strategy object based on active lottery
-                        strategy_obj = None
-                        if st.session_state.active_lottery == "Euromillions":
-                            if 'euromillions_strategy' in st.session_state and st.session_state.euromillions_strategy:
-                                strategy_obj = st.session_state.euromillions_strategy
-                                st.write("Using Euromillions strategy")
+                generate_button = st.button("Generate Combinations")
+                
+                if generate_button:
+                    with st.spinner("Generating optimized combinations..."):
+                        try:
+                            # Generate combinations based on the selected strategy
+                            # Add debug log
+                            st.write(f"Active lottery: {st.session_state.active_lottery}")
+                            
+                            # Get the appropriate strategy object based on active lottery
+                            strategy_obj = None
+                            if st.session_state.active_lottery == "Euromillions":
+                                if 'euromillions_strategy' in st.session_state and st.session_state.euromillions_strategy:
+                                    strategy_obj = st.session_state.euromillions_strategy
+                                    st.write("Using Euromillions strategy")
+                                else:
+                                    st.error("Euromillions strategy object not initialized. Please load data first.")
                             else:
-                                st.error("Euromillions strategy object not initialized. Please load data first.")
-                        else:
-                            st.write("Trying to use French Loto strategy")
-                            if 'french_loto_strategy' in st.session_state and st.session_state.french_loto_strategy:
-                                strategy_obj = st.session_state.french_loto_strategy
-                                st.write(f"French Loto strategy initialized: {type(strategy_obj)}")
-                            else:
-                                st.error("French Loto strategy object is None or not initialized. Please load data first.")
+                                st.write("Trying to use French Loto strategy")
+                                if 'french_loto_strategy' in st.session_state and st.session_state.french_loto_strategy:
+                                    strategy_obj = st.session_state.french_loto_strategy
+                                    st.write(f"French Loto strategy initialized: {type(strategy_obj)}")
+                                else:
+                                    st.error("French Loto strategy object is None or not initialized. Please load data first.")
+                        except Exception as e:
+                            st.error(f"Error occurred while generating combinations: {str(e)}")
                         
                         if strategy_obj is None:
                             st.warning("Strategy object not initialized. Please make sure to load data first.")
                         else:
-                            # Continue with the strategy object
-                            st.write(f"Strategy object type: {type(strategy_obj)}")
+                            try:
+                                # Continue with the strategy object
+                                st.write(f"Strategy object type: {type(strategy_obj)}")
+                                    
+                                if strategy_type == "Frequency Strategy":
+                                    combinations = strategy_obj.frequency_strategy(
+                                        num_combinations=num_combinations,
+                                        recent_weight=recent_weight/100
+                                    )
+                                elif strategy_type == "Mixed Strategy":
+                                    combinations = strategy_obj.mixed_strategy(
+                                        num_combinations=num_combinations,
+                                        hot_ratio=hot_ratio/100
+                                    )
+                                elif strategy_type == "Temporal Strategy":
+                                    combinations = strategy_obj.temporal_strategy(
+                                        num_combinations=num_combinations,
+                                        lookback_period=lookback_period
+                                    )
+                                elif strategy_type == "Stratified Sampling":
+                                    combinations = strategy_obj.stratified_sampling_strategy(
+                                        num_combinations=num_combinations,
+                                        strata_type=strata_type,
+                                        balance_factor=balance_factor
+                                    )
+                                elif strategy_type == "Coverage Strategy":
+                                    combinations = strategy_obj.coverage_strategy(
+                                        num_combinations=num_combinations,
+                                        balanced=optimization_method == "Balanced Coverage"
+                                    )
+                                elif strategy_type == "Risk/Reward Optimization":
+                                    combinations = strategy_obj.risk_reward_strategy(
+                                        num_combinations=num_combinations,
+                                        risk_level=risk_level
+                                    )
+                                elif strategy_type == "Bayesian Model":
+                                    combinations = strategy_obj.bayesian_strategy(
+                                        num_combinations=num_combinations,
+                                        recent_draws_count=recent_draws_count,
+                                        prior_type=prior_type,
+                                        update_method=update_method,
+                                        smoothing_factor=smoothing_factor
+                                    )
+                                elif strategy_type == "Markov Chain Model":
+                                    combinations = strategy_obj.markov_strategy(
+                                        num_combinations=num_combinations,
+                                        lag=lag
+                                    )
+                                elif strategy_type == "Time Series Model":
+                                    combinations = strategy_obj.time_series_strategy(
+                                        num_combinations=num_combinations,
+                                        window_size=window_size
+                                    )
+                                elif strategy_type == "Anti-Cognitive Bias":
+                                    combinations = strategy_obj.cognitive_bias_strategy(
+                                        num_combinations=num_combinations
+                                    )
+                                elif strategy_type == "Multi-Strategy":
+                                    # Generate combinations for each strategy
+                                    all_strategies = {
+                                        "Frequency Strategy": lambda: strategy_obj.frequency_strategy(num_combinations=1, recent_weight=0.6),
+                                        "Mixed Strategy": lambda: strategy_obj.mixed_strategy(num_combinations=1, hot_ratio=0.7),
+                                        "Temporal Strategy": lambda: strategy_obj.temporal_strategy(num_combinations=1, lookback_period=30),
+                                        "Stratified Sampling": lambda: strategy_obj.stratified_sampling_strategy(
+                                            num_combinations=1,
+                                            strata_type="pattern",  # Use pattern as default for multi-strategy approach
+                                            balance_factor=0.7
+                                        ),
+                                        "Coverage Strategy": lambda: strategy_obj.coverage_strategy(num_combinations=1, balanced=True),
+                                        "Risk/Reward Optimization": lambda: strategy_obj.risk_reward_strategy(num_combinations=1, risk_level=5),
+                                        "Bayesian Model": lambda: strategy_obj.bayesian_strategy(
+                                            num_combinations=1, 
+                                            recent_draws_count=20,
+                                            prior_type="empirical", 
+                                            update_method="sequential",
+                                            smoothing_factor=0.1
+                                        ),
+                                        "Markov Chain Model": lambda: strategy_obj.markov_strategy(num_combinations=1, lag=1),
+                                        "Time Series Model": lambda: strategy_obj.time_series_strategy(num_combinations=1, window_size=10),
+                                        "Anti-Cognitive Bias": lambda: strategy_obj.cognitive_bias_strategy(num_combinations=1)
+                                    }
+                                    
+                                    combinations = []
+                                    strategy_progress = st.progress(0.0)
+                                    
+                                    for i, (strategy_name, strategy_fn) in enumerate(all_strategies.items()):
+                                        try:
+                                            st.write(f"Generating combinations using {strategy_name}...")
+                                            strategy_combos = strategy_fn()
+                                            
+                                            # Add strategy name to each combination
+                                            for combo in strategy_combos:
+                                                combo['strategy'] = strategy_name
+                                            
+                                            combinations.extend(strategy_combos)
+                                            
+                                            # Store these combinations in their respective strategy too
+                                            st.session_state.generated_combinations[strategy_name] = strategy_combos
+                                            
+                                            # Update progress
+                                            strategy_progress.progress((i + 1) / len(all_strategies))
+                                        except Exception as e:
+                                            st.warning(f"Error generating combinations for {strategy_name}: {str(e)}")
                                 
-                            if strategy_type == "Frequency Strategy":
-                                combinations = strategy_obj.frequency_strategy(
-                                    num_combinations=num_combinations,
-                                    recent_weight=recent_weight/100
-                                )
-                            elif strategy_type == "Mixed Strategy":
-                                combinations = strategy_obj.mixed_strategy(
-                                    num_combinations=num_combinations,
-                                    hot_ratio=hot_ratio/100
-                                )
-                            elif strategy_type == "Temporal Strategy":
-                                combinations = strategy_obj.temporal_strategy(
-                                    num_combinations=num_combinations,
-                                    lookback_period=lookback_period
-                                )
-                            elif strategy_type == "Stratified Sampling":
-                                combinations = strategy_obj.stratified_sampling_strategy(
-                                    num_combinations=num_combinations,
-                                    strata_type=strata_type,
-                                    balance_factor=balance_factor
-                                )
-                            elif strategy_type == "Coverage Strategy":
-                                combinations = strategy_obj.coverage_strategy(
-                                    num_combinations=num_combinations,
-                                    balanced=optimization_method == "Balanced Coverage"
-                                )
-                            elif strategy_type == "Risk/Reward Optimization":
-                                combinations = strategy_obj.risk_reward_strategy(
-                                    num_combinations=num_combinations,
-                                    risk_level=risk_level
-                                )
-                            elif strategy_type == "Bayesian Model":
-                                combinations = strategy_obj.bayesian_strategy(
-                                    num_combinations=num_combinations,
-                                    recent_draws_count=recent_draws_count,
-                                    prior_type=prior_type,
-                                    update_method=update_method,
-                                    smoothing_factor=smoothing_factor
-                                )
-                            elif strategy_type == "Markov Chain Model":
-                                combinations = strategy_obj.markov_strategy(
-                                    num_combinations=num_combinations,
-                                    lag=lag
-                                )
-                            elif strategy_type == "Time Series Model":
-                                combinations = strategy_obj.time_series_strategy(
-                                    num_combinations=num_combinations,
-                                    window_size=window_size
-                                )
-                            elif strategy_type == "Anti-Cognitive Bias":
-                                combinations = strategy_obj.cognitive_bias_strategy(
-                                    num_combinations=num_combinations
-                                )
-                            elif strategy_type == "Multi-Strategy":
-                                # Generate combinations for each strategy
-                                all_strategies = {
-                                    "Frequency Strategy": lambda: strategy_obj.frequency_strategy(num_combinations=1, recent_weight=0.6),
-                                    "Mixed Strategy": lambda: strategy_obj.mixed_strategy(num_combinations=1, hot_ratio=0.7),
-                                    "Temporal Strategy": lambda: strategy_obj.temporal_strategy(num_combinations=1, lookback_period=30),
-                                    "Stratified Sampling": lambda: strategy_obj.stratified_sampling_strategy(
-                                        num_combinations=1,
-                                        strata_type="pattern",  # Use pattern as default for multi-strategy approach
-                                        balance_factor=0.7
-                                    ),
-                                    "Coverage Strategy": lambda: strategy_obj.coverage_strategy(num_combinations=1, balanced=True),
-                                    "Risk/Reward Optimization": lambda: strategy_obj.risk_reward_strategy(num_combinations=1, risk_level=5),
-                                    "Bayesian Model": lambda: strategy_obj.bayesian_strategy(
-                                        num_combinations=1, 
-                                        recent_draws_count=20,
-                                        prior_type="empirical", 
-                                        update_method="sequential",
-                                        smoothing_factor=0.1
-                                    ),
-                                    "Markov Chain Model": lambda: strategy_obj.markov_strategy(num_combinations=1, lag=1),
-                                    "Time Series Model": lambda: strategy_obj.time_series_strategy(num_combinations=1, window_size=10),
-                                    "Anti-Cognitive Bias": lambda: strategy_obj.cognitive_bias_strategy(num_combinations=1)
-                                }
+                                # Store the generated combinations
+                                st.session_state.generated_combinations[strategy_type] = combinations
                                 
-                                combinations = []
-                                strategy_progress = st.progress(0.0)
+                                # Also save to the database
+                                for combo in combinations:
+                                    numbers = combo['numbers']
+                                    stars = combo['stars']
+                                    score = combo.get('score', 0.0)
+                                    database.save_generated_combination(numbers, stars, strategy_type, score)
                                 
-                                for i, (strategy_name, strategy_fn) in enumerate(all_strategies.items()):
-                                    try:
-                                        st.write(f"Generating combinations using {strategy_name}...")
-                                        strategy_combos = strategy_fn()
-                                        
-                                        # Add strategy name to each combination
-                                        for combo in strategy_combos:
-                                            combo['strategy'] = strategy_name
-                                        
-                                        combinations.extend(strategy_combos)
-                                        
-                                        # Store these combinations in their respective strategy too
-                                        st.session_state.generated_combinations[strategy_name] = strategy_combos
-                                        
-                                        # Update progress
-                                        strategy_progress.progress((i + 1) / len(all_strategies))
-                                    except Exception as e:
-                                        st.warning(f"Error generating combinations for {strategy_name}: {str(e)}")
-                            
-                            # Store the generated combinations
-                            st.session_state.generated_combinations[strategy_type] = combinations
-                            
-                            # Also save to the database
-                            for combo in combinations:
-                                numbers = combo['numbers']
-                                stars = combo['stars']
-                                score = combo.get('score', 0.0)
-                                database.save_generated_combination(numbers, stars, strategy_type, score)
-                            
-                            st.success(f"Successfully generated {num_combinations} combinations and saved to database!")
-                    except Exception as e:
-                        st.error(f"Error generating combinations: {str(e)}")
+                                st.success(f"Successfully generated {num_combinations} combinations and saved to database!")
+                            except Exception as e:
+                                st.error(f"Error generating combinations: {str(e)}")
             
             with col2:
                 st.subheader("Generated Combinations")
