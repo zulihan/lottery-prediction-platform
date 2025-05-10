@@ -1035,6 +1035,7 @@ if st.session_state.active_lottery == "Euromillions" and st.session_state.data_l
     # Strategy Generation tab
     with tabs[2]:
         st.header("Strategy Generation")
+        st.write("DEBUG: Strategy Generation tab is active")
         
         # Check preconditions and show messages without using 'return'
         strategy_tab_should_continue = True
