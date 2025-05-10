@@ -1,204 +1,205 @@
 #!/usr/bin/env python3
 """
-Process French Euromillions CSV files and save to a standardized CSV format
-without requiring database access.
+Process French Loto CSV files from 2019 format
 """
-
-import pandas as pd
 import os
-import re
-import datetime
-import logging
+import sys
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import database
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-def convert_french_date(date_str):
-    """Convert date from French format DD/MM/YYYY to ISO format YYYY-MM-DD"""
-    # Handle non-string inputs
-    if not isinstance(date_str, str):
-        date_str = str(date_str)
+def process_french_loto_csv(file_path):
+    """
+    Process French Loto CSV files with DD/MM/YYYY date format
+    and specific column structure
     
-    # Check if this is already in ISO format
-    if re.match(r'^\d{4}[/.-]\d{1,2}[/.-]\d{1,2}$', date_str):
-        return date_str
+    Args:
+        file_path: Path to the CSV file
+        
+    Returns:
+        Processed DataFrame ready for database import
+    """
+    print(f"Processing newer format French Loto file: {file_path}")
     
-    # Check for format YYYYMMDD (numeric date)
-    if date_str.isdigit() and len(date_str) == 8:
-        year = date_str[0:4]
-        month = date_str[4:6]
-        day = date_str[6:8]
-        return f"{year}-{month}-{day}"
-    
-    # Handle French format with various delimiters (DD/MM/YYYY)
-    match = re.match(r'^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$', date_str)
-    if match:
-        day, month, year = match.groups()
-        # Handle 2-digit years
-        if len(year) == 2:
-            year = '20' + year
-        # Return in ISO format
-        return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-    
-    # Try to handle dates with French format (e.g., "20110506" as string)
+    # Try to read with different delimiters
     try:
-        if len(date_str) == 8 and not date_str.isdigit():
-            # Try to extract a date pattern
-            year = date_str[4:8]
-            month = date_str[2:4]
-            day = date_str[0:2]
-            if year.isdigit() and month.isdigit() and day.isdigit():
-                return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+        # First try with semicolon delimiter (common in French CSV)
+        data = pd.read_csv(file_path, sep=';', encoding='utf-8')
     except:
-        pass
+        try:
+            # Then try with comma delimiter
+            data = pd.read_csv(file_path, sep=',', encoding='utf-8')
+        except Exception as e:
+            print(f"Error reading CSV file: {str(e)}")
+            return None
     
-    # If all else fails, log a warning and use a fallback
-    logger.warning(f"Unknown date format: {date_str}, using today's date instead")
-    return datetime.datetime.now().strftime("%Y-%m-%d")
-
-def process_csv_file(file_path, output_dir='processed_data'):
-    """Process a CSV file and save to a standardized format"""
-    logger.info(f"Processing file: {file_path}")
+    # Print column names for debugging
+    print(f"Columns in file: {data.columns.tolist()}")
     
+    # Check if it's the expected format
+    required_columns = ['date_de_tirage', 'boule_1', 'boule_2', 'boule_3', 'boule_4', 'boule_5', 'numero_chance']
+    for col in required_columns:
+        if col not in data.columns:
+            print(f"Missing required column: {col}")
+            print(f"This doesn't appear to be a 2019 format French Loto file")
+            return None
+    
+    # Convert dates
     try:
-        # Make sure output directory exists
-        os.makedirs(output_dir, exist_ok=True)
+        # Try French format DD/MM/YYYY
+        data['date'] = pd.to_datetime(data['date_de_tirage'], format='%d/%m/%Y')
+        print("Successfully converted dates using format '%d/%m/%Y'")
+    except:
+        try:
+            # Try alternate format MM/DD/YYYY
+            data['date'] = pd.to_datetime(data['date_de_tirage'], format='%m/%d/%Y')
+            print("Successfully converted dates using format '%m/%d/%Y'")
+        except:
+            try:
+                # Try with pandas default parser
+                data['date'] = pd.to_datetime(data['date_de_tirage'])
+                print("Successfully converted dates using pandas default parser")
+            except Exception as e:
+                print(f"Error converting dates: {str(e)}")
+                return None
+    
+    # Create renamed dataframe with standardized column names
+    renamed_data = pd.DataFrame()
+    renamed_data['date'] = data['date']
+    renamed_data['day_of_week'] = data['date'].dt.day_name()
+    
+    # Extract numbers
+    renamed_data['n1'] = data['boule_1']
+    renamed_data['n2'] = data['boule_2']
+    renamed_data['n3'] = data['boule_3']
+    renamed_data['n4'] = data['boule_4']
+    renamed_data['n5'] = data['boule_5']
+    renamed_data['lucky'] = data['numero_chance']
+    
+    # Set draw_num to 1 by default (assuming all are first draws unless specified)
+    renamed_data['draw_num'] = 1
+    
+    # Add other columns if available
+    if 'rapport_rang1' in data.columns:
+        renamed_data['prize_rank1'] = data['rapport_rang1'].str.replace('€', '').str.replace(',', '.').str.replace(' ', '').astype(float)
+    if 'nombre_de_gagnant_rang1' in data.columns:
+        renamed_data['winners_rank1'] = data['nombre_de_gagnant_rang1']
+    
+    if 'rapport_rang2' in data.columns and 'nombre_de_gagnant_rang2' in data.columns:
+        renamed_data['prize_rank2'] = data['rapport_rang2'].str.replace('€', '').str.replace(',', '.').str.replace(' ', '').astype(float)
+        renamed_data['winners_rank2'] = data['nombre_de_gagnant_rang2']
+    
+    if 'rapport_rang3' in data.columns and 'nombre_de_gagnant_rang3' in data.columns:
+        renamed_data['prize_rank3'] = data['rapport_rang3'].str.replace('€', '').str.replace(',', '.').str.replace(' ', '').astype(float)
+        renamed_data['winners_rank3'] = data['nombre_de_gagnant_rang3']
+    
+    if 'rapport_rang4' in data.columns and 'nombre_de_gagnant_rang4' in data.columns:
+        renamed_data['prize_rank4'] = data['rapport_rang4'].str.replace('€', '').str.replace(',', '.').str.replace(' ', '').astype(float)
+        renamed_data['winners_rank4'] = data['nombre_de_gagnant_rang4']
+    
+    if 'rapport_rang5' in data.columns and 'nombre_de_gagnant_rang5' in data.columns:
+        renamed_data['prize_rank5'] = data['rapport_rang5'].str.replace('€', '').str.replace(',', '.').str.replace(' ', '').astype(float)
+        renamed_data['winners_rank5'] = data['nombre_de_gagnant_rang5']
+    
+    if 'rapport_rang6' in data.columns and 'nombre_de_gagnant_rang6' in data.columns:
+        renamed_data['prize_rank6'] = data['rapport_rang6'].str.replace('€', '').str.replace(',', '.').str.replace(' ', '').astype(float)
+        renamed_data['winners_rank6'] = data['nombre_de_gagnant_rang6']
+    
+    if 'rapport_rang7' in data.columns and 'nombre_de_gagnant_rang7' in data.columns:
+        renamed_data['prize_rank7'] = data['rapport_rang7'].str.replace('€', '').str.replace(',', '.').str.replace(' ', '').astype(float)
+        renamed_data['winners_rank7'] = data['nombre_de_gagnant_rang7']
+    
+    # Set currency to EUR for modern draws
+    renamed_data['currency'] = 'EUR'
+    
+    print(f"Processed {len(renamed_data)} records")
+    return renamed_data
+
+def import_to_database(data):
+    """
+    Import the processed data to the database
+    
+    Args:
+        data: Processed DataFrame
         
-        # First, try to detect the delimiter and read the header names
-        with open(file_path, 'r', encoding='utf-8') as f:
-            first_line = f.readline().strip()
-            delimiter = ';' if ';' in first_line else ','
+    Returns:
+        Number of records imported
+    """
+    if data is None or len(data) == 0:
+        print("No data to import")
+        return 0
+    
+    count = 0
+    for _, row in data.iterrows():
+        try:
+            # Extract data from the row
+            numbers = [row['n1'], row['n2'], row['n3'], row['n4'], row['n5']]
+            lucky = row['lucky']
+            date = row['date'].date()  # Convert pandas timestamp to date
+            day_of_week = row['day_of_week']
+            draw_num = row['draw_num']
             
-        # Read the CSV file with the detected delimiter
-        df = pd.read_csv(file_path, delimiter=delimiter, encoding='utf-8', on_bad_lines='skip')
-        
-        logger.info(f"Loaded CSV with {len(df)} rows and {len(df.columns)} columns")
-        logger.info(f"Columns: {df.columns.tolist()}")
-        
-        # Create a new DataFrame for standardized data
-        standardized_df = pd.DataFrame()
-        
-        # Process the date
-        if 'date_de_tirage' in df.columns:
-            standardized_df['date'] = df['date_de_tirage'].apply(convert_french_date)
-        else:
-            # Try to find a date column
-            for col in df.columns:
-                if 'date' in col.lower():
-                    standardized_df['date'] = df[col].apply(convert_french_date)
-                    break
-                    
-        # Process day of week
-        if 'jour_de_tirage' in df.columns:
-            # Map abbreviated French day names to full English day names
-            day_mapping = {
-                'LU': 'Monday',
-                'MA': 'Tuesday',
-                'ME': 'Wednesday',
-                'JE': 'Thursday',
-                'VE': 'Friday',
-                'SA': 'Saturday',
-                'DI': 'Sunday',
-                'LUNDI': 'Monday',
-                'MARDI': 'Tuesday',
-                'MERCREDI': 'Wednesday',
-                'JEUDI': 'Thursday',
-                'VENDREDI': 'Friday',
-                'SAMEDI': 'Saturday',
-                'DIMANCHE': 'Sunday'
-            }
-            standardized_df['day_of_week'] = df['jour_de_tirage'].apply(
-                lambda x: day_mapping.get(str(x).strip().upper(), x) if x is not None else None
+            # Prepare winners and prizes dictionaries
+            winners = {}
+            prizes = {}
+            
+            for i in range(1, 8):
+                winners_key = f'winners_rank{i}'
+                prize_key = f'prize_rank{i}'
+                
+                if winners_key in row and not pd.isna(row[winners_key]):
+                    winners[f'rank{i}'] = int(row[winners_key])
+                
+                if prize_key in row and not pd.isna(row[prize_key]):
+                    prizes[f'rank{i}'] = float(row[prize_key])
+            
+            # Prepare total amount if available
+            total_amount = None
+            if 'total_amount' in row and not pd.isna(row['total_amount']):
+                total_amount = float(row['total_amount'])
+            
+            # Prepare currency
+            currency = 'EUR'
+            if 'currency' in row and not pd.isna(row['currency']):
+                currency = row['currency']
+            
+            # Add to database
+            success = database.add_french_loto_drawing_with_details(
+                date=date,
+                numbers=numbers,
+                lucky=lucky,
+                day_of_week=day_of_week,
+                winners=winners,
+                prizes=prizes,
+                total_amount=total_amount,
+                currency=currency,
+                draw_num=draw_num
             )
             
-        # Process main ball numbers
-        if 'boule_1' in df.columns:
-            for i in range(1, 6):
-                col_name = f'boule_{i}'
-                if col_name in df.columns:
-                    standardized_df[f'n{i}'] = df[col_name].astype(int)
-        
-        # Process star numbers
-        if 'etoile_1' in df.columns:
-            for i in range(1, 3):
-                col_name = f'etoile_{i}'
-                if col_name in df.columns:
-                    standardized_df[f's{i}'] = df[col_name].astype(int)
-        
-        # Add source file metadata
-        standardized_df['source_file'] = os.path.basename(file_path)
-        
-        # Make sure essential columns are present (fill with NaN if missing)
-        essential_columns = ['date', 'day_of_week', 'n1', 'n2', 'n3', 'n4', 'n5', 's1', 's2']
-        for col in essential_columns:
-            if col not in standardized_df.columns:
-                standardized_df[col] = pd.NA
-        
-        # Sort by date
-        standardized_df = standardized_df.sort_values('date', ascending=False)
-        
-        # Generate output file path
-        base_name = os.path.splitext(os.path.basename(file_path))[0]
-        output_path = os.path.join(output_dir, f"{base_name}_processed.csv")
-        
-        # Save to CSV
-        standardized_df.to_csv(output_path, index=False)
-        logger.info(f"Saved {len(standardized_df)} rows to {output_path}")
-        
-        return output_path
-        
-    except Exception as e:
-        logger.error(f"Error processing file {file_path}: {str(e)}")
-        raise
-
-def main(file_paths):
-    """Process multiple CSV files"""
-    processed_files = []
-    
-    for file_path in file_paths:
-        try:
-            output_path = process_csv_file(file_path)
-            processed_files.append(output_path)
-        except Exception as e:
-            logger.error(f"Failed to process {file_path}: {str(e)}")
-    
-    # Print summary
-    logger.info(f"Processed {len(processed_files)} out of {len(file_paths)} files")
-    for file_path in processed_files:
-        logger.info(f"  - {file_path}")
-    
-    # If we have multiple processed files, also create a combined file
-    if len(processed_files) > 1:
-        try:
-            combined_df = pd.DataFrame()
-            
-            for file_path in processed_files:
-                df = pd.read_csv(file_path)
-                combined_df = pd.concat([combined_df, df])
-                
-            # Remove duplicates based on date and numbers
-            combined_df = combined_df.drop_duplicates(subset=['date', 'n1', 'n2', 'n3', 'n4', 'n5', 's1', 's2'])
-            
-            # Sort by date
-            combined_df = combined_df.sort_values('date', ascending=False)
-            
-            # Save combined file
-            output_path = os.path.join('processed_data', 'euromillions_combined.csv')
-            combined_df.to_csv(output_path, index=False)
-            logger.info(f"Created combined file with {len(combined_df)} rows: {output_path}")
+            if success:
+                count += 1
             
         except Exception as e:
-            logger.error(f"Error creating combined file: {str(e)}")
+            print(f"Error importing row: {str(e)}")
     
-    return processed_files
+    print(f"Successfully imported {count} records")
+    return count
 
-if __name__ == "__main__":
-    import sys
+def import_french_loto_file(file_path):
+    """
+    Main function to process and import a French Loto file
     
-    if len(sys.argv) < 2:
-        print("Usage: python process_french_csv.py file1.csv [file2.csv ...]")
-        sys.exit(1)
+    Args:
+        file_path: Path to the CSV file
         
-    file_paths = sys.argv[1:]
-    main(file_paths)
+    Returns:
+        Number of records imported
+    """
+    # Process the data
+    processed_data = process_french_loto_csv(file_path)
+    
+    # Import to database
+    count = import_to_database(processed_data)
+    
+    return count
