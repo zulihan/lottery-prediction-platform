@@ -230,6 +230,30 @@ class FrenchLotoDrawing(Base):
     n5 = Column(Integer, nullable=False)
     lucky = Column(Integer, nullable=False)
     
+    # Winner information
+    winners_rank1 = Column(Integer)
+    winners_rank2 = Column(Integer)
+    winners_rank3 = Column(Integer)
+    winners_rank4 = Column(Integer)
+    winners_rank5 = Column(Integer)
+    winners_rank6 = Column(Integer)
+    winners_rank7 = Column(Integer)
+    
+    # Prize amounts
+    prize_rank1 = Column(Float)
+    prize_rank2 = Column(Float)
+    prize_rank3 = Column(Float)
+    prize_rank4 = Column(Float)
+    prize_rank5 = Column(Float)
+    prize_rank6 = Column(Float)
+    prize_rank7 = Column(Float)
+    
+    # Total jackpot amount
+    total_amount = Column(Float)
+    
+    # Currency (FRF for French francs before 2002, EUR for euros after)
+    currency = Column(String(10))
+    
     def __repr__(self):
         return f"<FrenchLotoDrawing(date='{self.date}', numbers=[{self.n1},{self.n2},{self.n3},{self.n4},{self.n5}], lucky={self.lucky})>"
     
@@ -244,7 +268,23 @@ class FrenchLotoDrawing(Base):
             'n3': self.n3,
             'n4': self.n4,
             'n5': self.n5,
-            'lucky': self.lucky
+            'lucky': self.lucky,
+            'winners_rank1': self.winners_rank1,
+            'winners_rank2': self.winners_rank2, 
+            'winners_rank3': self.winners_rank3,
+            'winners_rank4': self.winners_rank4,
+            'winners_rank5': self.winners_rank5,
+            'winners_rank6': self.winners_rank6,
+            'winners_rank7': self.winners_rank7,
+            'prize_rank1': self.prize_rank1,
+            'prize_rank2': self.prize_rank2,
+            'prize_rank3': self.prize_rank3,
+            'prize_rank4': self.prize_rank4,
+            'prize_rank5': self.prize_rank5,
+            'prize_rank6': self.prize_rank6,
+            'prize_rank7': self.prize_rank7,
+            'total_amount': self.total_amount,
+            'currency': self.currency
         }
 
 class FrenchLotoPrediction(Base):
