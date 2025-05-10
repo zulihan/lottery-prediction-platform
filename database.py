@@ -81,6 +81,22 @@ def get_session(max_retries=3, retry_delay=1):
     # Return a session anyway - let the caller handle any exceptions
     return Session()
 
+def get_db_connection():
+    """Get a direct database connection from engine"""
+    if not DB_AVAILABLE:
+        logger.error("Database not available")
+        return None
+    
+    try:
+        conn = engine.connect()
+        # Test connection
+        from sqlalchemy import text
+        conn.execute(text("SELECT 1"))
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection error: {str(e)}")
+        return None
+
 # Create Base class for declarative models
 Base = declarative_base()
 
@@ -198,6 +214,91 @@ class StrategyTestResult(Base):
             'iterations': self.iterations,
             'num_combinations': self.num_combinations,
             'results': json.loads(self.results)
+        }
+
+class FrenchLotoDrawing(Base):
+    """Table for storing French Loto drawing history"""
+    __tablename__ = 'french_loto_drawings'
+    
+    id = Column(Integer, primary_key=True)
+    date = Column(Date, nullable=False, unique=True)
+    day_of_week = Column(String(20))
+    n1 = Column(Integer, nullable=False)
+    n2 = Column(Integer, nullable=False)
+    n3 = Column(Integer, nullable=False)
+    n4 = Column(Integer, nullable=False)
+    n5 = Column(Integer, nullable=False)
+    lucky = Column(Integer, nullable=False)
+    
+    def __repr__(self):
+        return f"<FrenchLotoDrawing(date='{self.date}', numbers=[{self.n1},{self.n2},{self.n3},{self.n4},{self.n5}], lucky={self.lucky})>"
+    
+    def to_dict(self):
+        """Convert drawing to dictionary format"""
+        return {
+            'id': self.id,
+            'date': self.date.strftime('%Y-%m-%d'),
+            'day_of_week': self.day_of_week,
+            'n1': self.n1,
+            'n2': self.n2,
+            'n3': self.n3,
+            'n4': self.n4,
+            'n5': self.n5,
+            'lucky': self.lucky
+        }
+
+class FrenchLotoPrediction(Base):
+    """Table for storing French Loto generated predictions"""
+    __tablename__ = 'french_loto_predictions'
+    
+    id = Column(Integer, primary_key=True)
+    date_generated = Column(Date, default=datetime.now().date())
+    numbers = Column(String(50), nullable=False)  # Stored as dash-separated string, e.g. "1-5-12-32-45"
+    lucky = Column(Integer, nullable=False)
+    strategy = Column(String(100))
+    score = Column(Float)
+    
+    def __repr__(self):
+        return f"<FrenchLotoPrediction(id='{self.id}', numbers='{self.numbers}', lucky={self.lucky}, strategy='{self.strategy}')>"
+    
+    def to_dict(self):
+        """Convert prediction to dictionary format"""
+        return {
+            'id': self.id,
+            'date_generated': self.date_generated.strftime('%Y-%m-%d'),
+            'numbers': self.numbers,
+            'lucky': self.lucky,
+            'strategy': self.strategy,
+            'score': self.score
+        }
+
+class FrenchLotoPlayedCombination(Base):
+    """Table for storing French Loto combinations played by the user"""
+    __tablename__ = 'french_loto_played_combinations'
+    
+    id = Column(Integer, primary_key=True)
+    played_date = Column(Date, nullable=False)  # Date when the combination was played
+    draw_date = Column(Date, nullable=False)  # Date of the draw for which it was played
+    numbers = Column(String(50), nullable=False)  # Stored as dash-separated string
+    lucky = Column(Integer, nullable=False)
+    strategy = Column(String(100))
+    notes = Column(String(500))
+    result = Column(String(50))  # Result of the play (win/loss, amount, etc.)
+    
+    def __repr__(self):
+        return f"<FrenchLotoPlayedCombination(id='{self.id}', draw_date='{self.draw_date}', numbers='{self.numbers}', lucky={self.lucky})>"
+    
+    def to_dict(self):
+        """Convert played combination to dictionary format"""
+        return {
+            'id': self.id,
+            'played_date': self.played_date.strftime('%Y-%m-%d'),
+            'draw_date': self.draw_date.strftime('%Y-%m-%d'),
+            'numbers': self.numbers,
+            'lucky': self.lucky,
+            'strategy': self.strategy,
+            'notes': self.notes,
+            'result': self.result
         }
 
 def init_db():
@@ -827,6 +928,326 @@ def get_strategy_test_results(limit=10, max_retries=3):
             
     # This line will only be reached if all retry attempts have failed
     return []
+
+# French Loto Database Functions
+
+def get_french_loto_drawings(max_retries=3):
+    """
+    Get all French Loto drawings from the database
+    
+    Parameters:
+    -----------
+    max_retries : int
+        Maximum number of retry attempts
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame containing all drawings
+    """
+    for attempt in range(max_retries):
+        session = get_session()
+        try:
+            drawings = session.query(FrenchLotoDrawing).order_by(FrenchLotoDrawing.date.desc()).all()
+            if not drawings:
+                return pd.DataFrame()
+                
+            # Convert to list of dictionaries
+            records = [drawing.to_dict() for drawing in drawings]
+            return pd.DataFrame(records)
+        except exc.OperationalError as e:
+            # Handle specific database operational errors
+            logger.warning(f"Database operational error (attempt {attempt+1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                # Wait before retrying (exponential backoff)
+                retry_delay = 2 ** attempt
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                # Create a fresh engine and session factory if needed
+                if "SSL connection has been closed" in str(e):
+                    logger.info("Resetting database connection pool")
+                    Session.remove()  # Close all sessions
+            else:
+                logger.error(f"Failed to retrieve French Loto drawings after {max_retries} attempts")
+                # Return empty DataFrame as a fallback
+                return pd.DataFrame()
+        except Exception as e:
+            logger.error(f"Error retrieving French Loto drawings: {str(e)}")
+            return pd.DataFrame()
+        finally:
+            session.close()
+
+def add_french_loto_drawing(date, numbers, lucky, day_of_week=None):
+    """
+    Add a new French Loto drawing to the database
+    
+    Parameters:
+    -----------
+    date : datetime.date, pandas.Timestamp, or str
+        Date of the drawing
+    numbers : list
+        List of 5 main numbers
+    lucky : int
+        Lucky number
+    day_of_week : str, optional
+        Day of the week
+        
+    Returns:
+    --------
+    bool
+        True if the drawing was added successfully
+    """
+    session = get_session()
+    success = False
+    
+    try:
+        # Convert date to a consistent datetime.date object format
+        if isinstance(date, str):
+            date = datetime.strptime(date, '%Y-%m-%d').date()
+        elif hasattr(date, 'date') and callable(getattr(date, 'date')):  # Handle pandas Timestamp
+            date = date.date()
+        elif not isinstance(date, type(datetime.now().date())):
+            # If it's still not a date object, try to convert with str
+            date = datetime.strptime(str(date), '%Y-%m-%d').date()
+            
+        # Check if this drawing already exists
+        existing = session.query(FrenchLotoDrawing).filter_by(date=date).first()
+        if existing:
+            logger.info(f"French Loto drawing for date {date} already exists, skipping")
+            return False
+            
+        # Create new drawing record
+        drawing = FrenchLotoDrawing(
+            date=date,
+            day_of_week=day_of_week,
+            n1=numbers[0],
+            n2=numbers[1],
+            n3=numbers[2],
+            n4=numbers[3],
+            n5=numbers[4],
+            lucky=lucky
+        )
+        
+        # Add to the database
+        session.add(drawing)
+        session.commit()
+        success = True
+        logger.info(f"Added new French Loto drawing for date {date}")
+        
+    except Exception as e:
+        logger.error(f"Error adding new French Loto drawing: {str(e)}")
+        session.rollback()
+    finally:
+        session.close()
+        
+    return success
+
+def save_french_loto_prediction(numbers, lucky, strategy, score):
+    """
+    Save a French Loto prediction to the database
+    
+    Parameters:
+    -----------
+    numbers : list
+        List of 5 main numbers
+    lucky : int
+        Lucky number
+    strategy : str
+        Strategy used to generate the combination
+    score : float
+        Confidence score (0-100)
+        
+    Returns:
+    --------
+    int
+        ID of the saved prediction, or 0 if save failed
+    """
+    session = get_session()
+    prediction_id = 0
+    
+    try:
+        # Convert numbers to string format "1-5-12-32-45"
+        if isinstance(numbers, list):
+            numbers_str = "-".join(map(str, sorted(numbers)))
+        else:
+            numbers_str = numbers  # Assume it's already formatted
+        
+        # Create new prediction
+        prediction = FrenchLotoPrediction(
+            date_generated=datetime.now().date(),
+            numbers=numbers_str,
+            lucky=int(lucky),
+            strategy=strategy,
+            score=float(score)
+        )
+        
+        # Add to database
+        session.add(prediction)
+        session.commit()
+        prediction_id = prediction.id
+        
+    except Exception as e:
+        logger.error(f"Error saving French Loto prediction: {str(e)}")
+        session.rollback()
+    finally:
+        session.close()
+        
+    return prediction_id
+
+def get_french_loto_predictions(limit=50):
+    """
+    Get French Loto predictions from the database
+    
+    Parameters:
+    -----------
+    limit : int
+        Maximum number of predictions to retrieve
+        
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame containing predictions
+    """
+    session = get_session()
+    try:
+        predictions = session.query(FrenchLotoPrediction).order_by(FrenchLotoPrediction.date_generated.desc()).limit(limit).all()
+        if not predictions:
+            return pd.DataFrame()
+            
+        # Convert to list of dictionaries
+        records = [pred.to_dict() for pred in predictions]
+        return pd.DataFrame(records)
+        
+    except Exception as e:
+        logger.error(f"Error retrieving French Loto predictions: {str(e)}")
+        return pd.DataFrame()
+    finally:
+        session.close()
+
+def save_french_loto_played_combination(numbers, lucky, strategy, draw_date, notes=""):
+    """
+    Save a played French Loto combination
+    
+    Parameters:
+    -----------
+    numbers : list or str
+        List of 5 main numbers or formatted string
+    lucky : int
+        Lucky number
+    strategy : str
+        Strategy used to generate the combination
+    draw_date : datetime.date, pandas.Timestamp, or str
+        Date of the draw this combination was played for
+    notes : str, optional
+        User notes about this combination
+        
+    Returns:
+    --------
+    int
+        ID of the saved combination, or 0 if save failed
+    """
+    session = get_session()
+    combo_id = 0
+    
+    try:
+        # Process numbers
+        if isinstance(numbers, list):
+            numbers_str = "-".join(map(str, sorted(numbers)))
+        else:
+            numbers_str = numbers  # Assume already formatted
+            
+        # Process draw date
+        if isinstance(draw_date, str):
+            draw_date = datetime.strptime(draw_date, '%Y-%m-%d').date()
+        elif hasattr(draw_date, 'date') and callable(getattr(draw_date, 'date')):
+            draw_date = draw_date.date()
+        
+        # Create new record
+        played = FrenchLotoPlayedCombination(
+            played_date=datetime.now().date(),
+            draw_date=draw_date,
+            numbers=numbers_str,
+            lucky=int(lucky),
+            strategy=strategy,
+            notes=notes
+        )
+        
+        # Add to database
+        session.add(played)
+        session.commit()
+        combo_id = played.id
+        
+    except Exception as e:
+        logger.error(f"Error saving played French Loto combination: {str(e)}")
+        session.rollback()
+    finally:
+        session.close()
+        
+    return combo_id
+
+def get_french_loto_played_combinations():
+    """
+    Get all played French Loto combinations
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame containing played combinations
+    """
+    session = get_session()
+    try:
+        combinations = session.query(FrenchLotoPlayedCombination).order_by(FrenchLotoPlayedCombination.played_date.desc()).all()
+        if not combinations:
+            return pd.DataFrame()
+            
+        # Convert to list of dictionaries
+        records = [combo.to_dict() for combo in combinations]
+        return pd.DataFrame(records)
+        
+    except Exception as e:
+        logger.error(f"Error retrieving played French Loto combinations: {str(e)}")
+        return pd.DataFrame()
+    finally:
+        session.close()
+
+def update_french_loto_result(combo_id, result):
+    """
+    Update the result of a played French Loto combination
+    
+    Parameters:
+    -----------
+    combo_id : int
+        ID of the played combination
+    result : str
+        Result of the play (e.g., "3 correct", "Won €10", etc.)
+        
+    Returns:
+    --------
+    bool
+        True if the update was successful
+    """
+    session = get_session()
+    success = False
+    
+    try:
+        # Find the combination
+        played = session.query(FrenchLotoPlayedCombination).filter_by(id=combo_id).first()
+        if not played:
+            logger.warning(f"Played French Loto combination with ID {combo_id} not found")
+            return False
+            
+        # Update result
+        played.result = result
+        session.commit()
+        success = True
+        
+    except Exception as e:
+        logger.error(f"Error updating French Loto result: {str(e)}")
+        session.rollback()
+    finally:
+        session.close()
+        
+    return success
 
 # Initialize the database if this module is run directly
 if __name__ == "__main__":
