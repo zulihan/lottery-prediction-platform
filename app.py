@@ -597,8 +597,8 @@ elif st.session_state.active_lottery == "French Loto" and st.session_state.frenc
         col1, col2 = st.columns(2)
         with col1:
             if not st.session_state.french_loto_data.empty:
-                csv_data = st.session_state.french_loto_data.to_csv(index=False)
-                csv_link = get_download_link_csv(csv_data, "french_loto_data.csv", "Download CSV")
+                # Pass the DataFrame directly to the get_download_link_csv function
+                csv_link = get_download_link_csv(st.session_state.french_loto_data, "french_loto_data.csv", "Download CSV")
                 st.markdown(csv_link, unsafe_allow_html=True)
         with col2:
             if not st.session_state.french_loto_data.empty:
