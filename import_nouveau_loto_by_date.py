@@ -267,10 +267,10 @@ def main():
         except Exception as e:
             logger.error(f"Error checking table structure: {e}")
     
-    # Import data for a specific date range (focus on 2008-2016 which is our gap)
-    # Splitting 2008-2016 into smaller chunks to avoid timeouts
-    start_date = "2010-06-01"  # Continue from where we left off
-    end_date = "2012-12-31"    # Next chunk
+    # Import data for a specific date range (focus on 2012-2016 which is our gap)
+    # Splitting into smaller chunks to avoid timeouts
+    start_date = "2012-11-10"  # Continue from where we left off
+    end_date = "2014-12-31"    # Next chunk
     
     batch_size = 25
     max_rows = None  # Import all records in the date range
