@@ -222,10 +222,9 @@ def main():
         except Exception as e:
             logger.error(f"Error checking table structure: {e}")
     
-    # Import data with a limit to avoid timeout
-    # We're starting with 100 records for initial testing
+    # Import the full dataset
     batch_size = 25
-    max_rows = 100
+    max_rows = None  # No limit on the number of rows to process
     
     num_imported = import_nouveau_loto_csv(filename=filename, batch_size=batch_size, max_rows=max_rows)
     
