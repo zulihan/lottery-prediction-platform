@@ -126,7 +126,8 @@ def main():
         "Statistics", 
         "Strategy Generation", 
         "Results Analysis", 
-        "Visualizations"
+        "Visualizations",
+        "Add Latest Draw"
     ])
     
     # Data Overview tab
@@ -599,6 +600,244 @@ def main():
     with tabs[4]:
         st.header("Visualizations")
         st.write("Visualization tools will be added here.")
+        
+    # Add Latest Draw tab
+    with tabs[5]:
+        st.header("Add Latest Draw")
+        
+        # Select lottery type for the new draw
+        lottery_type = st.radio(
+            "Select Lottery Type",
+            ["Euromillions", "French Loto"],
+            horizontal=True,
+            key="latest_draw_lottery_type"
+        )
+        
+        if lottery_type == "Euromillions":
+            st.subheader("Add Latest Euromillions Draw")
+            
+            # Form for adding a new Euromillions draw
+            with st.form(key="add_euromillions_form"):
+                # Draw date
+                draw_date = st.date_input("Draw Date", value=datetime.now().date())
+                
+                # Day of week (auto-populated)
+                day_of_week = draw_date.strftime("%A")
+                st.write(f"Day of week: {day_of_week}")
+                
+                # Numbers input
+                st.subheader("Main Numbers (1-50)")
+                col1, col2, col3, col4, col5 = st.columns(5)
+                with col1:
+                    n1 = st.number_input("Number 1", min_value=1, max_value=50, step=1)
+                with col2:
+                    n2 = st.number_input("Number 2", min_value=1, max_value=50, step=1)
+                with col3:
+                    n3 = st.number_input("Number 3", min_value=1, max_value=50, step=1)
+                with col4:
+                    n4 = st.number_input("Number 4", min_value=1, max_value=50, step=1)
+                with col5:
+                    n5 = st.number_input("Number 5", min_value=1, max_value=50, step=1)
+                
+                st.subheader("Star Numbers (1-12)")
+                col1, col2 = st.columns(2)
+                with col1:
+                    s1 = st.number_input("Star 1", min_value=1, max_value=12, step=1)
+                with col2:
+                    s2 = st.number_input("Star 2", min_value=1, max_value=12, step=1)
+                
+                # Submit button
+                submit_button = st.form_submit_button("Add Euromillions Draw")
+                
+                if submit_button:
+                    # Validate numbers (make sure they're unique)
+                    all_numbers = [n1, n2, n3, n4, n5]
+                    all_stars = [s1, s2]
+                    
+                    if len(set(all_numbers)) != 5:
+                        st.error("❌ Main numbers must be unique!")
+                    elif len(set(all_stars)) != 2:
+                        st.error("❌ Star numbers must be unique!")
+                    else:
+                        try:
+                            # Import EuromillionsDrawing model
+                            from database import EuromillionsDrawing, get_session
+                            
+                            # Create new drawing
+                            new_draw = EuromillionsDrawing(
+                                date=draw_date,
+                                day_of_week=day_of_week,
+                                n1=n1,
+                                n2=n2,
+                                n3=n3,
+                                n4=n4,
+                                n5=n5,
+                                s1=s1,
+                                s2=s2
+                            )
+                            
+                            # Save to database
+                            session = get_session()
+                            try:
+                                # Check if this date already exists
+                                existing_draw = session.query(EuromillionsDrawing).filter_by(date=draw_date).first()
+                                if existing_draw:
+                                    st.warning(f"⚠️ A draw for {draw_date} already exists. Updating with new numbers.")
+                                    # Update existing draw
+                                    existing_draw.n1 = n1
+                                    existing_draw.n2 = n2
+                                    existing_draw.n3 = n3
+                                    existing_draw.n4 = n4
+                                    existing_draw.n5 = n5
+                                    existing_draw.s1 = s1
+                                    existing_draw.s2 = s2
+                                else:
+                                    # Add new draw
+                                    session.add(new_draw)
+                                
+                                session.commit()
+                                st.success(f"✅ Successfully added Euromillions draw for {draw_date}!")
+                                
+                                # Force reload of data if it was already loaded
+                                if st.session_state.data_loaded:
+                                    conn = get_db_connection()
+                                    if conn:
+                                        query = "SELECT * FROM euromillions_drawings ORDER BY date DESC"
+                                        data = pd.read_sql(query, conn)
+                                        st.session_state.processed_data = data
+                                
+                            except Exception as e:
+                                session.rollback()
+                                st.error(f"❌ Error adding draw: {str(e)}")
+                            finally:
+                                session.close()
+                        except Exception as e:
+                            st.error(f"❌ Database error: {str(e)}")
+        
+        else:  # French Loto
+            st.subheader("Add Latest French Loto Draw")
+            
+            # Form for adding a new French Loto draw
+            with st.form(key="add_french_loto_form"):
+                # Draw date
+                draw_date = st.date_input("Draw Date", value=datetime.now().date())
+                
+                # Day of week (auto-populated)
+                day_of_week = draw_date.strftime("%A")
+                st.write(f"Day of week: {day_of_week}")
+                
+                # Numbers input
+                st.subheader("Main Numbers (1-49)")
+                col1, col2, col3, col4, col5 = st.columns(5)
+                with col1:
+                    n1 = st.number_input("Number 1", min_value=1, max_value=49, step=1)
+                with col2:
+                    n2 = st.number_input("Number 2", min_value=1, max_value=49, step=1)
+                with col3:
+                    n3 = st.number_input("Number 3", min_value=1, max_value=49, step=1)
+                with col4:
+                    n4 = st.number_input("Number 4", min_value=1, max_value=49, step=1)
+                with col5:
+                    n5 = st.number_input("Number 5", min_value=1, max_value=49, step=1)
+                
+                st.subheader("Lucky Number (1-10)")
+                lucky = st.number_input("Lucky Number", min_value=1, max_value=10, step=1)
+                
+                # Winner information (optional)
+                st.subheader("Winner Information (Optional)")
+                cols = st.columns(3)
+                with cols[0]:
+                    winners_rank1 = st.number_input("Rank 1 Winners", min_value=0, step=1)
+                with cols[1]:
+                    winners_rank2 = st.number_input("Rank 2 Winners", min_value=0, step=1)
+                with cols[2]:
+                    winners_rank3 = st.number_input("Rank 3 Winners", min_value=0, step=1)
+                
+                # Prize information (optional)
+                st.subheader("Prize Information (Optional)")
+                cols = st.columns(3)
+                with cols[0]:
+                    prize_rank1 = st.number_input("Rank 1 Prize (€)", min_value=0.0, step=1000.0)
+                with cols[1]:
+                    prize_rank2 = st.number_input("Rank 2 Prize (€)", min_value=0.0, step=100.0)
+                with cols[2]:
+                    prize_rank3 = st.number_input("Rank 3 Prize (€)", min_value=0.0, step=10.0)
+                
+                # Submit button
+                submit_button = st.form_submit_button("Add French Loto Draw")
+                
+                if submit_button:
+                    # Validate numbers (make sure they're unique)
+                    all_numbers = [n1, n2, n3, n4, n5]
+                    
+                    if len(set(all_numbers)) != 5:
+                        st.error("❌ Main numbers must be unique!")
+                    else:
+                        try:
+                            # Import FrenchLotoDrawing model
+                            from database import FrenchLotoDrawing, get_session
+                            
+                            # Create new drawing
+                            new_draw = FrenchLotoDrawing(
+                                date=draw_date,
+                                day_of_week=day_of_week,
+                                n1=n1,
+                                n2=n2,
+                                n3=n3,
+                                n4=n4,
+                                n5=n5,
+                                lucky=lucky,
+                                winners_rank1=winners_rank1,
+                                winners_rank2=winners_rank2,
+                                winners_rank3=winners_rank3,
+                                prize_rank1=prize_rank1,
+                                prize_rank2=prize_rank2,
+                                prize_rank3=prize_rank3,
+                                currency="EUR"
+                            )
+                            
+                            # Save to database
+                            session = get_session()
+                            try:
+                                # Check if this date already exists
+                                existing_draw = session.query(FrenchLotoDrawing).filter_by(date=draw_date).first()
+                                if existing_draw:
+                                    st.warning(f"⚠️ A draw for {draw_date} already exists. Updating with new numbers.")
+                                    # Update existing draw
+                                    existing_draw.n1 = n1
+                                    existing_draw.n2 = n2
+                                    existing_draw.n3 = n3
+                                    existing_draw.n4 = n4
+                                    existing_draw.n5 = n5
+                                    existing_draw.lucky = lucky
+                                    existing_draw.winners_rank1 = winners_rank1
+                                    existing_draw.winners_rank2 = winners_rank2
+                                    existing_draw.winners_rank3 = winners_rank3
+                                    existing_draw.prize_rank1 = prize_rank1
+                                    existing_draw.prize_rank2 = prize_rank2
+                                    existing_draw.prize_rank3 = prize_rank3
+                                else:
+                                    # Add new draw
+                                    session.add(new_draw)
+                                
+                                session.commit()
+                                st.success(f"✅ Successfully added French Loto draw for {draw_date}!")
+                                
+                                # Force reload of data if it was already loaded
+                                if st.session_state.french_loto_data_loaded:
+                                    conn = get_db_connection()
+                                    if conn:
+                                        query = "SELECT * FROM french_loto_drawings ORDER BY date DESC"
+                                        data = pd.read_sql(query, conn)
+                                        st.session_state.french_loto_data = data
+                                
+                            except Exception as e:
+                                session.rollback()
+                                st.error(f"❌ Error adding draw: {str(e)}")
+                            finally:
+                                session.close()
+                        except Exception as e:
+                            st.error(f"❌ Database error: {str(e)}")
 
 
 if __name__ == "__main__":
