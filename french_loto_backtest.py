@@ -71,7 +71,7 @@ class StrategyBacktester:
         Calculate the match score between a prediction and actual draw
         
         Args:
-            prediction (dict): Prediction with 'numbers' and 'lucky' keys
+            prediction (dict): Prediction with number keys (could be 'numbers' or 'main_numbers' and 'lucky' or 'lucky_number') 
             actual_draw (pd.Series): Actual draw row from the dataset
             
         Returns:
@@ -85,9 +85,26 @@ class StrategyBacktester:
                           actual_draw['n4'], actual_draw['n5']]
         actual_lucky = actual_draw['lucky']
         
+        # Handle different key formats in the prediction object
+        if 'numbers' in prediction:
+            pred_numbers = prediction['numbers']
+        elif 'main_numbers' in prediction:
+            pred_numbers = prediction['main_numbers']
+        else:
+            # If format not recognized, return 0 matches
+            return 0, [], False
+        
+        if 'lucky' in prediction:
+            pred_lucky = prediction['lucky']
+        elif 'lucky_number' in prediction:
+            pred_lucky = prediction['lucky_number']
+        else:
+            # If format not recognized, return 0 matches
+            return 0, [], False
+        
         # Calculate matches
-        numbers_matched = [n for n in prediction['numbers'] if n in actual_numbers]
-        lucky_matched = prediction['lucky'] == actual_lucky
+        numbers_matched = [n for n in pred_numbers if n in actual_numbers]
+        lucky_matched = pred_lucky == actual_lucky
         
         # Calculate match score (0-6)
         match_score = len(numbers_matched) + (1 if lucky_matched else 0)
@@ -307,8 +324,9 @@ def main():
     # Create backtester
     backtester = StrategyBacktester()
     
-    # Run backtest with 30% of data as test set, 5 combinations per strategy
-    analysis = backtester.run_backtest(test_ratio=0.3, num_combinations=5)
+    # Run backtest with 30% of data as test set, 20 combinations per strategy
+    # for more comprehensive testing
+    analysis = backtester.run_backtest(test_ratio=0.3, num_combinations=20)
     
     # Print summary
     backtester.print_summary(analysis)
