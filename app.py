@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import os
 import io
 import json
-from datetime import datetime, date, timedelta
+from datetime import date
 from database import init_db, get_db_connection
 import logging
 
@@ -18,104 +18,87 @@ try:
     from french_loto_statistics import FrenchLotoStatistics
     from combination_analysis import analyze_full_combinations, analyze_number_combinations
 except ImportError:
-    # Handle the case where modules aren't available yet
-    pass
+    logging.warning("Strategy modules not found. Some features may be unavailable.")
 
-# Set up logging
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize database
 init_db()
 
-# Initialize session state for consistent state management
-if 'data_loaded' not in st.session_state:
-    st.session_state.data_loaded = False
-if 'french_loto_data_loaded' not in st.session_state:
-    st.session_state.french_loto_data_loaded = False
-if 'active_lottery' not in st.session_state:
-    st.session_state.active_lottery = "Euromillions"
-if 'processed_data' not in st.session_state:
-    st.session_state.processed_data = None
-if 'french_loto_data' not in st.session_state:
-    st.session_state.french_loto_data = None
+# Set page config (must be first Streamlit command)
+st.set_page_config(
+    page_title="Euromillions & French Loto Prediction",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 def main():
     """Main application function"""
-    # Page configuration
-    st.set_page_config(
-        page_title="Lottery Prediction Platform",
-        page_icon="🎲",
-        layout="wide"
-    )
     
-    # Application header
-    st.title("Advanced Lottery Prediction Platform")
+    # Application title
+    st.title("🎯 Lottery Prediction Platform")
+    st.write("Advanced prediction tools for Euromillions and French Loto")
     
-    # Sidebar for global controls and data management
+    # Initialize session state for storing data
+    if 'data_loaded' not in st.session_state:
+        st.session_state.data_loaded = False
+        
+    if 'processed_data' not in st.session_state:
+        st.session_state.processed_data = None
+        
+    if 'french_loto_data_loaded' not in st.session_state:
+        st.session_state.french_loto_data_loaded = False
+        
+    if 'french_loto_data' not in st.session_state:
+        st.session_state.french_loto_data = None
+    
+    # Sidebar for data loading and configuration
     with st.sidebar:
-        st.header("Data Management")
+        st.header("Data Sources")
         
-        # Lottery selector
-        lottery_type = st.radio(
-            "Select Lottery Type",
-            ["Euromillions", "French Loto"],
-            horizontal=True
-        )
-        st.session_state.active_lottery = lottery_type
+        # Euromillions data loading
+        st.subheader("Euromillions Data")
+        load_data_button = st.button("Load Euromillions Data")
         
-        st.divider()
-        
-        # Euromillions data management
-        if lottery_type == "Euromillions":
-            st.subheader("Euromillions Data")
-            
-            if st.button("Load Euromillions Data"):
-                try:
-                    # Get database connection
-                    conn = get_db_connection()
-                    if conn is None:
-                        st.error("❌ Could not connect to database!")
-                        return
-                    
-                    query = "SELECT * FROM euromillions_drawings ORDER BY date DESC"
-                    data = pd.read_sql(query, conn)
-                    
-                    if data is not None and not data.empty:
+        if load_data_button:
+            with st.spinner("Loading Euromillions data..."):
+                # Get database connection
+                conn = get_db_connection()
+                if conn:
+                    try:
+                        query = "SELECT * FROM euromillions_drawings ORDER BY date DESC"
+                        data = pd.read_sql(query, conn)
                         st.session_state.processed_data = data
                         st.session_state.data_loaded = True
-                        st.success(f"✅ Successfully loaded {len(data)} Euromillions drawings!")
-                    else:
-                        st.error("❌ No Euromillions data found in the database!")
-                except Exception as e:
-                    st.error(f"❌ Error loading Euromillions data: {e}")
-            
-            if st.session_state.data_loaded:
-                st.success(f"✅ {len(st.session_state.processed_data)} Euromillions drawings loaded")
+                    except Exception as e:
+                        st.error(f"Error loading data: {str(e)}")
+                else:
+                    st.error("Could not connect to database.")
         
-        # French Loto data management
-        else:
-            st.subheader("French Loto Data")
-            
-            if st.button("Load French Loto Data"):
-                try:
-                    # Get database connection
-                    conn = get_db_connection()
-                    if conn is None:
-                        st.error("❌ Could not connect to database!")
-                        return
-                    
-                    query = "SELECT * FROM french_loto_drawings ORDER BY date DESC"
-                    data = pd.read_sql(query, conn)
-                    
-                    if data is not None and not data.empty:
+        if st.session_state.data_loaded:
+            st.success(f"✅ {len(st.session_state.processed_data)} Euromillions drawings loaded")
+        
+        # French Loto data loading
+        st.subheader("French Loto Data")
+        load_french_loto_button = st.button("Load French Loto Data")
+        
+        if load_french_loto_button:
+            with st.spinner("Loading French Loto data..."):
+                # Get database connection
+                conn = get_db_connection()
+                if conn:
+                    try:
+                        query = "SELECT * FROM french_loto_drawings ORDER BY date DESC"
+                        data = pd.read_sql(query, conn)
                         st.session_state.french_loto_data = data
                         st.session_state.french_loto_data_loaded = True
-                        st.success(f"✅ Successfully loaded {len(data)} French Loto drawings!")
-                    else:
-                        st.error("❌ No French Loto data found in the database!")
-                except Exception as e:
-                    st.error(f"❌ Error loading French Loto data: {e}")
+                    except Exception as e:
+                        st.error(f"Error loading data: {str(e)}")
+                else:
+                    st.error("Could not connect to database.")
             
             if st.session_state.french_loto_data_loaded:
                 st.success(f"✅ {len(st.session_state.french_loto_data)} French Loto drawings loaded")
@@ -134,463 +117,742 @@ def main():
     with tabs[0]:
         st.header("Data Overview")
         
-        if st.session_state.active_lottery == "Euromillions":
+        lottery_type = st.radio(
+            "Select Lottery Type",
+            ["Euromillions", "French Loto"],
+            horizontal=True,
+            key="overview_lottery_type"
+        )
+        
+        if lottery_type == "Euromillions":
             if not st.session_state.data_loaded:
-                st.warning("⚠️ Please load Euromillions data from the sidebar first!")
+                st.warning("Please load Euromillions data from the sidebar first.")
             else:
-                data = st.session_state.processed_data
-                st.write("### Latest Euromillions Drawings")
-                st.dataframe(data.head(10))
+                # Display raw data table
+                st.subheader("Euromillions Drawings")
+                st.dataframe(st.session_state.processed_data)
                 
-                # Add export options
+                # Export options
                 st.subheader("Export Data")
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Export to CSV"):
-                        csv = data.to_csv(index=False)
+                export_format = st.radio("Choose export format:", ["CSV", "Excel"], horizontal=True)
+                
+                if st.button("Download Data"):
+                    if export_format == "CSV":
+                        csv = st.session_state.processed_data.to_csv(index=False)
                         st.download_button(
                             label="Download CSV",
                             data=csv,
                             file_name="euromillions_data.csv",
                             mime="text/csv"
                         )
-                with col2:
-                    if st.button("Export to Excel"):
-                        # Convert DataFrame to Excel
+                    else:
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                            data.to_excel(writer, index=False, sheet_name='Euromillions')
-                            writer.close()
-                            
-                        # Prepare for download
-                        excel_data = output.getvalue()
+                            st.session_state.processed_data.to_excel(writer, sheet_name="Euromillions", index=False)
                         st.download_button(
                             label="Download Excel",
-                            data=excel_data,
+                            data=output.getvalue(),
                             file_name="euromillions_data.xlsx",
-                            mime="application/vnd.ms-excel"
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
         else:
             if not st.session_state.french_loto_data_loaded:
-                st.warning("⚠️ Please load French Loto data from the sidebar first!")
+                st.warning("Please load French Loto data from the sidebar first.")
             else:
-                data = st.session_state.french_loto_data
-                st.write("### Latest French Loto Drawings")
-                st.dataframe(data.head(10))
+                # Display raw data table
+                st.subheader("French Loto Drawings")
+                st.dataframe(st.session_state.french_loto_data)
                 
-                # Add export options
+                # Export options
                 st.subheader("Export Data")
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Export to CSV"):
-                        csv = data.to_csv(index=False)
+                export_format = st.radio("Choose export format:", ["CSV", "Excel"], horizontal=True)
+                
+                if st.button("Download Data"):
+                    if export_format == "CSV":
+                        csv = st.session_state.french_loto_data.to_csv(index=False)
                         st.download_button(
                             label="Download CSV",
                             data=csv,
                             file_name="french_loto_data.csv",
                             mime="text/csv"
                         )
-                with col2:
-                    if st.button("Export to Excel"):
-                        # Convert DataFrame to Excel
+                    else:
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                            data.to_excel(writer, index=False, sheet_name='FrenchLoto')
-                            writer.close()
-                            
-                        # Prepare for download
-                        excel_data = output.getvalue()
+                            st.session_state.french_loto_data.to_excel(writer, sheet_name="FrenchLoto", index=False)
                         st.download_button(
                             label="Download Excel",
-                            data=excel_data,
+                            data=output.getvalue(),
                             file_name="french_loto_data.xlsx",
-                            mime="application/vnd.ms-excel"
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
     
     # Statistics tab
     with tabs[1]:
         st.header("Statistical Analysis")
         
-        if st.session_state.active_lottery == "Euromillions":
+        lottery_type = st.radio(
+            "Select Lottery Type",
+            ["Euromillions", "French Loto"],
+            horizontal=True,
+            key="stats_lottery_type"
+        )
+        
+        if lottery_type == "Euromillions":
             if not st.session_state.data_loaded:
-                st.warning("⚠️ Please load Euromillions data first from the Data Management sidebar!")
+                st.warning("Please load Euromillions data from the sidebar first.")
             else:
-                st.write("Euromillions statistics will be displayed here")
-                # Stats will be implemented in future updates
-        else:
+                # Create frequency analysis
+                st.subheader("Number Frequency Analysis")
+                
+                # Count frequencies of main numbers
+                main_number_cols = ['n1', 'n2', 'n3', 'n4', 'n5']
+                main_numbers = pd.Series(st.session_state.processed_data[main_number_cols].values.flatten())
+                main_freq = main_numbers.value_counts().sort_index()
+                
+                # Create a DataFrame for all possible numbers (1-50)
+                all_main_numbers = pd.DataFrame({'number': range(1, 51)})
+                main_freq_df = pd.DataFrame({'number': main_freq.index, 'frequency': main_freq.values})
+                
+                # Merge to include numbers with zero frequency
+                main_freq_df = all_main_numbers.merge(main_freq_df, on='number', how='left').fillna(0)
+                
+                # Calculate star frequencies
+                star_number_cols = ['s1', 's2']
+                star_numbers = pd.Series(st.session_state.processed_data[star_number_cols].values.flatten())
+                star_freq = star_numbers.value_counts().sort_index()
+                
+                # Create a DataFrame for all possible stars (1-12)
+                all_star_numbers = pd.DataFrame({'number': range(1, 13)})
+                star_freq_df = pd.DataFrame({'number': star_freq.index, 'frequency': star_freq.values})
+                
+                # Merge to include numbers with zero frequency
+                star_freq_df = all_star_numbers.merge(star_freq_df, on='number', how='left').fillna(0)
+                
+                # Display bar charts for frequencies
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("Main Numbers (1-50)")
+                    fig = px.bar(
+                        main_freq_df,
+                        x='number',
+                        y='frequency',
+                        title='Frequency of Main Numbers',
+                        labels={'number': 'Number', 'frequency': 'Frequency'},
+                        color='frequency',
+                        color_continuous_scale='Viridis'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    st.subheader("Star Numbers (1-12)")
+                    fig = px.bar(
+                        star_freq_df,
+                        x='number',
+                        y='frequency',
+                        title='Frequency of Star Numbers',
+                        labels={'number': 'Number', 'frequency': 'Frequency'},
+                        color='frequency',
+                        color_continuous_scale='Inferno'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Hot and cold numbers
+                st.subheader("Hot and Cold Numbers")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write("Hot Numbers (Most Frequent)")
+                    hot_main = main_freq_df.nlargest(10, 'frequency')
+                    st.dataframe(hot_main)
+                    
+                with col2:
+                    st.write("Cold Numbers (Least Frequent)")
+                    cold_main = main_freq_df.nsmallest(10, 'frequency')
+                    st.dataframe(cold_main)
+                
+                # Custom analysis
+                st.subheader("Advanced Analysis")
+                try:
+                    combination_size = st.slider("Combination Size", 1, 5, 3)
+                    st.write(f"Analyzing {combination_size}-number combinations...")
+                    combination_analysis = analyze_number_combinations(size=combination_size)
+                    
+                    if combination_analysis and 'most_frequent' in combination_analysis:
+                        st.write(f"Most Frequent {combination_size}-Number Combinations:")
+                        for combo, freq in combination_analysis['most_frequent']:
+                            st.write(f"Numbers {combo}: {freq} occurrences")
+                except Exception as e:
+                    st.error(f"Error in combination analysis: {str(e)}")
+        
+        else:  # French Loto
             if not st.session_state.french_loto_data_loaded:
-                st.warning("⚠️ Please load French Loto data first from the Data Management sidebar!")
+                st.warning("Please load French Loto data from the sidebar first.")
             else:
-                st.write("French Loto statistics will be displayed here")
-                # Stats will be implemented in future updates
+                try:
+                    # Initialize the FrenchLotoStatistics module
+                    try:
+                        stats = FrenchLotoStatistics(st.session_state.french_loto_data)
+                    except Exception as e:
+                        st.error(f"Error initializing statistics module: {str(e)}")
+                        stats = None
+                    
+                    if stats:
+                        # Get hot and cold numbers
+                        hot_numbers, cold_numbers = stats.get_hot_cold_numbers()
+                        hot_lucky, cold_lucky = stats.get_hot_cold_lucky_numbers()
+                        
+                        # Display hot and cold numbers
+                        st.subheader("Hot and Cold Numbers")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.write("Hot Main Numbers (Most Frequent)")
+                            st.write(hot_numbers)
+                            
+                            st.write("Hot Lucky Numbers")
+                            st.write(hot_lucky)
+                        
+                        with col2:
+                            st.write("Cold Main Numbers (Least Frequent)")
+                            st.write(cold_numbers)
+                            
+                            st.write("Cold Lucky Numbers")
+                            st.write(cold_lucky)
+                        
+                        # Display frequency charts
+                        st.subheader("Number Frequency Analysis")
+                        main_freq_df, lucky_freq_df = stats.get_frequency_dataframes()
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.subheader("Main Numbers (1-49)")
+                            fig = px.bar(
+                                main_freq_df,
+                                x='number',
+                                y='frequency',
+                                title='Frequency of Main Numbers',
+                                labels={'number': 'Number', 'frequency': 'Frequency'},
+                                color='frequency',
+                                color_continuous_scale='Viridis'
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                        
+                        with col2:
+                            st.subheader("Lucky Numbers (1-10)")
+                            fig = px.bar(
+                                lucky_freq_df,
+                                x='number',
+                                y='frequency',
+                                title='Frequency of Lucky Numbers',
+                                labels={'number': 'Number', 'frequency': 'Frequency'},
+                                color='frequency',
+                                color_continuous_scale='Inferno'
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Display distribution analysis
+                        st.subheader("Number Distribution Analysis")
+                        dist_stats = stats.get_distribution_stats()
+                        
+                        st.write("Even/Odd Distribution")
+                        st.write(f"Most common pattern: {dist_stats['even_odd_pattern']}")
+                        
+                        st.write("Low/High Distribution")
+                        st.write(f"Most common pattern: {dist_stats['low_high_pattern']}")
+                        
+                        # Display time-based trends
+                        st.subheader("Recency Analysis")
+                        recent_freq = stats.get_recency_stats(draws=20)
+                        
+                        st.write("Recent Trends (Last 20 Draws)")
+                        st.write(f"Most frequent numbers in recent draws: {recent_freq['hot_numbers']}")
+                        st.write(f"Most frequent lucky numbers in recent draws: {recent_freq['hot_lucky']}")
+                    
+                except Exception as e:
+                    st.error(f"Error in French Loto statistics analysis: {str(e)}")
     
     # Strategy Generation tab
     with tabs[2]:
         st.header("Strategy Generation")
         
-        # Check which lottery is active and ensure data is loaded
-        if st.session_state.active_lottery == "French Loto":
-            if not st.session_state.french_loto_data_loaded:
-                st.warning("⚠️ Please load French Loto data first from the Data Management sidebar!")
-            else:
-                # Data is loaded, show French Loto strategy generator
-                st.subheader("French Loto Strategy Generator")
-                
-                # Strategy selection
-                strategy_choice = st.selectbox(
-                    "Select Strategy",
-                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced", 
-                     "Bayesian", "Risk/Reward", "Coverage", "Markov Chain", "Time Series", 
-                     "Anti-Cognitive Bias"],
-                    key="french_loto_strategy_choice"
-                )
-                
-                # Number of combinations to generate
-                num_combinations = st.number_input("Number of combinations", 1, 10, 3, key="french_loto_num_combinations")
-                
-                # Description based on selected strategy
-                if strategy_choice == "Frequency-Based":
-                    st.info("This strategy selects numbers based on their historical frequency")
-                    recency_weight = st.slider("Recent draws importance", 0, 100, 50, key="french_loto_recency_weight") / 100.0
-                
-                elif strategy_choice == "Pattern-Based":
-                    st.info("This strategy analyzes patterns in the historical data")
-                    pattern_depth = st.slider("Pattern recognition depth", 1, 10, 5, key="french_loto_pattern_depth")
-                
-                elif strategy_choice == "Statistical":
-                    st.info("This strategy uses statistical models to predict likely numbers")
-                    confidence = st.slider("Confidence level", 60, 99, 90, key="french_loto_confidence")
-                
-                elif strategy_choice == "Balanced":
-                    st.info("This strategy balances between hot and cold numbers")
-                    balance = st.slider("Hot/Cold balance", 0, 100, 50, key="french_loto_balance") / 100.0
-                
-                elif strategy_choice == "Bayesian":
-                    st.info("This strategy uses Bayesian inference to estimate probabilities based on historical data and prior knowledge")
-                    recent_draws_count = st.slider("Number of recent draws to analyze", 5, 50, 20, key="french_loto_recent_draws")
-                    prior_strength = st.slider("Prior knowledge strength", 1, 10, 5, key="french_loto_prior_strength")
-                
-                elif strategy_choice == "Risk/Reward":
-                    st.info("This strategy balances between risk and potential reward")
-                    risk_level = st.slider("Risk level (1-10)", 1, 10, 5, key="french_loto_risk_level")
-                    st.info("Higher risk level = more unusual number combinations with potentially higher rewards")
-                
-                elif strategy_choice == "Coverage":
-                    st.info("This strategy maximizes coverage of potential winning combinations")
-                    balanced = st.checkbox("Use balanced coverage", True, key="french_loto_balanced_coverage")
-                    st.info("Balanced coverage ensures more even distribution across the number space")
-                
-                elif strategy_choice == "Markov Chain":
-                    st.info("This strategy uses Markov Chain models to predict numbers based on transition probabilities")
-                    lag = st.slider("Lag (order of the Markov model)", 1, 3, 1, key="french_loto_markov_lag")
-                
-                elif strategy_choice == "Time Series":
-                    st.info("This strategy uses time series analysis to identify cyclical patterns")
-                    window_size = st.slider("Window size for analysis", 5, 20, 10, key="french_loto_window_size")
-                
-                elif strategy_choice == "Anti-Cognitive Bias":
-                    st.info("This strategy avoids common cognitive biases in number selection")
-                    st.write("This strategy purposely avoids patterns that are commonly selected due to cognitive biases, such as birthday numbers, lucky numbers, visual patterns, etc.")
-                
-                # Generate button
-                if st.button("Generate Combinations", key="french_loto_generate"):
-                    with st.spinner("Generating optimized combinations..."):
-                        try:
-                            # Check if we have the statistics and strategies objects
-                            if 'french_loto_stats' not in st.session_state:
-                                from french_loto_statistics import FrenchLotoStatistics
-                                st.session_state.french_loto_stats = FrenchLotoStatistics(st.session_state.french_loto_data)
-                            
-                            if 'french_loto_strategies' not in st.session_state:
-                                from french_loto_strategy import FrenchLotoStrategies
-                                st.session_state.french_loto_strategies = FrenchLotoStrategies(st.session_state.french_loto_stats)
-                            
-                            # Call the appropriate strategy based on selection
-                            strategies = st.session_state.french_loto_strategies
-                            
-                            if strategy_choice == "Frequency-Based":
-                                combinations = strategies.frequency_strategy(num_combinations, recency_weight)
-                            
-                            elif strategy_choice == "Pattern-Based":
-                                # Map to temporal strategy
-                                combinations = strategies.temporal_strategy(num_combinations, pattern_depth * 5)
-                            
-                            elif strategy_choice == "Statistical":
-                                # Map to stratified strategy
-                                combinations = strategies.stratified_sampling_strategy(num_combinations, "range", confidence / 100.0)
-                            
-                            elif strategy_choice == "Balanced":
-                                # Map to mixed strategy
-                                combinations = strategies.mixed_strategy(num_combinations, balance)
-                            
-                            elif strategy_choice == "Bayesian":
-                                combinations = strategies.bayesian_strategy(num_combinations, recent_draws_count, str(prior_strength))
-                            
-                            elif strategy_choice == "Risk/Reward":
-                                combinations = strategies.risk_reward_strategy(num_combinations, risk_level)
-                            
-                            elif strategy_choice == "Coverage":
-                                combinations = strategies.coverage_strategy(num_combinations, balanced)
-                            
-                            elif strategy_choice == "Markov Chain":
-                                combinations = strategies.markov_strategy(num_combinations, lag)
-                            
-                            elif strategy_choice == "Time Series":
-                                combinations = strategies.time_series_strategy(num_combinations, window_size)
-                            
-                            elif strategy_choice == "Anti-Cognitive Bias":
-                                combinations = strategies.cognitive_bias_strategy(num_combinations)
-                            
-                            else:
-                                # Default to frequency strategy
-                                combinations = strategies.frequency_strategy(num_combinations)
-                            
-                            # Display the generated combinations
-                            st.subheader("Generated Combinations")
-                            
-                            for i, combo in enumerate(combinations):
-                                # Format numbers and lucky number for display
-                                numbers = combo['numbers'] if isinstance(combo['numbers'], list) else sorted([int(n) for n in combo['numbers'].strip('[]').split(',')])
-                                lucky = combo['lucky'] if isinstance(combo['lucky'], int) else int(combo['lucky'])
-                                
-                                # Style for the numbers and lucky number
-                                numbers_html = ' '.join([f'<span style="background-color:#f0f0f0; padding:5px; margin:2px; border-radius:50%;">{n}</span>' for n in sorted(numbers)])
-                                lucky_html = f'<span style="background-color:#ffd700; padding:5px; margin:2px; border-radius:50%;">★{lucky}</span>'
-                                
-                                # Display score
-                                score = combo.get('score', 0)
-                                score_text = f"<span style='color:{'green' if score > 70 else 'orange' if score > 50 else 'red'}'>{score:.1f}</span>"
-                                
-                                # Display combination with HTML
-                                st.markdown(f"**Combination {i+1}** (Score: {score_text}):<br> {numbers_html} | {lucky_html}", unsafe_allow_html=True)
-                                
-                            # Option to save combinations
-                            if 'french_loto_combinations' not in st.session_state:
-                                st.session_state.french_loto_combinations = combinations
-                            else:
-                                st.session_state.french_loto_combinations = combinations
-                                
-                            if st.button("Save These Combinations to Database"):
-                                try:
-                                    import json
-                                    from database import get_session
-                                    from database import FrenchLotoPrediction
-                                    from datetime import datetime
-                                    
-                                    session = get_session()
-                                    saved_count = 0
-                                    
-                                    for combo in combinations:
-                                        # Convert to proper format for storage
-                                        if isinstance(combo['numbers'], list):
-                                            numbers_str = '-'.join([str(n) for n in sorted(combo['numbers'])])
-                                        else:
-                                            numbers_str = '-'.join([str(n) for n in sorted([int(n) for n in combo['numbers'].strip('[]').split(',')])])
-                                            
-                                        lucky = combo['lucky'] if isinstance(combo['lucky'], int) else int(combo['lucky'])
-                                        
-                                        # Create new record
-                                        new_combo = FrenchLotoPrediction(
-                                            date_generated=datetime.now().date(),
-                                            numbers=numbers_str,
-                                            lucky=lucky,
-                                            strategy=strategy_choice,
-                                            score=float(combo.get('score', 0))
-                                        )
-                                        
-                                        session.add(new_combo)
-                                        saved_count += 1
-                                    
-                                    session.commit()
-                                    st.success(f"✅ Successfully saved {saved_count} combinations to database!")
-                                    
-                                except Exception as e:
-                                    st.error(f"❌ Error saving combinations: {str(e)}")
-                                finally:
-                                    session.close()
-                        except Exception as e:
-                            st.error(f"❌ Error generating combinations: {str(e)}")
-                            st.error("Please check that you have loaded data correctly and try again.")
-                
-        elif st.session_state.active_lottery == "Euromillions":
+        lottery_type = st.radio(
+            "Select Lottery Type",
+            ["Euromillions", "French Loto"],
+            horizontal=True,
+            key="strategy_lottery_type"
+        )
+        
+        if lottery_type == "Euromillions":
             if not st.session_state.data_loaded:
-                st.warning("⚠️ Please load Euromillions data first from the Data Management sidebar!")
+                st.warning("Please load Euromillions data from the sidebar first.")
             else:
-                # Data is loaded, show Euromillions strategy generator
-                st.subheader("Euromillions Strategy Generator")
+                # Strategy options
+                st.subheader("Strategy Parameters")
                 
-                # Strategy selection
-                strategy_choice = st.selectbox(
-                    "Select Strategy",
-                    ["Frequency-Based", "Pattern-Based", "Statistical", "Balanced", 
-                     "Bayesian", "Risk/Reward", "Coverage", "Markov Chain", "Time Series", 
-                     "Anti-Cognitive Bias"],
-                    key="euromillions_strategy_choice"
-                )
+                # Initialize strategies
+                try:
+                    strategies = PredictionStrategies(st.session_state.processed_data)
+                except Exception as e:
+                    st.error(f"Error initializing prediction strategies: {str(e)}")
+                    strategies = None
                 
-                # Number of combinations to generate
-                num_combinations = st.number_input("Number of combinations", 1, 10, 3, key="euromillions_num_combinations")
-                
-                # Description based on selected strategy
-                if strategy_choice == "Frequency-Based":
-                    st.info("This strategy selects numbers based on their historical frequency")
-                    recency_weight = st.slider("Recent draws importance", 0, 100, 50, key="euromillions_recency_weight") / 100.0
-                
-                elif strategy_choice == "Pattern-Based":
-                    st.info("This strategy analyzes patterns in the historical data")
-                    pattern_depth = st.slider("Pattern recognition depth", 1, 10, 5, key="euromillions_pattern_depth")
-                
-                elif strategy_choice == "Statistical":
-                    st.info("This strategy uses statistical models to predict likely numbers")
-                    confidence = st.slider("Confidence level", 60, 99, 90, key="euromillions_confidence")
-                
-                elif strategy_choice == "Balanced":
-                    st.info("This strategy balances between hot and cold numbers")
-                    balance = st.slider("Hot/Cold balance", 0, 100, 50, key="euromillions_balance") / 100.0
-                
-                elif strategy_choice == "Bayesian":
-                    st.info("This strategy uses Bayesian inference to estimate probabilities based on historical data and prior knowledge")
-                    recent_draws_count = st.slider("Number of recent draws to analyze", 5, 50, 20, key="euromillions_recent_draws")
-                    prior_strength = st.slider("Prior knowledge strength", 1, 10, 5, key="euromillions_prior_strength")
-                
-                elif strategy_choice == "Risk/Reward":
-                    st.info("This strategy balances between risk and potential reward")
-                    risk_level = st.slider("Risk level (1-10)", 1, 10, 5, key="euromillions_risk_level")
-                    st.info("Higher risk level = more unusual number combinations with potentially higher rewards")
-                
-                elif strategy_choice == "Coverage":
-                    st.info("This strategy maximizes coverage of potential winning combinations")
-                    balanced = st.checkbox("Use balanced coverage", True, key="euromillions_balanced_coverage")
-                    st.info("Balanced coverage ensures more even distribution across the number space")
-                
-                elif strategy_choice == "Markov Chain":
-                    st.info("This strategy uses Markov Chain models to predict numbers based on transition probabilities")
-                    lag = st.slider("Lag (order of the Markov model)", 1, 3, 1, key="euromillions_markov_lag")
-                
-                elif strategy_choice == "Time Series":
-                    st.info("This strategy uses time series analysis to identify cyclical patterns")
-                    window_size = st.slider("Window size for analysis", 5, 20, 10, key="euromillions_window_size")
-                
-                elif strategy_choice == "Anti-Cognitive Bias":
-                    st.info("This strategy avoids common cognitive biases in number selection")
-                    st.write("This strategy purposely avoids patterns that are commonly selected due to cognitive biases, such as birthday numbers, lucky numbers, visual patterns, etc.")
-                
-                # Generate button
-                if st.button("Generate Combinations", key="euromillions_generate"):
-                    with st.spinner("Generating optimized combinations..."):
-                        try:
-                            # Check if we have the statistics and strategies objects
-                            if 'euromillions_stats' not in st.session_state:
-                                from statistics import EuromillionsStatistics
-                                st.session_state.euromillions_stats = EuromillionsStatistics(st.session_state.processed_data)
-                            
-                            if 'euromillions_strategies' not in st.session_state:
-                                from strategies import PredictionStrategies
-                                st.session_state.euromillions_strategies = PredictionStrategies(st.session_state.euromillions_stats)
-                            
-                            # Call the appropriate strategy based on selection
-                            strategies = st.session_state.euromillions_strategies
-                            
-                            if strategy_choice == "Frequency-Based":
-                                combinations = strategies.frequency_strategy(num_combinations, recency_weight)
-                            
-                            elif strategy_choice == "Pattern-Based":
-                                # Map to temporal strategy
-                                combinations = strategies.temporal_strategy(num_combinations, pattern_depth * 5)
-                            
-                            elif strategy_choice == "Statistical":
-                                # Map to stratified strategy
-                                combinations = strategies.stratified_sampling_strategy(num_combinations, "range", confidence / 100.0)
-                            
-                            elif strategy_choice == "Balanced":
-                                # Map to mixed strategy
-                                combinations = strategies.mixed_strategy(num_combinations, balance)
-                            
-                            elif strategy_choice == "Bayesian":
-                                combinations = strategies.bayesian_strategy(num_combinations, recent_draws_count, prior_strength)
-                            
-                            elif strategy_choice == "Risk/Reward":
-                                combinations = strategies.risk_reward_strategy(num_combinations, risk_level)
-                            
-                            elif strategy_choice == "Coverage":
-                                combinations = strategies.coverage_strategy(num_combinations, balanced)
-                            
-                            elif strategy_choice == "Markov Chain":
-                                combinations = strategies.markov_strategy(num_combinations, lag)
-                            
-                            elif strategy_choice == "Time Series":
-                                combinations = strategies.time_series_strategy(num_combinations, window_size)
-                            
-                            elif strategy_choice == "Anti-Cognitive Bias":
-                                combinations = strategies.cognitive_bias_strategy(num_combinations)
-                            
-                            else:
-                                # Default to frequency strategy
-                                combinations = strategies.frequency_strategy(num_combinations)
-                            
-                            # Display the generated combinations
-                            st.subheader("Generated Combinations")
-                            
-                            for i, combo in enumerate(combinations):
-                                # Format numbers and stars for display
-                                numbers = combo['numbers'] if isinstance(combo['numbers'], list) else sorted([int(n) for n in combo['numbers'].strip('[]').split(',')])
-                                stars = combo['stars'] if isinstance(combo['stars'], list) else sorted([int(s) for s in combo['stars'].strip('[]').split(',')])
+                if strategies:
+                    # Strategy selection
+                    strategy_type = st.selectbox(
+                        "Select Strategy",
+                        [
+                            "Frequency Analysis",
+                            "Mixed Strategy",
+                            "Temporal Patterns",
+                            "Stratified Sampling",
+                            "Coverage Optimization",
+                            "Risk/Reward Balance",
+                            "Bayesian Inference",
+                            "Markov Chain Model",
+                            "Time Series Analysis",
+                            "Anti-Cognitive Bias"
+                        ]
+                    )
+                    
+                    # Strategy parameters with default values
+                    recency_weight = 0.3
+                    pattern_depth = 3
+                    confidence = 0.8
+                    balance = 0.6
+                    recent_draws_count = 20
+                    prior_strength = 1.0
+                    risk_level = 0.5
+                    balanced = 0.7
+                    lag = 3
+                    window_size = 10
+                    
+                    # Parameters for each strategy
+                    if strategy_type == "Frequency Analysis":
+                        recency_weight = st.slider(
+                            "Recency Weight",
+                            0.0, 1.0, 0.3,
+                            help="Higher values give more importance to recent draws"
+                        )
+                    
+                    elif strategy_type == "Temporal Patterns":
+                        pattern_depth = st.slider(
+                            "Pattern Recognition Depth",
+                            1, 10, 3,
+                            help="Number of historical patterns to consider"
+                        )
+                    
+                    elif strategy_type == "Stratified Sampling":
+                        confidence = st.slider(
+                            "Confidence Level",
+                            0.0, 1.0, 0.8,
+                            help="Higher values lead to more conservative predictions"
+                        )
+                    
+                    elif strategy_type == "Coverage Optimization":
+                        balance = st.slider(
+                            "Coverage Balance",
+                            0.0, 1.0, 0.6,
+                            help="Balance between number density and range coverage"
+                        )
+                    
+                    elif strategy_type == "Bayesian Inference":
+                        recent_draws_count = st.slider(
+                            "Recent Draws to Consider",
+                            5, 50, 20,
+                            help="Number of recent draws to factor into the Bayesian model"
+                        )
+                        prior_strength = st.slider(
+                            "Prior Strength",
+                            0.1, 5.0, 1.0,
+                            help="Strength of the prior distribution"
+                        )
+                    
+                    elif strategy_type == "Risk/Reward Balance":
+                        risk_level = st.slider(
+                            "Risk Level",
+                            0.0, 1.0, 0.5,
+                            help="Higher values favor high-risk, high-reward combinations"
+                        )
+                    
+                    elif strategy_type == "Markov Chain Model":
+                        balanced = st.slider(
+                            "Balance Factor",
+                            0.0, 1.0, 0.7,
+                            help="Balance between pattern prediction and randomness"
+                        )
+                    
+                    elif strategy_type == "Time Series Analysis":
+                        lag = st.slider(
+                            "Lag Parameter",
+                            1, 10, 3,
+                            help="Lag for time series forecasting"
+                        )
+                    
+                    elif strategy_type == "Anti-Cognitive Bias":
+                        window_size = st.slider(
+                            "Analysis Window",
+                            5, 30, 10,
+                            help="Window size for analyzing cognitive biases"
+                        )
+                    
+                    # Number of combinations to generate
+                    num_combinations = st.slider("Number of Combinations", 1, 10, 5)
+                    
+                    # Generate combinations
+                    generate_button = st.button("Generate Combinations")
+                    
+                    if generate_button:
+                        with st.spinner(f"Generating {num_combinations} combinations using {strategy_type}..."):
+                            try:
+                                combinations = []
                                 
-                                # Style for the numbers and stars
-                                numbers_html = ' '.join([f'<span style="background-color:#f0f0f0; padding:5px; margin:2px; border-radius:50%;">{n}</span>' for n in sorted(numbers)])
-                                stars_html = ' '.join([f'<span style="background-color:#ffe066; padding:5px; margin:2px; border-radius:50%;">★{s}</span>' for s in sorted(stars)])
+                                if strategy_type == "Frequency Analysis":
+                                    combinations = strategies.frequency_strategy(
+                                        num_combinations=num_combinations,
+                                        recency_weight=recency_weight
+                                    )
                                 
-                                # Display score
-                                score = combo.get('score', 0)
-                                score_text = f"<span style='color:{'green' if score > 70 else 'orange' if score > 50 else 'red'}'>{score:.1f}</span>"
+                                elif strategy_type == "Temporal Patterns":
+                                    combinations = strategies.temporal_pattern_strategy(
+                                        num_combinations=num_combinations,
+                                        pattern_depth=pattern_depth
+                                    )
                                 
-                                # Display combination with HTML
-                                st.markdown(f"**Combination {i+1}** (Score: {score_text}):<br> {numbers_html} | {stars_html}", unsafe_allow_html=True)
+                                elif strategy_type == "Stratified Sampling":
+                                    combinations = strategies.stratified_sampling_strategy(
+                                        num_combinations=num_combinations,
+                                        confidence=confidence
+                                    )
                                 
-                            # Option to save combinations
-                            if 'generated_combinations' not in st.session_state:
-                                st.session_state.generated_combinations = combinations
-                            else:
-                                st.session_state.generated_combinations = combinations
+                                elif strategy_type == "Coverage Optimization":
+                                    combinations = strategies.coverage_optimization_strategy(
+                                        num_combinations=num_combinations,
+                                        balance=balance
+                                    )
                                 
-                            if st.button("Save These Combinations to Database"):
-                                try:
-                                    import json
-                                    from database import get_session
-                                    from database import GeneratedCombination
-                                    from datetime import datetime
+                                elif strategy_type == "Bayesian Inference":
+                                    combinations = strategies.bayesian_strategy(
+                                        num_combinations=num_combinations,
+                                        prior_type="adaptive",
+                                        recent_draws_count=recent_draws_count,
+                                        prior_strength=prior_strength
+                                    )
+                                
+                                elif strategy_type == "Risk/Reward Balance":
+                                    combinations = strategies.risk_reward_strategy(
+                                        num_combinations=num_combinations,
+                                        risk_level=risk_level
+                                    )
+                                
+                                elif strategy_type == "Markov Chain Model":
+                                    combinations = strategies.markov_chain_strategy(
+                                        num_combinations=num_combinations,
+                                        balanced=balanced
+                                    )
+                                
+                                elif strategy_type == "Time Series Analysis":
+                                    combinations = strategies.time_series_strategy(
+                                        num_combinations=num_combinations,
+                                        lag=lag
+                                    )
+                                
+                                elif strategy_type == "Anti-Cognitive Bias":
+                                    combinations = strategies.cognitive_bias_strategy(
+                                        num_combinations=num_combinations,
+                                        window_size=window_size
+                                    )
+                                
+                                elif strategy_type == "Mixed Strategy":
+                                    combinations = strategies.mixed_strategy(
+                                        num_combinations=num_combinations
+                                    )
+                                
+                                # Display generated combinations
+                                if combinations:
+                                    st.subheader("Generated Combinations")
                                     
-                                    session = get_session()
-                                    saved_count = 0
-                                    
-                                    for combo in combinations:
-                                        # Convert to proper format
-                                        numbers_str = json.dumps(sorted(combo['numbers'])) if isinstance(combo['numbers'], list) else json.dumps(sorted([int(n) for n in combo['numbers'].strip('[]').split(',')]))
-                                        stars_str = json.dumps(sorted(combo['stars'])) if isinstance(combo['stars'], list) else json.dumps(sorted([int(s) for s in combo['stars'].strip('[]').split(',')]))
+                                    for i, combo in enumerate(combinations):
+                                        col1, col2, col3 = st.columns([3, 2, 1])
                                         
-                                        # Create new record
-                                        new_combo = GeneratedCombination(
-                                            created_at=datetime.now().date(),
-                                            numbers=numbers_str,
-                                            stars=stars_str,
-                                            strategy=strategy_choice,
-                                            score=float(combo.get('score', 0))
-                                        )
+                                        with col1:
+                                            st.write(f"**Combination {i+1}**")
+                                            numbers_str = ", ".join([str(n) for n in combo['numbers']])
+                                            stars_str = ", ".join([str(s) for s in combo['stars']])
+                                            st.write(f"Numbers: {numbers_str}")
+                                            st.write(f"Stars: {stars_str}")
                                         
-                                        session.add(new_combo)
-                                        saved_count += 1
+                                        with col2:
+                                            if 'score' in combo:
+                                                st.write(f"Score: {combo['score']:.2f}")
+                                            if 'rationale' in combo:
+                                                st.write(f"Rationale: {combo['rationale']}")
+                                        
+                                        with col3:
+                                            # Save to database button
+                                            if st.button(f"Save #{i+1}", key=f"save_combo_{i}"):
+                                                try:
+                                                    from database import GeneratedCombination, get_session
+                                                    
+                                                    # Create new combination record
+                                                    new_combo = GeneratedCombination(
+                                                        created_at=date.today(),
+                                                        numbers=json.dumps(combo['numbers']),
+                                                        stars=json.dumps(combo['stars']),
+                                                        strategy=strategy_type,
+                                                        score=combo.get('score', 0.0)
+                                                    )
+                                                    
+                                                    # Save to database
+                                                    session = get_session()
+                                                    session.add(new_combo)
+                                                    session.commit()
+                                                    session.close()
+                                                    
+                                                    st.success(f"Combination #{i+1} saved successfully!")
+                                                except Exception as e:
+                                                    st.error(f"Error saving combination: {str(e)}")
+                            
+                            except Exception as e:
+                                st.error(f"Error generating combinations: {str(e)}")
+        
+        else:  # French Loto
+            if not st.session_state.french_loto_data_loaded:
+                st.warning("Please load French Loto data from the sidebar first.")
+            else:
+                # Strategy options
+                st.subheader("French Loto Strategy Parameters")
+                
+                # Initialize strategies
+                try:
+                    strategies = FrenchLotoStrategy(st.session_state.french_loto_data)
+                except Exception as e:
+                    st.error(f"Error initializing French Loto strategies: {str(e)}")
+                    strategies = None
+                
+                if strategies:
+                    # Strategy selection
+                    strategy_type = st.selectbox(
+                        "Select Strategy",
+                        [
+                            "Frequency Analysis",
+                            "Mixed Strategy",
+                            "Temporal Patterns",
+                            "Stratified Sampling",
+                            "Coverage Optimization",
+                            "Risk/Reward Balance",
+                            "Bayesian Inference",
+                            "Markov Chain Model",
+                            "Time Series Analysis",
+                            "Anti-Cognitive Bias"
+                        ]
+                    )
+                    
+                    # Strategy parameters with default values
+                    recency_weight = 0.3
+                    pattern_depth = 3
+                    confidence = 0.8
+                    balance = 0.6
+                    recent_draws_count = 20
+                    prior_strength = 1.0
+                    risk_level = 0.5
+                    balanced = 0.7
+                    lag = 3
+                    window_size = 10
+                    
+                    # Parameters for each strategy
+                    if strategy_type == "Frequency Analysis":
+                        recency_weight = st.slider(
+                            "Recency Weight",
+                            0.0, 1.0, 0.3,
+                            help="Higher values give more importance to recent draws"
+                        )
+                    
+                    elif strategy_type == "Temporal Patterns":
+                        pattern_depth = st.slider(
+                            "Pattern Recognition Depth",
+                            1, 10, 3,
+                            help="Number of historical patterns to consider"
+                        )
+                    
+                    elif strategy_type == "Stratified Sampling":
+                        confidence = st.slider(
+                            "Confidence Level",
+                            0.0, 1.0, 0.8,
+                            help="Higher values lead to more conservative predictions"
+                        )
+                    
+                    elif strategy_type == "Coverage Optimization":
+                        balance = st.slider(
+                            "Coverage Balance",
+                            0.0, 1.0, 0.6,
+                            help="Balance between number density and range coverage"
+                        )
+                    
+                    elif strategy_type == "Bayesian Inference":
+                        recent_draws_count = st.slider(
+                            "Recent Draws to Consider",
+                            5, 50, 20,
+                            help="Number of recent draws to factor into the Bayesian model"
+                        )
+                        prior_strength = st.slider(
+                            "Prior Strength",
+                            0.1, 5.0, 1.0,
+                            help="Strength of the prior distribution"
+                        )
+                    
+                    elif strategy_type == "Risk/Reward Balance":
+                        risk_level = st.slider(
+                            "Risk Level",
+                            0.0, 1.0, 0.5,
+                            help="Higher values favor high-risk, high-reward combinations"
+                        )
+                    
+                    elif strategy_type == "Markov Chain Model":
+                        balanced = st.slider(
+                            "Balance Factor",
+                            0.0, 1.0, 0.7,
+                            help="Balance between pattern prediction and randomness"
+                        )
+                    
+                    elif strategy_type == "Time Series Analysis":
+                        lag = st.slider(
+                            "Lag Parameter",
+                            1, 10, 3,
+                            help="Lag for time series forecasting"
+                        )
+                    
+                    elif strategy_type == "Anti-Cognitive Bias":
+                        window_size = st.slider(
+                            "Analysis Window",
+                            5, 30, 10,
+                            help="Window size for analyzing cognitive biases"
+                        )
+                    
+                    # Number of combinations to generate
+                    num_combinations = st.slider("Number of Combinations", 1, 10, 5)
+                    
+                    # Generate combinations
+                    generate_button = st.button("Generate Combinations")
+                    
+                    if generate_button:
+                        with st.spinner(f"Generating {num_combinations} combinations using {strategy_type}..."):
+                            try:
+                                combinations = []
+                                
+                                if strategy_type == "Frequency Analysis":
+                                    combinations = strategies.frequency_strategy(
+                                        num_combinations=num_combinations,
+                                        recency_weight=recency_weight
+                                    )
+                                
+                                elif strategy_type == "Temporal Patterns":
+                                    combinations = strategies.temporal_pattern_strategy(
+                                        num_combinations=num_combinations,
+                                        pattern_depth=pattern_depth
+                                    )
+                                
+                                elif strategy_type == "Stratified Sampling":
+                                    combinations = strategies.stratified_sampling_strategy(
+                                        num_combinations=num_combinations,
+                                        confidence=confidence
+                                    )
+                                
+                                elif strategy_type == "Coverage Optimization":
+                                    combinations = strategies.coverage_optimization_strategy(
+                                        num_combinations=num_combinations,
+                                        balance=balance
+                                    )
+                                
+                                elif strategy_type == "Bayesian Inference":
+                                    combinations = strategies.bayesian_strategy(
+                                        num_combinations=num_combinations,
+                                        prior_type="adaptive",
+                                        recent_draws_count=recent_draws_count,
+                                        prior_strength=prior_strength
+                                    )
+                                
+                                elif strategy_type == "Risk/Reward Balance":
+                                    combinations = strategies.risk_reward_strategy(
+                                        num_combinations=num_combinations,
+                                        risk_level=risk_level
+                                    )
+                                
+                                elif strategy_type == "Markov Chain Model":
+                                    combinations = strategies.markov_chain_strategy(
+                                        num_combinations=num_combinations,
+                                        balanced=balanced
+                                    )
+                                
+                                elif strategy_type == "Time Series Analysis":
+                                    combinations = strategies.time_series_strategy(
+                                        num_combinations=num_combinations,
+                                        lag=lag
+                                    )
+                                
+                                elif strategy_type == "Anti-Cognitive Bias":
+                                    combinations = strategies.cognitive_bias_strategy(
+                                        num_combinations=num_combinations,
+                                        window_size=window_size
+                                    )
+                                
+                                elif strategy_type == "Mixed Strategy":
+                                    combinations = strategies.mixed_strategy(
+                                        num_combinations=num_combinations
+                                    )
+                                
+                                # Display generated combinations
+                                if combinations:
+                                    st.subheader("Generated Combinations")
                                     
-                                    session.commit()
-                                    st.success(f"✅ Successfully saved {saved_count} combinations to database!")
-                                    
-                                except Exception as e:
-                                    st.error(f"❌ Error saving combinations: {str(e)}")
-                                finally:
-                                    session.close()
-                        except Exception as e:
-                            st.error(f"❌ Error generating combinations: {str(e)}")
-                            st.error("Please check that you have loaded data correctly and try again.")
-
+                                    for i, combo in enumerate(combinations):
+                                        col1, col2, col3 = st.columns([3, 2, 1])
+                                        
+                                        with col1:
+                                            st.write(f"**Combination {i+1}**")
+                                            numbers_str = ", ".join([str(n) for n in combo['numbers']])
+                                            st.write(f"Numbers: {numbers_str}")
+                                            st.write(f"Lucky Number: {combo['lucky']}")
+                                        
+                                        with col2:
+                                            if 'score' in combo:
+                                                st.write(f"Score: {combo['score']:.2f}")
+                                            if 'rationale' in combo:
+                                                st.write(f"Rationale: {combo['rationale']}")
+                                        
+                                        with col3:
+                                            # Save to database button
+                                            if st.button(f"Save #{i+1}", key=f"save_loto_combo_{i}"):
+                                                try:
+                                                    from database import FrenchLotoPrediction, get_session
+                                                    
+                                                    # Format numbers as dash-separated string
+                                                    numbers_str = "-".join([str(n) for n in combo['numbers']])
+                                                    
+                                                    # Create new prediction record
+                                                    new_combo = FrenchLotoPrediction(
+                                                        date_generated=date.today(),
+                                                        numbers=numbers_str,
+                                                        lucky=combo['lucky'],
+                                                        strategy=strategy_type,
+                                                        score=combo.get('score', 0.0)
+                                                    )
+                                                    
+                                                    # Save to database
+                                                    session = get_session()
+                                                    session.add(new_combo)
+                                                    session.commit()
+                                                    session.close()
+                                                    
+                                                    st.success(f"Combination #{i+1} saved successfully!")
+                                                except Exception as e:
+                                                    st.error(f"Error saving combination: {str(e)}")
+                            
+                            except Exception as e:
+                                st.error(f"Error generating combinations: {str(e)}")
+    
     # Results Analysis tab
     with tabs[3]:
         st.header("Results Analysis")
@@ -619,7 +881,8 @@ def main():
             # Form for adding a new Euromillions draw
             with st.form(key="add_euromillions_form"):
                 # Draw date
-                draw_date = st.date_input("Draw Date", value=datetime.now().date())
+                today = date.today()
+                draw_date = st.date_input("Draw Date", value=today)
                 
                 # Day of week (auto-populated)
                 day_of_week = draw_date.strftime("%A")
@@ -720,7 +983,8 @@ def main():
             # Form for adding a new French Loto draw
             with st.form(key="add_french_loto_form"):
                 # Draw date
-                draw_date = st.date_input("Draw Date", value=datetime.now().date())
+                today = date.today()
+                draw_date = st.date_input("Draw Date", value=today)
                 
                 # Day of week (auto-populated)
                 day_of_week = draw_date.strftime("%A")
