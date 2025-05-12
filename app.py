@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import os
 import io
 import json
-from datetime import date
+from datetime import datetime, date, timedelta
 from database import init_db, get_db_connection
 import logging
 
@@ -418,18 +418,6 @@ def main():
                         ]
                     )
                     
-                    # Strategy parameters with default values
-                    recency_weight = 0.3
-                    pattern_depth = 3
-                    confidence = 0.8
-                    balance = 0.6
-                    recent_draws_count = 20
-                    prior_strength = 1.0
-                    risk_level = 0.5
-                    balanced = 0.7
-                    lag = 3
-                    window_size = 10
-                    
                     # Parameters for each strategy
                     if strategy_type == "Frequency Analysis":
                         recency_weight = st.slider(
@@ -651,18 +639,6 @@ def main():
                         ]
                     )
                     
-                    # Strategy parameters with default values
-                    recency_weight = 0.3
-                    pattern_depth = 3
-                    confidence = 0.8
-                    balance = 0.6
-                    recent_draws_count = 20
-                    prior_strength = 1.0
-                    risk_level = 0.5
-                    balanced = 0.7
-                    lag = 3
-                    window_size = 10
-                    
                     # Parameters for each strategy
                     if strategy_type == "Frequency Analysis":
                         recency_weight = st.slider(
@@ -876,81 +852,15 @@ def main():
             key="latest_draw_lottery_type"
         )
         
-    # Strategy Performance tab
-    with tabs[6]:
-        st.header("Strategy Performance Analysis")
-        
-        # Select lottery type for the performance analysis
-        lottery_perf_type = st.radio(
-            "Select Lottery Type",
-            ["Euromillions", "French Loto"],
-            horizontal=True,
-            key="perf_lottery_type"
-        )
-        
-        if lottery_perf_type == "French Loto":
-            st.subheader("French Loto Strategy Performance")
-            
-            st.write("Based on comprehensive backtesting against historical data (30% test set, 20 combinations per strategy), here are the results:")
-            
-            # Display performance metrics for each strategy
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("### Best Performing Strategies")
-                st.markdown("""
-                1. **Risk/Reward Strategy**: 2.16/6 avg score, 22.69% win rate
-                2. **Frequency Analysis**: 2.15/6 avg score, 21.45% win rate
-                3. **Markov Chain Model**: 2.14/6 avg score, 23.26% win rate
-                4. **Time Series Analysis**: 2.14/6 avg score, 22.12% win rate
-                """)
-                
-                st.markdown("### Recommendations")
-                st.markdown("""
-                - **Risk/Reward Balance** is optimal for maximizing both your match rate and potential payouts
-                - **Markov Chain Model** gives the highest win percentage but slightly lower average matches
-                - For consistent performance, consider a blend of the top three strategies
-                """)
-                
-            with col2:
-                # Example performance chart
-                strategy_data = {
-                    'Strategy': ['Risk/Reward', 'Frequency', 'Markov', 'Time Series', 'Bayesian', 
-                                'Coverage', 'Temporal', 'Stratified', 'Cognitive', 'Mixed'],
-                    'Average Score': [2.16, 2.15, 2.14, 2.14, 2.10, 2.13, 2.13, 2.06, 2.09, 1.91],
-                    'Win Rate (%)': [22.69, 21.45, 23.26, 22.12, 20.97, 22.50, 20.59, 18.02, 20.02, 14.78]
-                }
-                
-                df_perf = pd.DataFrame(strategy_data)
-                
-                # Bar chart of average scores
-                st.write("Average Score by Strategy (out of 6)")
-                fig1 = px.bar(df_perf, x='Strategy', y='Average Score', color='Average Score',
-                             color_continuous_scale='Viridis', height=300)
-                st.plotly_chart(fig1, use_container_width=True)
-                
-                # Bar chart of win rates
-                st.write("Win Rate by Strategy (%)")
-                fig2 = px.bar(df_perf, x='Strategy', y='Win Rate (%)', color='Win Rate (%)',
-                             color_continuous_scale='Viridis', height=300)
-                st.plotly_chart(fig2, use_container_width=True)
-            
-            st.info("**Analysis Details**: Backtesting conducted across 1,049 test drawings from historical data. " +
-                   "Win rate refers to matches of 3 or more numbers (threshold for winning a prize).")
-        
-        else:  # Euromillions
-            st.subheader("Euromillions Strategy Performance")
-            st.write("Euromillions strategy performance analysis coming soon.")
-            st.info("Run the backtesting module to see comprehensive performance statistics for Euromillions strategies.")
-        
         if lottery_type == "Euromillions":
             st.subheader("Add Latest Euromillions Draw")
             
             # Form for adding a new Euromillions draw
             with st.form(key="add_euromillions_form"):
                 # Draw date
-                today = date.today()
-                draw_date = st.date_input("Draw Date", value=today)
+                from datetime import datetime as dt
+                current_date = dt.now().date()
+                draw_date = st.date_input("Draw Date", value=current_date)
                 
                 # Day of week (auto-populated)
                 day_of_week = draw_date.strftime("%A")
@@ -1051,8 +961,9 @@ def main():
             # Form for adding a new French Loto draw
             with st.form(key="add_french_loto_form"):
                 # Draw date
-                today = date.today()
-                draw_date = st.date_input("Draw Date", value=today)
+                from datetime import datetime as dt
+                current_date = dt.now().date()
+                draw_date = st.date_input("Draw Date", value=current_date)
                 
                 # Day of week (auto-populated)
                 day_of_week = draw_date.strftime("%A")
@@ -1170,6 +1081,73 @@ def main():
                                 session.close()
                         except Exception as e:
                             st.error(f"❌ Database error: {str(e)}")
+    
+    # Strategy Performance tab
+    with tabs[6]:
+        st.header("Strategy Performance Analysis")
+        
+        # Select lottery type for the performance analysis
+        lottery_perf_type = st.radio(
+            "Select Lottery Type",
+            ["Euromillions", "French Loto"],
+            horizontal=True,
+            key="perf_lottery_type"
+        )
+        
+        if lottery_perf_type == "French Loto":
+            st.subheader("French Loto Strategy Performance")
+            
+            st.write("Based on comprehensive backtesting against historical data (30% test set, 20 combinations per strategy), here are the results:")
+            
+            # Display performance metrics for each strategy
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### Best Performing Strategies")
+                st.markdown("""
+                1. **Risk/Reward Strategy**: 2.16/6 avg score, 22.69% win rate
+                2. **Frequency Analysis**: 2.15/6 avg score, 21.45% win rate
+                3. **Markov Chain Model**: 2.14/6 avg score, 23.26% win rate
+                4. **Time Series Analysis**: 2.14/6 avg score, 22.12% win rate
+                """)
+                
+                st.markdown("### Recommendations")
+                st.markdown("""
+                - **Risk/Reward Balance** is optimal for maximizing both your match rate and potential payouts
+                - **Markov Chain Model** gives the highest win percentage but slightly lower average matches
+                - For consistent performance, consider a blend of the top three strategies
+                """)
+                
+            with col2:
+                # Example performance chart
+                strategy_data = {
+                    'Strategy': ['Risk/Reward', 'Frequency', 'Markov', 'Time Series', 'Bayesian', 
+                                'Coverage', 'Temporal', 'Stratified', 'Cognitive', 'Mixed'],
+                    'Average Score': [2.16, 2.15, 2.14, 2.14, 2.10, 2.13, 2.13, 2.06, 2.09, 1.91],
+                    'Win Rate (%)': [22.69, 21.45, 23.26, 22.12, 20.97, 22.50, 20.59, 18.02, 20.02, 14.78]
+                }
+                
+                df_perf = pd.DataFrame(strategy_data)
+                
+                # Bar chart of average scores
+                st.write("Average Score by Strategy (out of 6)")
+                fig1 = px.bar(df_perf, x='Strategy', y='Average Score', color='Average Score',
+                             color_continuous_scale='Viridis', height=300)
+                st.plotly_chart(fig1, use_container_width=True)
+                
+                # Bar chart of win rates
+                st.write("Win Rate by Strategy (%)")
+                fig2 = px.bar(df_perf, x='Strategy', y='Win Rate (%)', color='Win Rate (%)',
+                             color_continuous_scale='Viridis', height=300)
+                st.plotly_chart(fig2, use_container_width=True)
+            
+            st.info("**Analysis Details**: Backtesting conducted across 1,049 test drawings from historical data. " +
+                   "Win rate refers to matches of 3 or more numbers (threshold for winning a prize).")
+        
+        else:  # Euromillions
+            st.subheader("Euromillions Strategy Performance")
+            st.write("Euromillions strategy performance analysis coming soon.")
+            st.info("Run the backtesting module to see comprehensive performance statistics for Euromillions strategies.")
 
 
 if __name__ == "__main__":
