@@ -17,6 +17,7 @@ try:
     from french_loto_strategy import FrenchLotoStrategy
     from french_loto_statistics import FrenchLotoStatistics
     from combination_analysis import analyze_full_combinations, analyze_number_combinations
+    from strategy_recommendation import get_ordered_strategy_list, get_strategy_info_text, get_base_strategy_name
 except ImportError:
     logging.warning("Strategy modules not found. Some features may be unavailable.")
 
@@ -401,53 +402,59 @@ def main():
                     strategies = None
                 
                 if strategies:
+                    # Information about strategy performance
+                    st.info(get_strategy_info_text())
+                    
                     # Strategy selection
                     strategy_type = st.selectbox(
                         "Select Strategy",
                         [
-                            "Frequency Analysis",
-                            "Mixed Strategy",
+                            "Risk/Reward Balance ⭐",
+                            "Frequency Analysis ⭐",
+                            "Markov Chain Model ⭐",
+                            "Time Series Analysis ⭐",
+                            "Bayesian Inference",
+                            "Coverage Optimization",
                             "Temporal Patterns",
                             "Stratified Sampling",
-                            "Coverage Optimization",
-                            "Risk/Reward Balance",
-                            "Bayesian Inference",
-                            "Markov Chain Model",
-                            "Time Series Analysis",
-                            "Anti-Cognitive Bias"
+                            "Anti-Cognitive Bias",
+                            "Mixed Strategy"
                         ]
                     )
                     
+                    
+                    # Function to process strategy name that might have star symbols
+                    base_strategy_type = get_base_strategy_name(strategy_type)
                     # Parameters for each strategy
-                    if strategy_type == "Frequency Analysis":
+                    if base_strategy_type == "Frequency Analysis":
                         recency_weight = st.slider(
                             "Recency Weight",
                             0.0, 1.0, 0.3,
                             help="Higher values give more importance to recent draws"
                         )
                     
-                    elif strategy_type == "Temporal Patterns":
+                    elif base_strategy_type == "Temporal Patterns":
                         pattern_depth = st.slider(
                             "Pattern Recognition Depth",
                             1, 10, 3,
                             help="Number of historical patterns to consider"
                         )
                     
-                    elif strategy_type == "Stratified Sampling":
+                    elif base_strategy_type == "Stratified Sampling":
                         confidence = st.slider(
                             "Confidence Level",
                             0.0, 1.0, 0.8,
                             help="Higher values lead to more conservative predictions"
                         )
                     
-                    elif strategy_type == "Coverage Optimization":
+                    elif base_strategy_type == "Coverage Optimization":
                         balance = st.slider(
                             "Coverage Balance",
                             0.0, 1.0, 0.6,
                             help="Balance between number density and range coverage"
                         )
                     
-                    elif strategy_type == "Bayesian Inference":
+                    elif base_strategy_type == "Bayesian Inference":
                         recent_draws_count = st.slider(
                             "Recent Draws to Consider",
                             5, 50, 20,
@@ -459,28 +466,28 @@ def main():
                             help="Strength of the prior distribution"
                         )
                     
-                    elif strategy_type == "Risk/Reward Balance":
+                    elif base_strategy_type == "Risk/Reward Balance":
                         risk_level = st.slider(
                             "Risk Level",
                             0.0, 1.0, 0.5,
                             help="Higher values favor high-risk, high-reward combinations"
                         )
                     
-                    elif strategy_type == "Markov Chain Model":
+                    elif base_strategy_type == "Markov Chain Model":
                         balanced = st.slider(
                             "Balance Factor",
                             0.0, 1.0, 0.7,
                             help="Balance between pattern prediction and randomness"
                         )
                     
-                    elif strategy_type == "Time Series Analysis":
+                    elif base_strategy_type == "Time Series Analysis":
                         lag = st.slider(
                             "Lag Parameter",
                             1, 10, 3,
                             help="Lag for time series forecasting"
                         )
                     
-                    elif strategy_type == "Anti-Cognitive Bias":
+                    elif base_strategy_type == "Anti-Cognitive Bias":
                         window_size = st.slider(
                             "Analysis Window",
                             5, 30, 10,
@@ -498,31 +505,31 @@ def main():
                             try:
                                 combinations = []
                                 
-                                if strategy_type == "Frequency Analysis":
+                                if base_strategy_type == "Frequency Analysis":
                                     combinations = strategies.frequency_strategy(
                                         num_combinations=num_combinations,
                                         recency_weight=recency_weight
                                     )
                                 
-                                elif strategy_type == "Temporal Patterns":
+                                elif base_strategy_type == "Temporal Patterns":
                                     combinations = strategies.temporal_pattern_strategy(
                                         num_combinations=num_combinations,
                                         pattern_depth=pattern_depth
                                     )
                                 
-                                elif strategy_type == "Stratified Sampling":
+                                elif base_strategy_type == "Stratified Sampling":
                                     combinations = strategies.stratified_sampling_strategy(
                                         num_combinations=num_combinations,
                                         confidence=confidence
                                     )
                                 
-                                elif strategy_type == "Coverage Optimization":
+                                elif base_strategy_type == "Coverage Optimization":
                                     combinations = strategies.coverage_optimization_strategy(
                                         num_combinations=num_combinations,
                                         balance=balance
                                     )
                                 
-                                elif strategy_type == "Bayesian Inference":
+                                elif base_strategy_type == "Bayesian Inference":
                                     combinations = strategies.bayesian_strategy(
                                         num_combinations=num_combinations,
                                         prior_type="adaptive",
@@ -530,31 +537,31 @@ def main():
                                         prior_strength=prior_strength
                                     )
                                 
-                                elif strategy_type == "Risk/Reward Balance":
+                                elif base_strategy_type == "Risk/Reward Balance":
                                     combinations = strategies.risk_reward_strategy(
                                         num_combinations=num_combinations,
                                         risk_level=risk_level
                                     )
                                 
-                                elif strategy_type == "Markov Chain Model":
+                                elif base_strategy_type == "Markov Chain Model":
                                     combinations = strategies.markov_chain_strategy(
                                         num_combinations=num_combinations,
                                         balanced=balanced
                                     )
                                 
-                                elif strategy_type == "Time Series Analysis":
+                                elif base_strategy_type == "Time Series Analysis":
                                     combinations = strategies.time_series_strategy(
                                         num_combinations=num_combinations,
                                         lag=lag
                                     )
                                 
-                                elif strategy_type == "Anti-Cognitive Bias":
+                                elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
                                         num_combinations=num_combinations,
                                         window_size=window_size
                                     )
                                 
-                                elif strategy_type == "Mixed Strategy":
+                                elif base_strategy_type == "Mixed Strategy":
                                     combinations = strategies.mixed_strategy(
                                         num_combinations=num_combinations
                                     )
@@ -622,53 +629,59 @@ def main():
                     strategies = None
                 
                 if strategies:
+                    # Information about strategy performance
+                    st.info(get_strategy_info_text())
+                    
                     # Strategy selection
                     strategy_type = st.selectbox(
                         "Select Strategy",
                         [
-                            "Frequency Analysis",
-                            "Mixed Strategy",
+                            "Risk/Reward Balance ⭐",
+                            "Frequency Analysis ⭐",
+                            "Markov Chain Model ⭐",
+                            "Time Series Analysis ⭐",
+                            "Bayesian Inference",
+                            "Coverage Optimization",
                             "Temporal Patterns",
                             "Stratified Sampling",
-                            "Coverage Optimization",
-                            "Risk/Reward Balance",
-                            "Bayesian Inference",
-                            "Markov Chain Model",
-                            "Time Series Analysis",
-                            "Anti-Cognitive Bias"
+                            "Anti-Cognitive Bias",
+                            "Mixed Strategy"
                         ]
                     )
                     
+                    
+                    # Function to process strategy name that might have star symbols
+                    base_strategy_type = get_base_strategy_name(strategy_type)
                     # Parameters for each strategy
-                    if strategy_type == "Frequency Analysis":
+                    if base_strategy_type == "Frequency Analysis":
                         recency_weight = st.slider(
                             "Recency Weight",
                             0.0, 1.0, 0.3,
                             help="Higher values give more importance to recent draws"
                         )
                     
-                    elif strategy_type == "Temporal Patterns":
+                    elif base_strategy_type == "Temporal Patterns":
                         pattern_depth = st.slider(
                             "Pattern Recognition Depth",
                             1, 10, 3,
                             help="Number of historical patterns to consider"
                         )
                     
-                    elif strategy_type == "Stratified Sampling":
+                    elif base_strategy_type == "Stratified Sampling":
                         confidence = st.slider(
                             "Confidence Level",
                             0.0, 1.0, 0.8,
                             help="Higher values lead to more conservative predictions"
                         )
                     
-                    elif strategy_type == "Coverage Optimization":
+                    elif base_strategy_type == "Coverage Optimization":
                         balance = st.slider(
                             "Coverage Balance",
                             0.0, 1.0, 0.6,
                             help="Balance between number density and range coverage"
                         )
                     
-                    elif strategy_type == "Bayesian Inference":
+                    elif base_strategy_type == "Bayesian Inference":
                         recent_draws_count = st.slider(
                             "Recent Draws to Consider",
                             5, 50, 20,
@@ -680,28 +693,28 @@ def main():
                             help="Strength of the prior distribution"
                         )
                     
-                    elif strategy_type == "Risk/Reward Balance":
+                    elif base_strategy_type == "Risk/Reward Balance":
                         risk_level = st.slider(
                             "Risk Level",
                             0.0, 1.0, 0.5,
                             help="Higher values favor high-risk, high-reward combinations"
                         )
                     
-                    elif strategy_type == "Markov Chain Model":
+                    elif base_strategy_type == "Markov Chain Model":
                         balanced = st.slider(
                             "Balance Factor",
                             0.0, 1.0, 0.7,
                             help="Balance between pattern prediction and randomness"
                         )
                     
-                    elif strategy_type == "Time Series Analysis":
+                    elif base_strategy_type == "Time Series Analysis":
                         lag = st.slider(
                             "Lag Parameter",
                             1, 10, 3,
                             help="Lag for time series forecasting"
                         )
                     
-                    elif strategy_type == "Anti-Cognitive Bias":
+                    elif base_strategy_type == "Anti-Cognitive Bias":
                         window_size = st.slider(
                             "Analysis Window",
                             5, 30, 10,
@@ -719,31 +732,31 @@ def main():
                             try:
                                 combinations = []
                                 
-                                if strategy_type == "Frequency Analysis":
+                                if base_strategy_type == "Frequency Analysis":
                                     combinations = strategies.frequency_strategy(
                                         num_combinations=num_combinations,
                                         recency_weight=recency_weight
                                     )
                                 
-                                elif strategy_type == "Temporal Patterns":
+                                elif base_strategy_type == "Temporal Patterns":
                                     combinations = strategies.temporal_pattern_strategy(
                                         num_combinations=num_combinations,
                                         pattern_depth=pattern_depth
                                     )
                                 
-                                elif strategy_type == "Stratified Sampling":
+                                elif base_strategy_type == "Stratified Sampling":
                                     combinations = strategies.stratified_sampling_strategy(
                                         num_combinations=num_combinations,
                                         confidence=confidence
                                     )
                                 
-                                elif strategy_type == "Coverage Optimization":
+                                elif base_strategy_type == "Coverage Optimization":
                                     combinations = strategies.coverage_optimization_strategy(
                                         num_combinations=num_combinations,
                                         balance=balance
                                     )
                                 
-                                elif strategy_type == "Bayesian Inference":
+                                elif base_strategy_type == "Bayesian Inference":
                                     combinations = strategies.bayesian_strategy(
                                         num_combinations=num_combinations,
                                         prior_type="adaptive",
@@ -751,31 +764,31 @@ def main():
                                         prior_strength=prior_strength
                                     )
                                 
-                                elif strategy_type == "Risk/Reward Balance":
+                                elif base_strategy_type == "Risk/Reward Balance":
                                     combinations = strategies.risk_reward_strategy(
                                         num_combinations=num_combinations,
                                         risk_level=risk_level
                                     )
                                 
-                                elif strategy_type == "Markov Chain Model":
+                                elif base_strategy_type == "Markov Chain Model":
                                     combinations = strategies.markov_chain_strategy(
                                         num_combinations=num_combinations,
                                         balanced=balanced
                                     )
                                 
-                                elif strategy_type == "Time Series Analysis":
+                                elif base_strategy_type == "Time Series Analysis":
                                     combinations = strategies.time_series_strategy(
                                         num_combinations=num_combinations,
                                         lag=lag
                                     )
                                 
-                                elif strategy_type == "Anti-Cognitive Bias":
+                                elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
                                         num_combinations=num_combinations,
                                         window_size=window_size
                                     )
                                 
-                                elif strategy_type == "Mixed Strategy":
+                                elif base_strategy_type == "Mixed Strategy":
                                     combinations = strategies.mixed_strategy(
                                         num_combinations=num_combinations
                                     )
