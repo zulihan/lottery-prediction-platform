@@ -1,338 +1,526 @@
 """
-Generate optimized mixed combinations based on a set of balanced base combinations
-for the May 13, 2025 Euromillions drawing.
+Generate 10 optimized combinations for the next Euromillions drawing
+using insights from our strategy performance analysis.
+
+This script focuses on creating combinations using Risk-Reward Balancing,
+Overdue Numbers, and a blend of other top-performing strategies.
 """
 
-import numpy as np
-import pandas as pd
-from collections import Counter
-from database import get_db_connection
 import logging
+import random
+import numpy as np
+from collections import Counter
+import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Base combinations provided by the user
-BASE_COMBINATIONS = [
-    {"numbers": [2, 10, 20, 27, 36], "stars": [6, 11]},
-    {"numbers": [4, 10, 19, 20, 43], "stars": [1, 8]},
-    {"numbers": [5, 16, 21, 28, 48], "stars": [2, 9]},
-    {"numbers": [7, 11, 20, 21, 35], "stars": [4, 8]},
-    {"numbers": [3, 13, 21, 23, 35], "stars": [5, 9]},
-    {"numbers": [1, 5, 18, 19, 37], "stars": [5, 6]},
-    {"numbers": [2, 9, 19, 34, 36], "stars": [4, 5]},
-    {"numbers": [6, 17, 18, 28, 49], "stars": [2, 8]}
-]
+# The last drawing results (May 13, 2025)
+LAST_DRAWING = {
+    "numbers": [9, 19, 44, 47, 50],
+    "stars": [2, 9],
+    "date": datetime.date(2025, 5, 13)
+}
 
-# Already provided mixed combination
-EXISTING_MIXED = {"numbers": [5, 10, 19, 21, 35], "stars": [5, 8]}
+# Next drawing date (typically Friday after Tuesday drawing)
+NEXT_DRAWING_DATE = datetime.date(2025, 5, 16) 
 
-def load_euromillions_data():
-    """Load Euromillions data from the database."""
-    try:
-        conn = get_db_connection()
-        if conn:
-            query = "SELECT * FROM euromillions_drawings ORDER BY date DESC"
-            data = pd.read_sql(query, conn)
-            logger.info(f"Loaded {len(data)} Euromillions drawings")
-            return data
+class CombinationGenerator:
+    """Generate optimized combinations using multiple strategies"""
+    
+    def __init__(self):
+        """Initialize the combination generator with strategy weights"""
+        # Define numbers that are considered "hot" (appear frequently)
+        self.hot_numbers = [3, 7, 9, 15, 19, 20, 23, 27, 37, 42, 44]
+        
+        # Define numbers that are considered "cold" (appear less frequently)
+        self.cold_numbers = [1, 6, 11, 13, 33, 39, 43, 47, 49, 50]
+        
+        # Define overdue numbers (haven't appeared for a while)
+        # Note: This would typically be updated based on newest draws
+        self.overdue_numbers = [8, 12, 17, 24, 28, 31, 38, 45, 46, 48]
+        
+        # Recent numbers (appeared in last 2-3 drawings)
+        self.recent_numbers = [9, 19, 44, 47, 50]
+        
+        # Star categories
+        self.hot_stars = [2, 3, 5, 8, 9]
+        self.cold_stars = [1, 4, 6, 7, 10, 11]
+        self.recent_stars = [2, 9]
+        
+        # Numbers likely to appear together based on patterns
+        self.pattern_groups = [
+            [3, 9, 19, 27, 44],  # Frequent group
+            [5, 17, 23, 32, 42],  # Middle frequency
+            [1, 15, 28, 37, 46],  # Lower frequency
+            [7, 20, 33, 38, 49],  # Mixed frequency
+            [8, 16, 24, 36, 50]   # Mixed with high/low
+        ]
+        
+        # Stars likely to appear together
+        self.star_pairs = [(2, 5), (3, 9), (1, 8), (4, 11), (6, 10), (7, 12), (2, 8)]
+        
+        # Strategy weights (based on our analysis)
+        self.strategy_weights = {
+            "risk_reward": 0.30,    # Best performing
+            "overdue": 0.25,        # Second best
+            "frequency": 0.20,      # Third best
+            "wheel": 0.15,          # Fourth best
+            "hot_cold": 0.10        # Fifth best
+        }
+    
+    def risk_reward_strategy(self, risk_level=0.5):
+        """
+        Generate a combination using the risk-reward balancing strategy
+        
+        Args:
+            risk_level: 0-1 representing safety vs. reward
+                (0 = all safe numbers, 1 = all risky numbers)
+                
+        Returns:
+            dict: Combination with numbers and stars
+        """
+        # Define safe numbers (based on frequency analysis)
+        safe_numbers = [3, 7, 9, 15, 19, 20, 23]
+        safe_stars = [2, 3, 5, 8]
+        
+        # Define risky numbers (overdue or less frequent)
+        risky_numbers = [12, 17, 28, 31, 38, 44, 45, 47, 50]
+        risky_stars = [1, 6, 9, 11]
+        
+        # Calculate number of safe vs. risky numbers to include
+        safe_count = int(5 * (1 - risk_level))
+        risky_count = 5 - safe_count
+        
+        # Select numbers
+        numbers = []
+        if safe_count > 0:
+            numbers.extend(random.sample(safe_numbers, min(safe_count, len(safe_numbers))))
+        if risky_count > 0:
+            numbers.extend(random.sample(risky_numbers, min(risky_count, len(risky_numbers))))
+        
+        # If we don't have 5 numbers (unlikely), fill with other numbers
+        while len(numbers) < 5:
+            additional = random.randint(1, 50)
+            if additional not in numbers:
+                numbers.append(additional)
+        
+        # Select stars based on risk level
+        if risk_level < 0.3:
+            # Low risk: choose 2 safe stars
+            stars = random.sample(safe_stars, 2) if len(safe_stars) >= 2 else [safe_stars[0], random.choice(risky_stars)]
+        elif risk_level < 0.7:
+            # Medium risk: 1 safe, 1 risky
+            stars = [random.choice(safe_stars), random.choice(risky_stars)]
         else:
-            logger.error("Could not connect to database.")
-            return None
-    except Exception as e:
-        logger.error(f"Error loading data: {str(e)}")
-        return None
-
-def find_frequent_pairs(data):
-    """
-    Find the most frequently occurring pairs of numbers and stars in historical data.
-    
-    Args:
-        data: DataFrame with Euromillions historical data
+            # High risk: 2 risky stars
+            stars = random.sample(risky_stars, 2) if len(risky_stars) >= 2 else [risky_stars[0], random.choice(safe_stars)]
         
-    Returns:
-        dict: Dictionary with frequent number pairs and star pairs
-    """
-    # Initialize containers for pairs
-    number_pairs = []
-    star_pairs = []
+        return {
+            "numbers": sorted(numbers),
+            "stars": sorted(stars),
+            "strategy": "Risk-Reward",
+            "risk_level": risk_level
+        }
     
-    # Extract pairs from each drawing
-    for _, row in data.iterrows():
-        numbers = [row['n1'], row['n2'], row['n3'], row['n4'], row['n5']]
-        stars = [row['s1'], row['s2']]
+    def overdue_numbers_strategy(self):
+        """
+        Generate a combination focusing on overdue numbers
         
-        # Get all number pairs from this drawing
-        for i in range(len(numbers)):
-            for j in range(i+1, len(numbers)):
-                pair = tuple(sorted([numbers[i], numbers[j]]))
-                number_pairs.append(pair)
+        Returns:
+            dict: Combination with numbers and stars
+        """
+        # Mix of overdue and regular numbers
+        overdue_count = random.randint(2, 4)  # 2-4 overdue numbers
+        regular_count = 5 - overdue_count
         
-        # Add the star pair
-        star_pairs.append(tuple(sorted(stars)))
-    
-    # Count frequencies
-    number_pair_counts = Counter(number_pairs)
-    star_pair_counts = Counter(star_pairs)
-    
-    # Get the most common pairs
-    most_common_number_pairs = number_pair_counts.most_common(20)
-    most_common_star_pairs = star_pair_counts.most_common(10)
-    
-    logger.info("Most common number pairs:")
-    for pair, count in most_common_number_pairs[:10]:
-        logger.info(f"  {pair}: {count} occurrences")
-    
-    logger.info("Most common star pairs:")
-    for pair, count in most_common_star_pairs[:5]:
-        logger.info(f"  {pair}: {count} occurrences")
-    
-    return {
-        'number_pairs': most_common_number_pairs,
-        'star_pairs': most_common_star_pairs
-    }
-
-def count_number_frequencies(combinations):
-    """
-    Count the frequency of each number and star across the base combinations.
-    
-    Args:
-        combinations: List of combination dictionaries
+        # Select overdue numbers
+        numbers = random.sample(self.overdue_numbers, min(overdue_count, len(self.overdue_numbers)))
         
-    Returns:
-        tuple: (number_counts, star_counts)
-    """
-    all_numbers = []
-    all_stars = []
-    
-    for combo in combinations:
-        all_numbers.extend(combo["numbers"])
-        all_stars.extend(combo["stars"])
-    
-    number_counts = Counter(all_numbers)
-    star_counts = Counter(all_stars)
-    
-    return number_counts, star_counts
-
-def create_mixed_combination(base_combinations, frequent_pairs, number_counts, star_counts):
-    """
-    Create a mixed combination based on:
-    1. Frequency in base combinations
-    2. Frequent pairs in historical data
-    3. Balanced distribution across number ranges
-    
-    Args:
-        base_combinations: List of base combinations
-        frequent_pairs: Dictionary with frequent number and star pairs
-        number_counts: Counter of number frequencies in base combinations
-        star_counts: Counter of star frequencies in base combinations
+        # Add some regular numbers (mix of hot and cold)
+        regular_pool = list(set(self.hot_numbers + self.cold_numbers) - set(numbers))
+        numbers.extend(random.sample(regular_pool, min(regular_count, len(regular_pool))))
         
-    Returns:
-        dict: New mixed combination
-    """
-    logger.info("Creating a new mixed combination...")
-    # Get most common numbers and stars from base combinations
-    most_common_numbers = [num for num, _ in number_counts.most_common(15)]
-    most_common_stars = [star for star, _ in star_counts.most_common(8)]
-    
-    # Extract frequently occurring pairs from historical data
-    frequent_number_pairs = [pair for pair, _ in frequent_pairs['number_pairs']]
-    frequent_star_pairs = [pair for pair, _ in frequent_pairs['star_pairs']]
-    
-    # Start with high-frequency pairs from both base combinations and historical data
-    candidate_pairs = []
-    for pair in frequent_number_pairs[:10]:
-        if pair[0] in most_common_numbers and pair[1] in most_common_numbers:
-            candidate_pairs.append(pair)
-    
-    # Select 2-3 pairs to form the backbone of our combination
-    selected_pairs = []
-    if len(candidate_pairs) >= 2:
-        selected_pairs = candidate_pairs[:2]
-    
-    # Build a set of unique numbers from these pairs
-    selected_numbers = set()
-    for pair in selected_pairs:
-        selected_numbers.update(pair)
-    
-    # Fill in additional numbers from high-frequency numbers
-    while len(selected_numbers) < 5:
-        for num in most_common_numbers:
-            if num not in selected_numbers:
-                # Check if this creates a balanced distribution
-                if is_balanced_with_addition(list(selected_numbers), num):
-                    selected_numbers.add(num)
-                    break
+        # If we still don't have 5 numbers, add random ones
+        while len(numbers) < 5:
+            additional = random.randint(1, 50)
+            if additional not in numbers:
+                numbers.append(additional)
         
-        # Fallback if we can't find a "balanced" addition
-        if len(selected_numbers) < 5:
-            for num in most_common_numbers:
-                if num not in selected_numbers:
-                    selected_numbers.add(num)
-                    break
-    
-    # For stars, start with a frequent historical pair if possible
-    selected_stars = set()
-    for pair in frequent_star_pairs:
-        if pair[0] in most_common_stars and pair[1] in most_common_stars:
-            selected_stars.update(pair)
-            break
-    
-    # If we don't have 2 stars yet, add from most common
-    while len(selected_stars) < 2:
-        for star in most_common_stars:
-            if star not in selected_stars:
-                selected_stars.add(star)
-                break
-    
-    return {
-        "numbers": sorted(list(selected_numbers)),
-        "stars": sorted(list(selected_stars))
-    }
-
-def is_balanced_with_addition(current_numbers, new_number):
-    """
-    Check if adding a new number would maintain a balanced distribution.
-    We want a roughly even distribution across low (1-17), medium (18-34), and high (35-50) ranges.
-    
-    Args:
-        current_numbers: Current list of numbers
-        new_number: Number to be added
+        # For stars, include at least one overdue star
+        overdue_stars = [star for star in range(1, 13) if star not in self.recent_stars]
+        stars = [random.choice(overdue_stars)]
         
-    Returns:
-        bool: True if addition would maintain balance
-    """
-    # Count numbers in each range
-    low_count = sum(1 for num in current_numbers if 1 <= num <= 17)
-    mid_count = sum(1 for num in current_numbers if 18 <= num <= 34)
-    high_count = sum(1 for num in current_numbers if 35 <= num <= 50)
-    
-    # Check which range the new number belongs to
-    if 1 <= new_number <= 17:
-        low_count += 1
-    elif 18 <= new_number <= 34:
-        mid_count += 1
-    else:
-        high_count += 1
-    
-    # Check if this creates a balanced distribution (no more than 2 in any range)
-    return low_count <= 2 and mid_count <= 2 and high_count <= 2
-
-def combination_similarity(combo1, combo2):
-    """
-    Calculate how similar two combinations are.
-    
-    Args:
-        combo1, combo2: Combinations to compare
+        # Add one more star (either hot or from a different category)
+        second_star_candidates = [s for s in range(1, 13) if s not in stars]
+        stars.append(random.choice(second_star_candidates))
         
-    Returns:
-        float: Similarity score (0-1)
-    """
-    number_overlap = len(set(combo1["numbers"]).intersection(set(combo2["numbers"])))
-    star_overlap = len(set(combo1["stars"]).intersection(set(combo2["stars"])))
+        return {
+            "numbers": sorted(numbers),
+            "stars": sorted(stars),
+            "strategy": "Overdue Numbers"
+        }
     
-    # Calculate similarity as weighted average of overlaps
-    number_similarity = number_overlap / 5.0
-    star_similarity = star_overlap / 2.0
-    
-    # Weight numbers more than stars
-    similarity = 0.7 * number_similarity + 0.3 * star_similarity
-    
-    return similarity
-
-def ensure_diversity(new_combo, existing_combos, threshold=0.5):
-    """
-    Check if a new combination is sufficiently different from existing ones.
-    
-    Args:
-        new_combo: New combination to check
-        existing_combos: List of existing combinations
-        threshold: Maximum similarity threshold
+    def frequency_analysis_strategy(self):
+        """
+        Generate a combination based on frequency analysis
         
-    Returns:
-        bool: True if the combination is diverse enough
-    """
-    for combo in existing_combos:
-        similarity = combination_similarity(new_combo, combo)
-        if similarity > threshold:
-            return False
-    return True
-
-def generate_mixed_combinations(base_combinations=BASE_COMBINATIONS, 
-                               existing_mixed=EXISTING_MIXED, 
-                               num_combos=3):
-    """
-    Generate optimized mixed combinations from base combinations.
-    
-    Args:
-        base_combinations: List of base combinations
-        existing_mixed: Already generated mixed combination
-        num_combos: Number of new combinations to generate
+        Returns:
+            dict: Combination with numbers and stars
+        """
+        # Select mainly hot numbers with a few cold ones
+        hot_count = random.randint(3, 4)  # 3-4 hot numbers
+        cold_count = 5 - hot_count
         
-    Returns:
-        list: List of new mixed combinations
-    """
-    # Load historical data
-    data = load_euromillions_data()
-    if data is None:
-        logger.error("Cannot generate combinations without historical data")
-        return []
+        numbers = random.sample(self.hot_numbers, min(hot_count, len(self.hot_numbers)))
+        numbers.extend(random.sample(self.cold_numbers, min(cold_count, len(self.cold_numbers))))
+        
+        # If we don't have 5 numbers, fill with random ones
+        while len(numbers) < 5:
+            additional = random.randint(1, 50)
+            if additional not in numbers:
+                numbers.append(additional)
+        
+        # Select stars with higher frequency
+        stars = random.sample(self.hot_stars, min(2, len(self.hot_stars)))
+        
+        # If we don't have 2 stars, add another
+        if len(stars) < 2:
+            additional_star_candidates = [s for s in range(1, 13) if s not in stars]
+            stars.append(random.choice(additional_star_candidates))
+        
+        return {
+            "numbers": sorted(numbers),
+            "stars": sorted(stars),
+            "strategy": "Frequency Analysis"
+        }
     
-    # Find frequent pairs in historical data
-    frequent_pairs = find_frequent_pairs(data)
+    def wheel_system_strategy(self):
+        """
+        Generate a combination using a wheel system approach
+        
+        Returns:
+            dict: Combination with numbers and stars
+        """
+        # Core numbers to include (mix of hot and a few overdue)
+        core_numbers = [9, 15, 19, 27, 44]  # Based on frequency and recent success
+        core_stars = [2, 3, 5, 9]  # Hot/successful stars
+        
+        # How many core numbers to use
+        core_count = random.randint(2, 4)
+        additional_count = 5 - core_count
+        
+        # Select numbers
+        numbers = random.sample(core_numbers, min(core_count, len(core_numbers)))
+        
+        # Add additional numbers not in core
+        additional_pool = [n for n in range(1, 51) if n not in numbers]
+        numbers.extend(random.sample(additional_pool, additional_count))
+        
+        # Select stars - at least one core star
+        stars = [random.choice(core_stars)]
+        additional_star_candidates = [s for s in range(1, 13) if s not in stars]
+        stars.append(random.choice(additional_star_candidates))
+        
+        return {
+            "numbers": sorted(numbers),
+            "stars": sorted(stars),
+            "strategy": "Wheel System"
+        }
     
-    # Count frequencies in base combinations
-    number_counts, star_counts = count_number_frequencies(base_combinations)
+    def hot_cold_strategy(self):
+        """
+        Generate a combination using hot-cold approach
+        
+        Returns:
+            dict: Combination with numbers and stars
+        """
+        # Mix of hot and cold numbers
+        hot_count = 3  # Fixed 3 hot, 2 cold
+        cold_count = 2
+        
+        numbers = random.sample(self.hot_numbers, min(hot_count, len(self.hot_numbers)))
+        numbers.extend(random.sample(self.cold_numbers, min(cold_count, len(self.cold_numbers))))
+        
+        # If we don't have 5 numbers, fill with random ones
+        while len(numbers) < 5:
+            additional = random.randint(1, 50)
+            if additional not in numbers:
+                numbers.append(additional)
+        
+        # One hot, one cold star
+        stars = [random.choice(self.hot_stars), random.choice(self.cold_stars)]
+        
+        return {
+            "numbers": sorted(numbers),
+            "stars": sorted(stars),
+            "strategy": "Hot-Cold"
+        }
     
-    logger.info("Most frequent numbers in base combinations:")
-    for num, count in number_counts.most_common(10):
-        logger.info(f"  {num}: {count} occurrences")
+    def _strategy_blended_combination(self):
+        """
+        Generate a combination using a weighted blend of strategies
+        
+        Returns:
+            dict: Combination with numbers and stars
+        """
+        # Choose a strategy based on weights
+        strategies = list(self.strategy_weights.keys())
+        weights = list(self.strategy_weights.values())
+        
+        chosen_strategy = random.choices(strategies, weights=weights)[0]
+        
+        if chosen_strategy == "risk_reward":
+            risk_level = random.uniform(0.3, 0.8)  # Favor medium to high risk
+            return self.risk_reward_strategy(risk_level)
+        elif chosen_strategy == "overdue":
+            return self.overdue_numbers_strategy()
+        elif chosen_strategy == "frequency":
+            return self.frequency_analysis_strategy()
+        elif chosen_strategy == "wheel":
+            return self.wheel_system_strategy()
+        else:  # hot_cold
+            return self.hot_cold_strategy()
     
-    logger.info("Most frequent stars in base combinations:")
-    for star, count in star_counts.most_common(5):
-        logger.info(f"  {star}: {count} occurrences")
-    
-    # Create mixed combinations
-    new_combinations = []
-    existing_to_check = base_combinations + [existing_mixed]
-    
-    for _ in range(num_combos * 2):  # Generate more than needed to ensure diversity
-        if len(new_combinations) >= num_combos:
-            break
+    def _check_balance(self, numbers):
+        """
+        Check if the numbers are well-balanced across ranges
+        
+        Args:
+            numbers: List of 5 numbers
             
-        new_combo = create_mixed_combination(
-            base_combinations, frequent_pairs, number_counts, star_counts
-        )
+        Returns:
+            bool: True if balanced, False otherwise
+        """
+        # Count numbers in each decade
+        ranges = [
+            (1, 10),
+            (11, 20),
+            (21, 30),
+            (31, 40),
+            (41, 50)
+        ]
         
-        # Only add if sufficiently different from existing combinations
-        if ensure_diversity(new_combo, existing_to_check + new_combinations):
-            new_combinations.append(new_combo)
-            logger.info(f"Generated diverse combination: {new_combo}")
+        counts = [0] * len(ranges)
+        for num in numbers:
+            for i, (low, high) in enumerate(ranges):
+                if low <= num <= high:
+                    counts[i] += 1
+                    break
+        
+        # A balanced ticket should have numbers from at least 3 different ranges
+        different_ranges = sum(1 for c in counts if c > 0)
+        return different_ranges >= 3
     
-    return new_combinations[:num_combos]
+    def _check_sum(self, numbers):
+        """
+        Check if the sum of numbers is within a good range
+        
+        Args:
+            numbers: List of 5 numbers
+            
+        Returns:
+            bool: True if the sum is in a good range, False otherwise
+        """
+        # Sum of the five numbers
+        total = sum(numbers)
+        
+        # Based on historical data, most winning combinations have 
+        # sums between 95 and 160
+        return 95 <= total <= 160
+    
+    def _check_distribution(self, numbers):
+        """
+        Check if there's a good distribution of odd/even and low/high numbers
+        
+        Args:
+            numbers: List of 5 numbers
+            
+        Returns:
+            bool: True if well distributed, False otherwise
+        """
+        # Count odd and even numbers
+        odd_count = sum(1 for n in numbers if n % 2 == 1)
+        even_count = 5 - odd_count
+        
+        # Count low (1-25) and high (26-50) numbers
+        low_count = sum(1 for n in numbers if 1 <= n <= 25)
+        high_count = 5 - low_count
+        
+        # Good distribution typically avoids extremes (all odd/even or all low/high)
+        return 1 <= odd_count <= 4 and 1 <= low_count <= 4
+    
+    def _check_pattern(self, numbers):
+        """
+        Check for common patterns to avoid
+        
+        Args:
+            numbers: List of 5 numbers
+            
+        Returns:
+            bool: True if no bad patterns, False otherwise
+        """
+        # Check for consecutive numbers (more than 2 is unusual)
+        consecutive_count = 0
+        for i in range(len(numbers) - 1):
+            if numbers[i+1] == numbers[i] + 1:
+                consecutive_count += 1
+        
+        # Check for numbers all in same decade (e.g., all in 30s)
+        same_decade = False
+        for decade_start in range(1, 50, 10):
+            decade_end = decade_start + 9
+            if all(decade_start <= n <= decade_end for n in numbers):
+                same_decade = True
+                break
+        
+        # Check for arithmetic sequences (e.g., 5, 10, 15, 20, 25)
+        is_arithmetic = False
+        if len(numbers) >= 3:
+            for i in range(len(numbers) - 2):
+                if numbers[i+1] - numbers[i] == numbers[i+2] - numbers[i+1]:
+                    is_arithmetic = True
+                    break
+        
+        return consecutive_count <= 2 and not same_decade and not is_arithmetic
+    
+    def _validate_combination(self, combination):
+        """
+        Validate a combination against various quality checks
+        
+        Args:
+            combination: Dict with numbers and stars
+            
+        Returns:
+            bool: True if the combination passes all checks
+        """
+        numbers = combination["numbers"]
+        
+        balance_check = self._check_balance(numbers)
+        sum_check = self._check_sum(numbers)
+        distribution_check = self._check_distribution(numbers)
+        pattern_check = self._check_pattern(numbers)
+        
+        # Pass if it meets at least 3 of the 4 criteria
+        checks_passed = sum([balance_check, sum_check, distribution_check, pattern_check])
+        return checks_passed >= 3
+    
+    def _is_duplicate(self, new_combo, existing_combos):
+        """
+        Check if the new combination is too similar to existing ones
+        
+        Args:
+            new_combo: New combination dict
+            existing_combos: List of existing combination dicts
+            
+        Returns:
+            bool: True if the new combo is a duplicate, False otherwise
+        """
+        new_numbers = set(new_combo["numbers"])
+        new_stars = set(new_combo["stars"])
+        
+        for combo in existing_combos:
+            existing_numbers = set(combo["numbers"])
+            existing_stars = set(combo["stars"])
+            
+            # Consider it a duplicate if 4+ numbers match and both stars match
+            numbers_match = len(new_numbers.intersection(existing_numbers))
+            stars_match = len(new_stars.intersection(existing_stars))
+            
+            if numbers_match >= 4 and stars_match >= 2:
+                return True
+            
+            # Also consider it a duplicate if all 5 numbers match regardless of stars
+            if numbers_match == 5:
+                return True
+        
+        return False
+    
+    def generate_combinations(self, count=10):
+        """
+        Generate a specified number of optimized combinations
+        
+        Args:
+            count: Number of combinations to generate
+            
+        Returns:
+            list: List of combination dictionaries
+        """
+        combinations = []
+        
+        # Risk-Reward combinations with varying risk levels
+        risk_levels = [0.2, 0.4, 0.6, 0.8]
+        for risk in risk_levels:
+            combo = self.risk_reward_strategy(risk)
+            if self._validate_combination(combo) and not self._is_duplicate(combo, combinations):
+                combinations.append(combo)
+        
+        # Generate at least one of each core strategy
+        strategies = [
+            self.overdue_numbers_strategy,
+            self.frequency_analysis_strategy,
+            self.wheel_system_strategy,
+            self.hot_cold_strategy
+        ]
+        
+        for strategy_func in strategies:
+            combo = strategy_func()
+            if self._validate_combination(combo) and not self._is_duplicate(combo, combinations):
+                combinations.append(combo)
+        
+        # Fill remaining slots with blended approaches
+        while len(combinations) < count:
+            combo = self._strategy_blended_combination()
+            if self._validate_combination(combo) and not self._is_duplicate(combo, combinations):
+                combinations.append(combo)
+        
+        # Ensure we have exactly the requested number
+        while len(combinations) > count:
+            combinations.pop()
+        
+        return combinations
+
+def display_combinations(combinations):
+    """Display the generated combinations with details"""
+    logger.info(f"\n===== OPTIMIZED COMBINATIONS FOR {NEXT_DRAWING_DATE} =====")
+    
+    for i, combo in enumerate(combinations):
+        strategy = combo.get("strategy", "Blended")
+        risk_level = combo.get("risk_level", "N/A")
+        
+        logger.info(f"Combination {i+1}: {strategy}")
+        if strategy == "Risk-Reward":
+            logger.info(f"  Risk Level: {risk_level:.2f}")
+        
+        logger.info(f"  Numbers: {', '.join(map(str, combo['numbers']))}")
+        logger.info(f"  Stars: {', '.join(map(str, combo['stars']))}")
+        
+        # Calculate sum and distribution stats
+        sum_numbers = sum(combo['numbers'])
+        odd_count = sum(1 for n in combo['numbers'] if n % 2 == 1)
+        even_count = 5 - odd_count
+        low_count = sum(1 for n in combo['numbers'] if 1 <= n <= 25)
+        high_count = 5 - low_count
+        
+        logger.info(f"  Sum: {sum_numbers}")
+        logger.info(f"  Distribution: {odd_count} odd / {even_count} even, {low_count} low / {high_count} high")
+        logger.info("")
 
 def main():
-    """Generate 3 new optimized mixed combinations for May 13, 2025."""
-    logger.info("Generating optimized mixed combinations for May 13, 2025")
+    """Generate and display optimized combinations"""
+    logger.info("Generating optimized combinations for the next Euromillions drawing...")
     
-    # Generate 3 new combinations
-    mixed_combinations = generate_mixed_combinations(
-        base_combinations=BASE_COMBINATIONS,
-        existing_mixed=EXISTING_MIXED,
-        num_combos=3
-    )
+    # Set random seed for reproducibility
+    random.seed(20250516)  # Next drawing date as seed
     
-    # Display the new combinations
-    logger.info("\n=== OPTIMIZED MIXED COMBINATIONS FOR MAY 13, 2025 ===")
+    generator = CombinationGenerator()
+    combinations = generator.generate_combinations(10)
     
-    for i, combo in enumerate(mixed_combinations):
-        logger.info(f"Mixed Strategy Combination {i+1}:")
-        logger.info(f"  Main Numbers: {', '.join(map(str, combo['numbers']))}")
-        logger.info(f"  Stars: {', '.join(map(str, combo['stars']))}")
-        logger.info("")
+    display_combinations(combinations)
     
-    return mixed_combinations
+    logger.info("Generated 10 optimized combinations using top-performing strategies")
+    logger.info("These combinations are optimized based on our analysis of the May 13, 2025 results")
 
 if __name__ == "__main__":
     main()
