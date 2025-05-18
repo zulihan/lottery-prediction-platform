@@ -21,6 +21,32 @@ class PredictionStrategies:
             The statistics object with calculated metrics
         """
         self.stats = statistics
+        
+    def _weighted_sample(self, weights_dict, k):
+        """
+        Sample k elements from a dictionary with weights.
+        
+        Parameters:
+        -----------
+        weights_dict : dict
+            Dictionary mapping elements to their weights
+        k : int
+            Number of elements to sample
+            
+        Returns:
+        --------
+        list
+            List of sampled elements
+        """
+        population = list(weights_dict.keys())
+        weights = [weights_dict[key] for key in population]
+        
+        # Ensure weights are all positive (add small constant if needed)
+        if min(weights) <= 0:
+            weights = [w + 0.1 for w in weights]
+            
+        # Sample without replacement
+        return random.choices(population, weights=weights, k=k)
     
     def frequency_strategy(self, num_combinations=5, recent_weight=0.6):
         """

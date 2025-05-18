@@ -49,6 +49,51 @@ class EuromillionsStatistics:
     def get_star_frequency(self, star):
         """Get frequency of a star number"""
         return self.star_frequency.get(star, 0)
+        
+    def get_number_statistics(self, number):
+        """Get detailed statistics for a specific number
+        
+        Parameters:
+        -----------
+        number : int
+            The number to analyze
+            
+        Returns:
+        --------
+        dict
+            Dictionary with statistics for the number
+        """
+        # Default statistics with no pattern
+        stats = {
+            'frequency': self.get_frequency(number),
+            'cyclic_pattern': 0,
+            'draws_since_last': 0
+        }
+        
+        # Check for the number in each draw to find patterns
+        appearances = []
+        for i, row in self.data.iterrows():
+            if number in [row[col] for col in self.number_cols]:
+                appearances.append(i)
+        
+        # Calculate draws since last appearance
+        if appearances:
+            stats['draws_since_last'] = len(self.data) - appearances[0] - 1
+        
+        # Analyze for cyclical patterns
+        if len(appearances) >= 3:
+            # Calculate gaps between appearances
+            gaps = [appearances[i] - appearances[i+1] for i in range(len(appearances)-1)]
+            
+            # Calculate average gap (cycle)
+            avg_gap = sum(gaps) / len(gaps)
+            
+            # Only consider it a cycle if variance is low
+            gap_variance = sum((g - avg_gap)**2 for g in gaps) / len(gaps)
+            if gap_variance < (avg_gap * 0.5):  # Low variance relative to average
+                stats['cyclic_pattern'] = avg_gap
+        
+        return stats
     
     def get_hot_numbers(self, count=10):
         """Get the most frequent main numbers"""
