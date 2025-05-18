@@ -396,7 +396,10 @@ def main():
                 
                 # Initialize strategies
                 try:
-                    strategies = PredictionStrategies(st.session_state.processed_data)
+                    # Create a simple statistics class for Euromillions data
+                    from statistics import EuromillionsStatistics
+                    euro_stats = EuromillionsStatistics(st.session_state.processed_data)
+                    strategies = PredictionStrategies(euro_stats)
                 except Exception as e:
                     st.error(f"Error initializing prediction strategies: {str(e)}")
                     strategies = None
