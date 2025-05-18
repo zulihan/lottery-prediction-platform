@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import json
 import logging
+import random
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Date, Float, Boolean, ForeignKey, Table, MetaData, inspect, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
@@ -21,12 +22,13 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 DB_AVAILABLE = True
 
 # Create SQLAlchemy engine with improved connection pooling
+# Modified to reduce likelihood of hitting rate limits
 try:
     engine = create_engine(
         DATABASE_URL,
         isolation_level="AUTOCOMMIT",
-        pool_size=5,
-        max_overflow=10,
+        pool_size=2,  # Reduced pool size to avoid rate limits
+        max_overflow=3,  # Reduced overflow connections
         pool_timeout=30,
         pool_recycle=1800,  # Recycle connections after 30 minutes
         pool_pre_ping=True,  # Verify connections before using them
@@ -53,10 +55,11 @@ except Exception as e:
 Session = scoped_session(sessionmaker(bind=engine, autoflush=True, autocommit=False))
 
 # Function to get a fresh session with retry logic
-def get_session(max_retries=3, retry_delay=1):
+def get_session(max_retries=3, retry_delay=2):
     """Get a database session with retry logic for connection issues"""
     retries = 0
     last_error = None
+    session = None
     
     while retries < max_retries:
         try:
@@ -68,12 +71,25 @@ def get_session(max_retries=3, retry_delay=1):
             return session
         except exc.DBAPIError as e:
             last_error = e
-            logger.warning(f"Database connection error (attempt {retries+1}/{max_retries}): {str(e)}")
+            
+            # Check if it's a rate limit error
+            error_str = str(e).lower()
+            if "rate limit" in error_str or "too many connections" in error_str:
+                logger.warning(f"Database rate limit hit (attempt {retries+1}/{max_retries}). Waiting before retry...")
+            else:
+                logger.warning(f"Database connection error (attempt {retries+1}/{max_retries}): {str(e)}")
+            
             # Close the session if it was created
-            if 'session' in locals():
+            if session:
                 session.close()
-            # Wait before retrying
-            time.sleep(retry_delay)
+                
+            # Exponential backoff with jitter
+            current_delay = retry_delay * (2 ** retries)
+            jitter = random.uniform(0, current_delay / 2)
+            wait_time = current_delay + jitter
+            
+            logger.info(f"Retrying in {wait_time:.1f} seconds...")
+            time.sleep(wait_time)
             retries += 1
             
     # If we got here, all retries failed
