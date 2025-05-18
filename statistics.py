@@ -280,3 +280,111 @@ class EuromillionsStatistics:
             "hot_numbers": hot_numbers,
             "hot_lucky": hot_stars
         }
+        
+    def get_sum_distribution(self):
+        """
+        Analyze the sum distribution of drawn numbers.
+        
+        Returns:
+        --------
+        dict
+            Dictionary with sum distribution statistics
+        """
+        # Calculate sums of each draw
+        sums = []
+        for _, row in self.data.iterrows():
+            numbers = [row[col] for col in self.number_cols]
+            sums.append(sum(numbers))
+            
+        # Analyze the distribution of sums
+        sum_series = pd.Series(sums)
+        
+        return {
+            "min_sum": sum_series.min(),
+            "max_sum": sum_series.max(),
+            "mean_sum": sum_series.mean(),
+            "median_sum": sum_series.median(),
+            "most_common_ranges": pd.cut(sum_series, bins=5).value_counts().to_dict()
+        }
+        
+    def get_consecutive_analysis(self):
+        """
+        Analyze the presence of consecutive numbers in drawings.
+        
+        Returns:
+        --------
+        dict
+            Dictionary with consecutive number statistics
+        """
+        consecutive_counts = []
+        
+        # Check each draw for consecutive numbers
+        for _, row in self.data.iterrows():
+            numbers = sorted([row[col] for col in self.number_cols])
+            consecutive_count = 0
+            
+            # Count consecutive pairs
+            for i in range(len(numbers)-1):
+                if numbers[i+1] - numbers[i] == 1:
+                    consecutive_count += 1
+            
+            consecutive_counts.append(consecutive_count)
+        
+        consecutive_series = pd.Series(consecutive_counts)
+        
+        return {
+            "max_consecutive": consecutive_series.max(),
+            "mean_consecutive": consecutive_series.mean(),
+            "pct_with_consecutive": (consecutive_series > 0).mean() * 100,
+            "distribution": consecutive_series.value_counts().sort_index().to_dict()
+        }
+    
+    def get_gap_analysis(self, number=None):
+        """
+        Analyze the gaps between appearances of a specific number.
+        
+        Parameters:
+        -----------
+        number : int
+            The number to analyze gaps for
+            
+        Returns:
+        --------
+        dict
+            Dictionary with gap statistics
+        """
+        if number is None:  # Return a summary for all numbers if none specified
+            avg_gaps = {}
+            for num in range(1, 51):
+                appearances = []
+                for i, row in self.data.iterrows():
+                    if num in [row[col] for col in self.number_cols]:
+                        appearances.append(i)
+                
+                if len(appearances) > 1:
+                    gaps = [appearances[i] - appearances[i+1] for i in range(len(appearances)-1)]
+                    avg_gaps[num] = sum(gaps) / len(gaps) if gaps else 0
+            
+            return {
+                "average_gaps": avg_gaps,
+                "most_regular": sorted(avg_gaps.items(), key=lambda x: x[1], reverse=True)[:5]
+            }
+        else:
+            # Find appearances of the specific number
+            appearances = []
+            for i, row in self.data.iterrows():
+                if number in [row[col] for col in self.number_cols]:
+                    appearances.append(i)
+            
+            if len(appearances) <= 1:
+                return {"gaps": [], "avg_gap": 0, "last_appearance": appearances[0] if appearances else -1}
+            
+            # Calculate gaps between appearances
+            gaps = [appearances[i] - appearances[i+1] for i in range(len(appearances)-1)]
+            
+            return {
+                "gaps": gaps,
+                "avg_gap": sum(gaps) / len(gaps),
+                "last_appearance": appearances[0],
+                "draws_since_last": appearances[0] if appearances else -1
+            }
