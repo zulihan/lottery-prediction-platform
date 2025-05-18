@@ -299,12 +299,25 @@ class EuromillionsStatistics:
         # Analyze the distribution of sums
         sum_series = pd.Series(sums)
         
+        # Convert numeric values to integers or floats as appropriate
+        min_sum = int(sum_series.min()) if not pd.isna(sum_series.min()) else 0
+        max_sum = int(sum_series.max()) if not pd.isna(sum_series.max()) else 0
+        mean_sum = float(sum_series.mean()) if not pd.isna(sum_series.mean()) else 0.0
+        median_sum = float(sum_series.median()) if not pd.isna(sum_series.median()) else 0.0
+        
+        # Create range distribution as a separate object
+        try:
+            range_counts = pd.cut(sum_series, bins=5).value_counts()
+            range_dict = {str(k): int(v) for k, v in range_counts.items()}
+        except:
+            range_dict = {}
+        
         return {
-            "min_sum": sum_series.min(),
-            "max_sum": sum_series.max(),
-            "mean_sum": sum_series.mean(),
-            "median_sum": sum_series.median(),
-            "most_common_ranges": pd.cut(sum_series, bins=5).value_counts().to_dict()
+            "min_sum": min_sum,
+            "max_sum": max_sum,
+            "mean_sum": mean_sum,
+            "median_sum": median_sum,
+            "most_common_ranges": range_dict
         }
         
     def get_consecutive_analysis(self):
