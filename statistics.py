@@ -42,12 +42,22 @@ class EuromillionsStatistics:
             if i not in self.star_frequency:
                 self.star_frequency[i] = 0
     
-    def get_frequency(self, number):
-        """Get frequency of a main number"""
+    def get_frequency(self, number=None):
+        """
+        Get frequency of a main number.
+        If number is None, returns the full dictionary of frequencies.
+        """
+        if number is None:
+            return self.number_frequency
         return self.number_frequency.get(number, 0)
     
-    def get_star_frequency(self, star):
-        """Get frequency of a star number"""
+    def get_star_frequency(self, star=None):
+        """
+        Get frequency of a star number.
+        If star is None, returns the full dictionary of frequencies.
+        """
+        if star is None:
+            return self.star_frequency
         return self.star_frequency.get(star, 0)
         
     def get_number_statistics(self, number):
