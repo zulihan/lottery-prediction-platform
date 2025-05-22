@@ -417,7 +417,6 @@ def main():
                             "Frequency Analysis ⭐",
                             "Markov Chain Model ⭐",
                             "Time Series Analysis ⭐",
-                            "Fibonacci Enhanced 🔥",
                             "Bayesian Inference",
                             "Coverage Optimization",
                             "Temporal Patterns",
@@ -492,14 +491,6 @@ def main():
                             help="Lag for time series forecasting"
                         )
                     
-                    elif base_strategy_type == "Fibonacci Enhanced":
-                        fibonacci_variant = st.selectbox(
-                            "Fibonacci Strategy Type",
-                            ["Mixed", "Pure Fibonacci", "Reverted Fibonacci", "Hot Fibonacci"],
-                            help="Choose the type of Fibonacci strategy to use"
-                        )
-                        st.info("🔥 Fibonacci Enhanced uses mathematical sequences for prediction. Mixed approach recommended based on May 20 analysis showing 60% Fibonacci presence!")
-                    
                     elif base_strategy_type == "Anti-Cognitive Bias":
                         window_size = st.slider(
                             "Analysis Window",
@@ -567,22 +558,6 @@ def main():
                                         num_combinations=num_combinations,
                                         lag=lag
                                     )
-                                
-                                elif base_strategy_type == "Fibonacci Enhanced":
-                                    # Use our new Fibonacci strategy
-                                    combinations = generate_fibonacci_combinations(
-                                        strategy_variant=fibonacci_variant,
-                                        num_combinations=num_combinations
-                                    )
-                                    
-                                    # Save to database
-                                    try:
-                                        engine = get_db_connection()
-                                        success, result = save_fibonacci_to_database(combinations, engine)
-                                        if success:
-                                            st.success(f"✅ Saved {result} Fibonacci combinations to database!")
-                                    except Exception as e:
-                                        st.info("Combinations generated successfully (database save optional)")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
@@ -669,7 +644,6 @@ def main():
                             "Frequency Analysis ⭐",
                             "Markov Chain Model ⭐",
                             "Time Series Analysis ⭐",
-                            "Fibonacci Enhanced 🔥",
                             "Bayesian Inference",
                             "Coverage Optimization",
                             "Temporal Patterns",
@@ -744,14 +718,6 @@ def main():
                             help="Lag for time series forecasting"
                         )
                     
-                    elif base_strategy_type == "Fibonacci Enhanced":
-                        fibonacci_variant = st.selectbox(
-                            "Fibonacci Strategy Type",
-                            ["Mixed", "Pure Fibonacci", "Reverted Fibonacci", "Hot Fibonacci"],
-                            help="Choose the type of Fibonacci strategy to use"
-                        )
-                        st.info("🔥 Fibonacci Enhanced uses mathematical sequences for prediction. Mixed approach recommended based on May 20 analysis showing 60% Fibonacci presence!")
-                    
                     elif base_strategy_type == "Anti-Cognitive Bias":
                         window_size = st.slider(
                             "Analysis Window",
@@ -819,22 +785,6 @@ def main():
                                         num_combinations=num_combinations,
                                         lag=lag
                                     )
-                                
-                                elif base_strategy_type == "Fibonacci Enhanced":
-                                    # Use our new Fibonacci strategy
-                                    combinations = generate_fibonacci_combinations(
-                                        strategy_variant=fibonacci_variant,
-                                        num_combinations=num_combinations
-                                    )
-                                    
-                                    # Save to database
-                                    try:
-                                        engine = get_db_connection()
-                                        success, result = save_fibonacci_to_database(combinations, engine)
-                                        if success:
-                                            st.success(f"✅ Saved {result} Fibonacci combinations to database!")
-                                    except Exception as e:
-                                        st.info("Combinations generated successfully (database save optional)")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
