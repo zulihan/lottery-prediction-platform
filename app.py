@@ -19,7 +19,6 @@ try:
     from combination_analysis import analyze_full_combinations, analyze_number_combinations
     from strategy_recommendation import get_ordered_strategy_list, get_strategy_info_text, get_base_strategy_name
     from fibonacci_strategy import generate_fibonacci_combinations, get_fibonacci_strategy_info, save_fibonacci_to_database
-    from fibonacci_hybrid_strategy import generate_fibonacci_hybrid_combinations
 except ImportError:
     logging.warning("Strategy modules not found. Some features may be unavailable.")
 
@@ -418,8 +417,6 @@ def main():
                             "Frequency Analysis ⭐",
                             "Markov Chain Model ⭐",
                             "Time Series Analysis ⭐",
-                            "Fibonacci Enhanced 🔥",
-                            "Fibonacci-Filtered Hybrid ⚡",
                             "Bayesian Inference",
                             "Coverage Optimization",
                             "Temporal Patterns",
@@ -494,14 +491,6 @@ def main():
                             help="Lag for time series forecasting"
                         )
                     
-                    elif base_strategy_type == "Fibonacci Enhanced":
-                        fibonacci_variant = st.selectbox(
-                            "Fibonacci Strategy Type",
-                            ["Mixed", "Pure Fibonacci", "Reverted Fibonacci", "Hot Fibonacci"],
-                            help="Choose the type of Fibonacci strategy to use"
-                        )
-                        st.info("🔥 Fibonacci Enhanced uses mathematical sequences for prediction. Mixed approach recommended based on May 20 analysis showing 60% Fibonacci presence!")
-                    
                     elif base_strategy_type == "Anti-Cognitive Bias":
                         window_size = st.slider(
                             "Analysis Window",
@@ -553,40 +542,10 @@ def main():
                                     )
                                 
                                 elif base_strategy_type == "Risk/Reward Balance":
-                                    # Fixed Risk/Reward strategy with proper parameters
-                                    try:
-                                        combinations = strategies.risk_reward_strategy(
-                                            num_combinations=num_combinations,
-                                            risk_level=float(risk_level)
-                                        )
-                                        
-                                        # Display results immediately
-                                        if combinations:
-                                            st.success(f"✅ Generated {len(combinations)} Risk/Reward combinations!")
-                                            for i, combo in enumerate(combinations, 1):
-                                                st.write(f"**Combination {i}:** {combo.get('numbers', [])} + Stars {combo.get('stars', [])}")
-                                                st.write(f"Score: {combo.get('score', 0)}")
-                                                st.write("---")
-                                    except Exception as e:
-                                        st.error(f"Risk/Reward error: {str(e)}")
-                                        # Simple fallback that always works
-                                        import random
-                                        combinations = []
-                                        for i in range(num_combinations):
-                                            numbers = sorted(random.sample(range(1, 51), 5))
-                                            stars = sorted(random.sample(range(1, 13), 2))
-                                            combinations.append({
-                                                'numbers': numbers,
-                                                'stars': stars,
-                                                'strategy': 'Risk/Reward Balance',
-                                                'score': 85
-                                            })
-                                        
-                                        st.success(f"✅ Generated {len(combinations)} Risk/Reward combinations!")
-                                        for i, combo in enumerate(combinations, 1):
-                                            st.write(f"**Combination {i}:** {combo['numbers']} + Stars {combo['stars']}")
-                                            st.write(f"Score: {combo['score']}")
-                                            st.write("---")
+                                    combinations = strategies.risk_reward_strategy(
+                                        num_combinations=num_combinations,
+                                        risk_level=risk_level
+                                    )
                                 
                                 elif base_strategy_type == "Markov Chain Model":
                                     combinations = strategies.markov_chain_strategy(
@@ -599,95 +558,6 @@ def main():
                                         num_combinations=num_combinations,
                                         lag=lag
                                     )
-                                
-                                elif base_strategy_type == "Fibonacci Enhanced":
-                                    # Simple Fibonacci Enhanced strategy
-                                    st.info("🔥 Generating Fibonacci Enhanced combinations...")
-                                    
-                                    # Fibonacci numbers in lottery range
-                                    fibonacci_nums = [1, 2, 3, 5, 8, 13, 21, 34]
-                                    regular_nums = [4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
-                                    
-                                    # Generate combinations
-                                    import random
-                                    combinations = []
-                                    
-                                    for i in range(num_combinations):
-                                        # Mix Fibonacci and regular numbers
-                                        fib_count = random.randint(2, 4)  # 2-4 Fibonacci numbers
-                                        selected_fib = random.sample(fibonacci_nums, fib_count)
-                                        selected_regular = random.sample(regular_nums, 5 - fib_count)
-                                        
-                                        numbers = sorted(selected_fib + selected_regular)
-                                        stars = sorted(random.sample(range(1, 13), 2))
-                                        
-                                        combinations.append({
-                                            'numbers': numbers,
-                                            'stars': stars,
-                                            'strategy': 'Fibonacci Enhanced',
-                                            'score': 85 + random.randint(0, 15)
-                                        })
-                                    
-                                    # Display results
-                                    st.success(f"🔥 Generated {len(combinations)} Fibonacci Enhanced combinations!")
-                                    
-                                    for i, combo in enumerate(combinations, 1):
-                                        st.write(f"**Combination {i}:** {combo['numbers']} + Stars {combo['stars']}")
-                                        st.write(f"   📊 Score: {combo['score']} | 🔢 Fibonacci numbers included")
-                                        st.write("---")
-                                    
-                                    st.success("✅ Fibonacci Enhanced combinations generated!")
-                                
-                                elif base_strategy_type == "Fibonacci-Filtered Hybrid":
-                                    # Simple Hybrid strategy
-                                    st.info("⚡ Generating ultimate hybrid combinations...")
-                                    
-                                    # Fibonacci numbers
-                                    fibonacci_nums = [1, 2, 3, 5, 8, 13, 21, 34]
-                                    hot_nums = [8, 13, 25, 29, 37, 44, 47]  # Based on analysis
-                                    regular_nums = list(range(1, 51))
-                                    
-                                    # Generate hybrid combinations
-                                    import random
-                                    combinations = []
-                                    
-                                    for i in range(num_combinations):
-                                        # Strategy mix
-                                        if i % 4 == 0:  # Risk/Reward
-                                            numbers = sorted(random.sample(fibonacci_nums + hot_nums, 5))
-                                            strategy_base = "Risk/Reward + Fibonacci"
-                                        elif i % 4 == 1:  # Frequency
-                                            numbers = sorted(random.sample(hot_nums + fibonacci_nums[:5], 5))
-                                            strategy_base = "Frequency + Fibonacci"
-                                        elif i % 4 == 2:  # Markov
-                                            numbers = sorted(random.sample(fibonacci_nums + regular_nums[:20], 5))
-                                            strategy_base = "Markov + Fibonacci"
-                                        else:  # Time Series
-                                            numbers = sorted(random.sample(fibonacci_nums + regular_nums[20:40], 5))
-                                            strategy_base = "Time Series + Fibonacci"
-                                        
-                                        stars = sorted(random.sample([2, 3, 5, 6, 8, 9, 11, 12], 2))
-                                        fib_count = len([n for n in numbers if n in fibonacci_nums])
-                                        fib_percentage = (fib_count / 5) * 100
-                                        
-                                        combinations.append({
-                                            'numbers': numbers,
-                                            'stars': stars,
-                                            'strategy': strategy_base,
-                                            'fibonacci_percentage': fib_percentage,
-                                            'score': 90 + random.randint(0, 10)
-                                        })
-                                    
-                                    # Display results
-                                    st.success(f"⚡ Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
-                                    st.subheader("🔥 Your Ultimate Hybrid Combinations")
-                                    
-                                    for i, combo in enumerate(combinations, 1):
-                                        st.write(f"**Combination {i}:** {combo['numbers']} + Stars {combo['stars']}")
-                                        st.write(f"   📊 Score: {combo['score']} | 🔢 Fibonacci: {combo['fibonacci_percentage']:.0f}% | Strategy: {combo['strategy']}")
-                                        st.write("---")
-                                    
-                                    st.success("✅ Ultimate hybrid combinations ready!")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
@@ -774,8 +644,6 @@ def main():
                             "Frequency Analysis ⭐",
                             "Markov Chain Model ⭐",
                             "Time Series Analysis ⭐",
-                            "Fibonacci Enhanced 🔥",
-                            "Fibonacci-Filtered Hybrid ⚡",
                             "Bayesian Inference",
                             "Coverage Optimization",
                             "Temporal Patterns",
@@ -850,14 +718,6 @@ def main():
                             help="Lag for time series forecasting"
                         )
                     
-                    elif base_strategy_type == "Fibonacci Enhanced":
-                        fibonacci_variant = st.selectbox(
-                            "Fibonacci Strategy Type",
-                            ["Mixed", "Pure Fibonacci", "Reverted Fibonacci", "Hot Fibonacci"],
-                            help="Choose the type of Fibonacci strategy to use"
-                        )
-                        st.info("🔥 Fibonacci Enhanced uses mathematical sequences for prediction. Mixed approach recommended based on May 20 analysis showing 60% Fibonacci presence!")
-                    
                     elif base_strategy_type == "Anti-Cognitive Bias":
                         window_size = st.slider(
                             "Analysis Window",
@@ -909,40 +769,10 @@ def main():
                                     )
                                 
                                 elif base_strategy_type == "Risk/Reward Balance":
-                                    # Fixed Risk/Reward strategy with proper parameters
-                                    try:
-                                        combinations = strategies.risk_reward_strategy(
-                                            num_combinations=num_combinations,
-                                            risk_level=float(risk_level)
-                                        )
-                                        
-                                        # Display results immediately
-                                        if combinations:
-                                            st.success(f"✅ Generated {len(combinations)} Risk/Reward combinations!")
-                                            for i, combo in enumerate(combinations, 1):
-                                                st.write(f"**Combination {i}:** {combo.get('numbers', [])} + Stars {combo.get('stars', [])}")
-                                                st.write(f"Score: {combo.get('score', 0)}")
-                                                st.write("---")
-                                    except Exception as e:
-                                        st.error(f"Risk/Reward error: {str(e)}")
-                                        # Simple fallback that always works
-                                        import random
-                                        combinations = []
-                                        for i in range(num_combinations):
-                                            numbers = sorted(random.sample(range(1, 51), 5))
-                                            stars = sorted(random.sample(range(1, 13), 2))
-                                            combinations.append({
-                                                'numbers': numbers,
-                                                'stars': stars,
-                                                'strategy': 'Risk/Reward Balance',
-                                                'score': 85
-                                            })
-                                        
-                                        st.success(f"✅ Generated {len(combinations)} Risk/Reward combinations!")
-                                        for i, combo in enumerate(combinations, 1):
-                                            st.write(f"**Combination {i}:** {combo['numbers']} + Stars {combo['stars']}")
-                                            st.write(f"Score: {combo['score']}")
-                                            st.write("---")
+                                    combinations = strategies.risk_reward_strategy(
+                                        num_combinations=num_combinations,
+                                        risk_level=risk_level
+                                    )
                                 
                                 elif base_strategy_type == "Markov Chain Model":
                                     combinations = strategies.markov_chain_strategy(
@@ -955,95 +785,6 @@ def main():
                                         num_combinations=num_combinations,
                                         lag=lag
                                     )
-                                
-                                elif base_strategy_type == "Fibonacci Enhanced":
-                                    # Simple Fibonacci Enhanced strategy
-                                    st.info("🔥 Generating Fibonacci Enhanced combinations...")
-                                    
-                                    # Fibonacci numbers in lottery range
-                                    fibonacci_nums = [1, 2, 3, 5, 8, 13, 21, 34]
-                                    regular_nums = [4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
-                                    
-                                    # Generate combinations
-                                    import random
-                                    combinations = []
-                                    
-                                    for i in range(num_combinations):
-                                        # Mix Fibonacci and regular numbers
-                                        fib_count = random.randint(2, 4)  # 2-4 Fibonacci numbers
-                                        selected_fib = random.sample(fibonacci_nums, fib_count)
-                                        selected_regular = random.sample(regular_nums, 5 - fib_count)
-                                        
-                                        numbers = sorted(selected_fib + selected_regular)
-                                        stars = sorted(random.sample(range(1, 13), 2))
-                                        
-                                        combinations.append({
-                                            'numbers': numbers,
-                                            'stars': stars,
-                                            'strategy': 'Fibonacci Enhanced',
-                                            'score': 85 + random.randint(0, 15)
-                                        })
-                                    
-                                    # Display results
-                                    st.success(f"🔥 Generated {len(combinations)} Fibonacci Enhanced combinations!")
-                                    
-                                    for i, combo in enumerate(combinations, 1):
-                                        st.write(f"**Combination {i}:** {combo['numbers']} + Stars {combo['stars']}")
-                                        st.write(f"   📊 Score: {combo['score']} | 🔢 Fibonacci numbers included")
-                                        st.write("---")
-                                    
-                                    st.success("✅ Fibonacci Enhanced combinations generated!")
-                                
-                                elif base_strategy_type == "Fibonacci-Filtered Hybrid":
-                                    # Simple Hybrid strategy
-                                    st.info("⚡ Generating ultimate hybrid combinations...")
-                                    
-                                    # Fibonacci numbers
-                                    fibonacci_nums = [1, 2, 3, 5, 8, 13, 21, 34]
-                                    hot_nums = [8, 13, 25, 29, 37, 44, 47]  # Based on analysis
-                                    regular_nums = list(range(1, 51))
-                                    
-                                    # Generate hybrid combinations
-                                    import random
-                                    combinations = []
-                                    
-                                    for i in range(num_combinations):
-                                        # Strategy mix
-                                        if i % 4 == 0:  # Risk/Reward
-                                            numbers = sorted(random.sample(fibonacci_nums + hot_nums, 5))
-                                            strategy_base = "Risk/Reward + Fibonacci"
-                                        elif i % 4 == 1:  # Frequency
-                                            numbers = sorted(random.sample(hot_nums + fibonacci_nums[:5], 5))
-                                            strategy_base = "Frequency + Fibonacci"
-                                        elif i % 4 == 2:  # Markov
-                                            numbers = sorted(random.sample(fibonacci_nums + regular_nums[:20], 5))
-                                            strategy_base = "Markov + Fibonacci"
-                                        else:  # Time Series
-                                            numbers = sorted(random.sample(fibonacci_nums + regular_nums[20:40], 5))
-                                            strategy_base = "Time Series + Fibonacci"
-                                        
-                                        stars = sorted(random.sample([2, 3, 5, 6, 8, 9, 11, 12], 2))
-                                        fib_count = len([n for n in numbers if n in fibonacci_nums])
-                                        fib_percentage = (fib_count / 5) * 100
-                                        
-                                        combinations.append({
-                                            'numbers': numbers,
-                                            'stars': stars,
-                                            'strategy': strategy_base,
-                                            'fibonacci_percentage': fib_percentage,
-                                            'score': 90 + random.randint(0, 10)
-                                        })
-                                    
-                                    # Display results
-                                    st.success(f"⚡ Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
-                                    st.subheader("🔥 Your Ultimate Hybrid Combinations")
-                                    
-                                    for i, combo in enumerate(combinations, 1):
-                                        st.write(f"**Combination {i}:** {combo['numbers']} + Stars {combo['stars']}")
-                                        st.write(f"   📊 Score: {combo['score']} | 🔢 Fibonacci: {combo['fibonacci_percentage']:.0f}% | Strategy: {combo['strategy']}")
-                                        st.write("---")
-                                    
-                                    st.success("✅ Ultimate hybrid combinations ready!")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
