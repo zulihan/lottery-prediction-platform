@@ -20,15 +20,17 @@ def get_may20_combinations():
             numbers,
             stars,
             score,
-            created_at
-        FROM euromillions_combinations 
-        WHERE DATE(created_at) = '2025-05-20'
+            created_at,
+            target_draw_date
+        FROM generated_combinations 
+        WHERE (target_draw_date = '2025-05-20' OR 
+               (created_at >= '2025-05-19' AND created_at <= '2025-05-21' AND target_draw_date = '2025-05-21'))
         ORDER BY score DESC
         """
         
         df = pd.read_sql(query, engine)
             
-        print(f"Found {len(df)} combinations generated for May 20, 2025")
+        print(f"Found {len(df)} combinations for May 20, 2025 Euromillions draw")
         return df
         
     except Exception as e:
