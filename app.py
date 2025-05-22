@@ -19,6 +19,7 @@ try:
     from combination_analysis import analyze_full_combinations, analyze_number_combinations
     from strategy_recommendation import get_ordered_strategy_list, get_strategy_info_text, get_base_strategy_name
     from fibonacci_strategy import generate_fibonacci_combinations, get_fibonacci_strategy_info, save_fibonacci_to_database
+    from fibonacci_hybrid_strategy import generate_fibonacci_hybrid_combinations
 except ImportError:
     logging.warning("Strategy modules not found. Some features may be unavailable.")
 
