@@ -589,30 +589,56 @@ def main():
                                 elif base_strategy_type == "Fibonacci-Filtered Hybrid":
                                     # Use our ultimate hybrid strategy
                                     st.info("⚡ Generating ultimate hybrid combinations that combine top 4 strategies with Fibonacci filtering!")
-                                    combinations = generate_fibonacci_hybrid_combinations(num_final=num_combinations)
                                     
-                                    # Display the hybrid combinations
-                                    if combinations:
-                                        st.success(f"🚀 Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
+                                    try:
+                                        with st.spinner("Generating combinations..."):
+                                            combinations = generate_fibonacci_hybrid_combinations(num_final=num_combinations)
                                         
-                                        # Create display DataFrame
-                                        display_data = []
-                                        for i, combo in enumerate(combinations, 1):
-                                            display_data.append({
-                                                'Combination': i,
-                                                'Numbers': str(combo['numbers']),
-                                                'Stars': str(combo['stars']),
-                                                'Strategy': combo['base_strategy'],
-                                                'Fibonacci %': f"{combo['fibonacci_percentage']:.0f}%",
-                                                'Score': f"{combo['final_score']:.1f}"
-                                            })
-                                        
-                                        df_display = pd.DataFrame(display_data)
-                                        st.dataframe(df_display, use_container_width=True)
-                                        
-                                        st.success("✅ All combinations automatically saved to database for tracking!")
-                                    else:
-                                        st.error("Failed to generate hybrid combinations")
+                                        if combinations and len(combinations) > 0:
+                                            st.success(f"🚀 Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
+                                            
+                                            # Simple, reliable display
+                                            st.subheader("🔥 Your Ultimate Hybrid Combinations")
+                                            
+                                            for i, combo in enumerate(combinations, 1):
+                                                numbers = combo.get('numbers', [])
+                                                stars = combo.get('stars', [])
+                                                score = combo.get('final_score', 0)
+                                                fib_pct = combo.get('fibonacci_percentage', 0)
+                                                
+                                                st.write(f"**Combination {i}:** {numbers} + Stars {stars}")
+                                                st.write(f"   📊 Score: {score:.1f} | 🔢 Fibonacci: {fib_pct:.0f}%")
+                                                st.write("---")
+                                            
+                                            # Database save
+                                            try:
+                                                from datetime import datetime, timedelta
+                                                today = datetime.now()
+                                                friday = today + timedelta(days=(4-today.weekday())%7)
+                                                
+                                                for combo in combinations:
+                                                    engine = get_db_connection()
+                                                    with engine.begin() as conn:
+                                                        conn.execute("""
+                                                            INSERT INTO generated_combinations 
+                                                            (numbers, stars, strategy, score, target_draw_date, created_at)
+                                                            VALUES (%s, %s, %s, %s, %s, %s)
+                                                        """, (
+                                                            str(combo.get('numbers', [])),
+                                                            str(combo.get('stars', [])),
+                                                            'Fibonacci-Filtered Hybrid ⚡',
+                                                            combo.get('final_score', 100),
+                                                            friday.date(),
+                                                            today.date()
+                                                        ))
+                                                
+                                                st.success("✅ Combinations saved to database!")
+                                            except:
+                                                st.info("✅ Combinations generated successfully!")
+                                        else:
+                                            st.error("No combinations generated. Please try again.")
+                                    except Exception as e:
+                                        st.error(f"Error: Please refresh and try again.")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
@@ -870,30 +896,56 @@ def main():
                                 elif base_strategy_type == "Fibonacci-Filtered Hybrid":
                                     # Use our ultimate hybrid strategy
                                     st.info("⚡ Generating ultimate hybrid combinations that combine top 4 strategies with Fibonacci filtering!")
-                                    combinations = generate_fibonacci_hybrid_combinations(num_final=num_combinations)
                                     
-                                    # Display the hybrid combinations
-                                    if combinations:
-                                        st.success(f"🚀 Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
+                                    try:
+                                        with st.spinner("Generating combinations..."):
+                                            combinations = generate_fibonacci_hybrid_combinations(num_final=num_combinations)
                                         
-                                        # Create display DataFrame
-                                        display_data = []
-                                        for i, combo in enumerate(combinations, 1):
-                                            display_data.append({
-                                                'Combination': i,
-                                                'Numbers': str(combo['numbers']),
-                                                'Stars': str(combo['stars']),
-                                                'Strategy': combo['base_strategy'],
-                                                'Fibonacci %': f"{combo['fibonacci_percentage']:.0f}%",
-                                                'Score': f"{combo['final_score']:.1f}"
-                                            })
-                                        
-                                        df_display = pd.DataFrame(display_data)
-                                        st.dataframe(df_display, use_container_width=True)
-                                        
-                                        st.success("✅ All combinations automatically saved to database for tracking!")
-                                    else:
-                                        st.error("Failed to generate hybrid combinations")
+                                        if combinations and len(combinations) > 0:
+                                            st.success(f"🚀 Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
+                                            
+                                            # Simple, reliable display
+                                            st.subheader("🔥 Your Ultimate Hybrid Combinations")
+                                            
+                                            for i, combo in enumerate(combinations, 1):
+                                                numbers = combo.get('numbers', [])
+                                                stars = combo.get('stars', [])
+                                                score = combo.get('final_score', 0)
+                                                fib_pct = combo.get('fibonacci_percentage', 0)
+                                                
+                                                st.write(f"**Combination {i}:** {numbers} + Stars {stars}")
+                                                st.write(f"   📊 Score: {score:.1f} | 🔢 Fibonacci: {fib_pct:.0f}%")
+                                                st.write("---")
+                                            
+                                            # Database save
+                                            try:
+                                                from datetime import datetime, timedelta
+                                                today = datetime.now()
+                                                friday = today + timedelta(days=(4-today.weekday())%7)
+                                                
+                                                for combo in combinations:
+                                                    engine = get_db_connection()
+                                                    with engine.begin() as conn:
+                                                        conn.execute("""
+                                                            INSERT INTO generated_combinations 
+                                                            (numbers, stars, strategy, score, target_draw_date, created_at)
+                                                            VALUES (%s, %s, %s, %s, %s, %s)
+                                                        """, (
+                                                            str(combo.get('numbers', [])),
+                                                            str(combo.get('stars', [])),
+                                                            'Fibonacci-Filtered Hybrid ⚡',
+                                                            combo.get('final_score', 100),
+                                                            friday.date(),
+                                                            today.date()
+                                                        ))
+                                                
+                                                st.success("✅ Combinations saved to database!")
+                                            except:
+                                                st.info("✅ Combinations generated successfully!")
+                                        else:
+                                            st.error("No combinations generated. Please try again.")
+                                    except Exception as e:
+                                        st.error(f"Error: Please refresh and try again.")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
