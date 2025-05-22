@@ -419,6 +419,7 @@ def main():
                             "Markov Chain Model ⭐",
                             "Time Series Analysis ⭐",
                             "Fibonacci Enhanced 🔥",
+                            "Fibonacci-Filtered Hybrid ⚡",
                             "Bayesian Inference",
                             "Coverage Optimization",
                             "Temporal Patterns",
@@ -584,6 +585,34 @@ def main():
                                             st.success(f"✅ Saved {result} Fibonacci combinations to database!")
                                     except Exception as e:
                                         st.info("Combinations generated successfully (database save optional)")
+                                
+                                elif base_strategy_type == "Fibonacci-Filtered Hybrid":
+                                    # Use our ultimate hybrid strategy
+                                    st.info("⚡ Generating ultimate hybrid combinations that combine top 4 strategies with Fibonacci filtering!")
+                                    combinations = generate_fibonacci_hybrid_combinations(num_final=num_combinations)
+                                    
+                                    # Display the hybrid combinations
+                                    if combinations:
+                                        st.success(f"🚀 Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
+                                        
+                                        # Create display DataFrame
+                                        display_data = []
+                                        for i, combo in enumerate(combinations, 1):
+                                            display_data.append({
+                                                'Combination': i,
+                                                'Numbers': str(combo['numbers']),
+                                                'Stars': str(combo['stars']),
+                                                'Strategy': combo['base_strategy'],
+                                                'Fibonacci %': f"{combo['fibonacci_percentage']:.0f}%",
+                                                'Score': f"{combo['final_score']:.1f}"
+                                            })
+                                        
+                                        df_display = pd.DataFrame(display_data)
+                                        st.dataframe(df_display, use_container_width=True)
+                                        
+                                        st.success("✅ All combinations automatically saved to database for tracking!")
+                                    else:
+                                        st.error("Failed to generate hybrid combinations")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
@@ -671,6 +700,7 @@ def main():
                             "Markov Chain Model ⭐",
                             "Time Series Analysis ⭐",
                             "Fibonacci Enhanced 🔥",
+                            "Fibonacci-Filtered Hybrid ⚡",
                             "Bayesian Inference",
                             "Coverage Optimization",
                             "Temporal Patterns",
@@ -836,6 +866,34 @@ def main():
                                             st.success(f"✅ Saved {result} Fibonacci combinations to database!")
                                     except Exception as e:
                                         st.info("Combinations generated successfully (database save optional)")
+                                
+                                elif base_strategy_type == "Fibonacci-Filtered Hybrid":
+                                    # Use our ultimate hybrid strategy
+                                    st.info("⚡ Generating ultimate hybrid combinations that combine top 4 strategies with Fibonacci filtering!")
+                                    combinations = generate_fibonacci_hybrid_combinations(num_final=num_combinations)
+                                    
+                                    # Display the hybrid combinations
+                                    if combinations:
+                                        st.success(f"🚀 Generated {len(combinations)} Fibonacci-Filtered Hybrid combinations!")
+                                        
+                                        # Create display DataFrame
+                                        display_data = []
+                                        for i, combo in enumerate(combinations, 1):
+                                            display_data.append({
+                                                'Combination': i,
+                                                'Numbers': str(combo['numbers']),
+                                                'Stars': str(combo['stars']),
+                                                'Strategy': combo['base_strategy'],
+                                                'Fibonacci %': f"{combo['fibonacci_percentage']:.0f}%",
+                                                'Score': f"{combo['final_score']:.1f}"
+                                            })
+                                        
+                                        df_display = pd.DataFrame(display_data)
+                                        st.dataframe(df_display, use_container_width=True)
+                                        
+                                        st.success("✅ All combinations automatically saved to database for tracking!")
+                                    else:
+                                        st.error("Failed to generate hybrid combinations")
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
