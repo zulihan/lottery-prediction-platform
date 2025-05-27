@@ -5,6 +5,8 @@ Generate 3 ultimate combinations that mix the best elements from all three sets:
 - Set 3: Strategic Methods (10 combinations)
 """
 
+from collections import Counter
+
 def get_all_three_sets():
     """Get all combinations from the three sets"""
     
@@ -171,8 +173,7 @@ def generate_ultimate_mix_combinations():
     # Ultimate Mix 3: Strategic Balance Supreme
     # Balance between all three methodologies
     
-    # Import Counter
-    from collections import Counter
+
     
     # Take 1-2 numbers from each set's most successful
     may23_top = sorted([num for num, freq in Counter([n for combo in may23_set for n in combo['numbers']]).most_common(2)])
