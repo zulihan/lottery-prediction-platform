@@ -180,7 +180,19 @@ def generate_ultimate_mix_combinations():
     backtest_top = sorted([num for num, freq in Counter([n for combo in backtesting_set for n in combo['numbers']]).most_common(2)])
     strategic_top = sorted([num for num, freq in Counter([n for combo in strategic_set for n in combo['numbers']]).most_common(1)])
     
-    balanced_numbers = sorted(list(set(may23_top + backtest_top + strategic_top))[:5])
+    # Combine and ensure we have exactly 5 numbers
+    all_top_numbers = list(set(may23_top + backtest_top + strategic_top))
+    
+    # If we don't have enough, add from most frequent overall
+    if len(all_top_numbers) < 5:
+        most_frequent = [num for num, freq in analysis['top_numbers']]
+        for num in most_frequent:
+            if num not in all_top_numbers:
+                all_top_numbers.append(num)
+                if len(all_top_numbers) >= 5:
+                    break
+    
+    balanced_numbers = sorted(all_top_numbers[:5])
     
     # Balance stars from different methodologies
     may23_stars = [star for combo in may23_set for star in combo['stars']]
