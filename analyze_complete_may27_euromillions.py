@@ -204,7 +204,7 @@ def find_combination_strategy():
         if star_matches > 0:
             best_star_combinations.append((star_matches, combo))
     
-    best_star_combinations.sort(reverse=True)
+    best_star_combinations.sort(key=lambda x: x[0], reverse=True)
     
     for i, (matches, combo) in enumerate(best_star_combinations[:5]):
         matched_stars = set(combo['stars']).intersection(winning_stars)
