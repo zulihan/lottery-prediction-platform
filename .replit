@@ -24,10 +24,6 @@ args = "Euromillions Prediction App"
 task = "workflow.run"
 args = "Simple Fibonacci Test"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Enhanced Euromillions App"
-
 [[workflows.workflow]]
 name = "Euromillions Prediction App"
 author = "agent"
@@ -46,15 +42,6 @@ task = "shell.exec"
 args = "streamlit run simple_fibonacci_app.py --server.port 5001"
 waitForPort = 5001
 
-[[workflows.workflow]]
-name = "Enhanced Euromillions App"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "streamlit run app_enhanced.py --server.port 5002"
-waitForPort = 5002
-
 [[ports]]
 localPort = 5000
 externalPort = 80
@@ -62,7 +49,3 @@ externalPort = 80
 [[ports]]
 localPort = 5001
 externalPort = 3000
-
-[[ports]]
-localPort = 5002
-externalPort = 3001

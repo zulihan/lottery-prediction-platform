@@ -395,69 +395,36 @@ def main():
                 # Strategy options
                 st.subheader("Strategy Parameters")
                 
-                # Initialize enhanced strategies based on June 3 analysis
+                # Initialize strategies
                 try:
-                    from enhanced_euromillions_strategies import EnhancedEuromillionsStrategies
-                    enhanced_strategies = EnhancedEuromillionsStrategies(st.session_state.processed_data)
-                    
-                    # Also keep classic strategies
+                    # Create a simple statistics class for Euromillions data
                     from statistics import EuromillionsStatistics
                     euro_stats = EuromillionsStatistics(st.session_state.processed_data)
                     strategies = PredictionStrategies(euro_stats)
                 except Exception as e:
                     st.error(f"Error initializing prediction strategies: {str(e)}")
-                    enhanced_strategies = None
                     strategies = None
                 
-                if enhanced_strategies:
-                    # Initialize classic strategies as fallback
-                    try:
-                        from statistics import EuromillionsStatistics
-                        euro_stats = EuromillionsStatistics(st.session_state.processed_data)
-                        strategies = PredictionStrategies(euro_stats)
-                    except:
-                        strategies = None
+                if strategies:
+                    # Information about strategy performance
+                    st.info(get_strategy_info_text())
                     
-                    if True:  # Enhanced strategies available
-                        # Performance info from June 3 analysis
-                        st.success("🏆 **Enhanced Strategies Available** - Based on June 3, 2025 analysis where Coverage Optimization achieved 4/7 matches!")
-                        
-                        # Strategy category selection
-                        strategy_category = st.radio(
-                            "Strategy Category",
-                            ["🎯 Proven Enhanced Strategies", "🔧 Classic Strategies"],
-                            horizontal=True
-                        )
-                    
-                    if strategy_category == "🎯 Proven Enhanced Strategies":
-                        strategy_type = st.selectbox(
-                            "Select Enhanced Strategy",
-                            [
-                                "Coverage Optimization Enhanced - Ultra Balance (Best: 4/7 matches)",
-                                "Strategic Methods V3 - Complete Set (10 combinations)",
-                                "Fusion Methods - Hybrid Approaches (10 combinations)", 
-                                "Risk/Reward Enhanced (High & Moderate)",
-                                "Frequency Analysis Enhanced (3 variants)",
-                                "Markov Chain Enhanced (2 variants)",
-                                "Time Series Enhanced (2 variants)"
-                            ]
-                        )
-                    else:
-                        strategy_type = st.selectbox(
-                            "Select Classic Strategy",
-                            [
-                                "Risk/Reward Balance",
-                                "Frequency Analysis",
-                                "Markov Chain Model",
-                                "Time Series Analysis", 
-                                "Bayesian Inference",
-                                "Coverage Optimization",
-                                "Temporal Patterns",
-                                "Stratified Sampling",
-                                "Anti-Cognitive Bias",
-                                "Mixed Strategy"
-                            ]
-                        )
+                    # Strategy selection
+                    strategy_type = st.selectbox(
+                        "Select Strategy",
+                        [
+                            "Risk/Reward Balance ⭐",
+                            "Frequency Analysis ⭐",
+                            "Markov Chain Model ⭐",
+                            "Time Series Analysis ⭐",
+                            "Bayesian Inference",
+                            "Coverage Optimization",
+                            "Temporal Patterns",
+                            "Stratified Sampling",
+                            "Anti-Cognitive Bias",
+                            "Mixed Strategy"
+                        ]
+                    )
                     
                     
                     # Function to process strategy name that might have star symbols
