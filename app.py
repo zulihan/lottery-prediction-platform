@@ -409,16 +409,25 @@ def main():
                     enhanced_strategies = None
                     strategies = None
                 
-                if enhanced_strategies and strategies:
-                    # Performance info from June 3 analysis
-                    st.success("🏆 **Enhanced Strategies Available** - Based on June 3, 2025 analysis where Coverage Optimization achieved 4/7 matches!")
+                if enhanced_strategies:
+                    # Initialize classic strategies as fallback
+                    try:
+                        from statistics import EuromillionsStatistics
+                        euro_stats = EuromillionsStatistics(st.session_state.processed_data)
+                        strategies = PredictionStrategies(euro_stats)
+                    except:
+                        strategies = None
                     
-                    # Strategy category selection
-                    strategy_category = st.radio(
-                        "Strategy Category",
-                        ["🎯 Proven Enhanced Strategies", "🔧 Classic Strategies"],
-                        horizontal=True
-                    )
+                    if True:  # Enhanced strategies available
+                        # Performance info from June 3 analysis
+                        st.success("🏆 **Enhanced Strategies Available** - Based on June 3, 2025 analysis where Coverage Optimization achieved 4/7 matches!")
+                        
+                        # Strategy category selection
+                        strategy_category = st.radio(
+                            "Strategy Category",
+                            ["🎯 Proven Enhanced Strategies", "🔧 Classic Strategies"],
+                            horizontal=True
+                        )
                     
                     if strategy_category == "🎯 Proven Enhanced Strategies":
                         strategy_type = st.selectbox(
