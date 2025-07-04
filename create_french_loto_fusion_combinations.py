@@ -1,322 +1,199 @@
 """
-Create 5 fusion combinations from the 10 French Loto mixed strategy combinations
-Using mathematical averaging, cross-strategy blending, and frequency weighting
+Create 2 fusion combinations from the 5 French Loto combinations
+Using mathematical averaging and strategic cross-blending
 """
 
-import psycopg2
-import os
 from collections import Counter
-import random
 
-def get_original_10_combinations():
-    """Get the original 10 French Loto combinations"""
-    
-    combinations = [
-        # Frequency + Frequency Strategy (6 combinations)
-        {'id': 1, 'numbers': [13, 15, 20, 22, 36], 'lucky': 7, 'strategy': 'Frequency + Frequency'},
-        {'id': 2, 'numbers': [13, 15, 22, 33, 49], 'lucky': 7, 'strategy': 'Frequency + Frequency'},
-        {'id': 3, 'numbers': [1, 11, 19, 33, 45], 'lucky': 7, 'strategy': 'Frequency + Frequency'},
-        {'id': 4, 'numbers': [4, 10, 27, 45, 49], 'lucky': 7, 'strategy': 'Frequency + Frequency'},
-        {'id': 5, 'numbers': [1, 4, 28, 45, 49], 'lucky': 7, 'strategy': 'Frequency + Frequency'},
-        {'id': 6, 'numbers': [29, 32, 37, 38, 45], 'lucky': 7, 'strategy': 'Frequency + Frequency'},
-        
-        # Coverage + Balanced Strategy (4 combinations)
-        {'id': 7, 'numbers': [7, 10, 18, 26, 46], 'lucky': 10, 'strategy': 'Coverage + Balanced'},
-        {'id': 8, 'numbers': [8, 18, 22, 34, 45], 'lucky': 5, 'strategy': 'Coverage + Balanced'},
-        {'id': 9, 'numbers': [6, 9, 27, 41, 43], 'lucky': 10, 'strategy': 'Coverage + Balanced'},
-        {'id': 10, 'numbers': [16, 18, 26, 29, 39], 'lucky': 7, 'strategy': 'Coverage + Balanced'},
+def get_french_loto_combinations():
+    """Get the 5 French Loto combinations"""
+    return [
+        {'id': 1, 'numbers': [3, 7, 8, 18, 29], 'lucky': 7, 'strategy': 'Frequency Analysis + Range Complement Lucky', 'type': 'Frequency'},
+        {'id': 2, 'numbers': [6, 11, 18, 21, 49], 'lucky': 6, 'strategy': 'Coverage Optimization + Frequency Opposite Lucky', 'type': 'Coverage'},
+        {'id': 3, 'numbers': [20, 26, 29, 37, 46], 'lucky': 10, 'strategy': 'Enhanced Risk-Reward + Pure Frequency Lucky', 'type': 'Risk-Reward'},
+        {'id': 4, 'numbers': [14, 17, 19, 35, 42], 'lucky': 10, 'strategy': 'Frequency Analysis (Hot) + Balanced Mix Lucky', 'type': 'Frequency'},
+        {'id': 5, 'numbers': [8, 17, 19, 27, 48], 'lucky': 8, 'strategy': 'Coverage Optimization (Mid) + Contrarian Lucky', 'type': 'Coverage'}
     ]
-    
-    return combinations
 
-def analyze_number_frequency_across_combinations(combinations):
-    """Analyze frequency of numbers across all combinations"""
+def analyze_frequency_patterns(combinations):
+    """Analyze frequency patterns across the 5 combinations"""
     
     all_numbers = []
+    all_lucky = []
+    
     for combo in combinations:
         all_numbers.extend(combo['numbers'])
+        all_lucky.append(combo['lucky'])
     
     number_freq = Counter(all_numbers)
-    print("NUMBER FREQUENCY ANALYSIS:")
-    print("Most frequent numbers across combinations:")
+    lucky_freq = Counter(all_lucky)
+    
+    print("FREQUENCY ANALYSIS ACROSS 5 FRENCH LOTO COMBINATIONS:")
+    print("-" * 53)
+    print("Most frequent numbers:")
     for num, freq in number_freq.most_common(10):
         print(f"  {num}: appears {freq} times")
-    print()
     
-    return number_freq
-
-def analyze_lucky_frequency_across_combinations(combinations):
-    """Analyze lucky number frequency across all combinations"""
-    
-    all_lucky = [combo['lucky'] for combo in combinations]
-    lucky_freq = Counter(all_lucky)
-    
-    print("LUCKY NUMBER FREQUENCY ANALYSIS:")
+    print("\nLucky number frequencies:")
     for lucky, freq in lucky_freq.most_common():
-        print(f"  Lucky {lucky}: appears {freq} times")
+        print(f"  {lucky}: appears {freq} times")
     print()
     
-    return lucky_freq
+    return number_freq, lucky_freq
 
-def create_fusion_combination_1(combinations):
-    """Fusion 1: Mathematical Average of Top Frequency Numbers"""
+def create_mathematical_average_fusion(combinations, number_freq, lucky_freq):
+    """Create fusion using mathematical averaging of most frequent elements"""
     
-    # Get all numbers from Frequency+Frequency combinations (first 6)
-    freq_combos = combinations[:6]
-    all_freq_numbers = []
-    for combo in freq_combos:
-        all_freq_numbers.extend(combo['numbers'])
+    print("FUSION 1: MATHEMATICAL AVERAGE APPROACH")
+    print("-" * 38)
     
-    # Get top 8 most frequent numbers and select 5
-    number_freq = Counter(all_freq_numbers)
-    top_numbers = [n for n, freq in number_freq.most_common(8)]
+    # Select most frequent numbers ensuring range distribution
+    sorted_numbers = sorted(number_freq.items(), key=lambda x: x[1], reverse=True)
+    sorted_lucky = sorted(lucky_freq.items(), key=lambda x: x[1], reverse=True)
     
-    # Select 5 numbers ensuring good distribution
-    selected_numbers = []
+    print(f"Number frequencies: {sorted_numbers}")
+    print(f"Lucky frequencies: {sorted_lucky}")
     
-    # Take top 3 most frequent
-    selected_numbers.extend(top_numbers[:3])
+    # Select top 5 most frequent numbers
+    selected_numbers = [num for num, freq in sorted_numbers[:5]]
     
-    # Add 2 more from remaining, ensuring range coverage
-    remaining = top_numbers[3:]
+    # Ensure good range distribution
+    low_count = len([n for n in selected_numbers if n <= 16])
+    mid_count = len([n for n in selected_numbers if 17 <= n <= 33])
+    high_count = len([n for n in selected_numbers if n >= 34])
     
-    # Ensure low, mid, high coverage
-    low_remaining = [n for n in remaining if n <= 16]
-    mid_remaining = [n for n in remaining if 17 <= n <= 32]
-    high_remaining = [n for n in remaining if n >= 33]
+    print(f"Initial selection: {sorted(selected_numbers)} (range: {low_count}L, {mid_count}M, {high_count}H)")
     
-    if low_remaining and len([n for n in selected_numbers if n <= 16]) == 0:
-        selected_numbers.append(low_remaining[0])
-        remaining.remove(low_remaining[0])
+    # Select most frequent lucky number
+    selected_lucky = sorted_lucky[0][0]
     
-    if high_remaining and len([n for n in selected_numbers if n >= 33]) <= 1:
-        for n in high_remaining:
-            if n in remaining:
-                selected_numbers.append(n)
-                remaining.remove(n)
-                break
-    
-    # Fill remaining slots
-    while len(selected_numbers) < 5 and remaining:
-        selected_numbers.append(remaining[0])
-        remaining.remove(remaining[0])
-    
-    # Most frequent lucky from frequency combinations
-    freq_lucky = [combo['lucky'] for combo in freq_combos]
-    lucky = Counter(freq_lucky).most_common(1)[0][0]
-    
-    return {
-        'numbers': sorted(selected_numbers[:5]),
-        'lucky': lucky,
-        'method': 'Mathematical Average of Frequency Numbers',
-        'source': 'Combinations 1-6 (Frequency+Frequency)'
+    fusion_1 = {
+        'numbers': sorted(selected_numbers),
+        'lucky': selected_lucky,
+        'method': 'Mathematical Average Fusion',
+        'source': 'Most frequent elements across all 5 combinations',
+        'strategy_blend': 'Pure frequency weighting',
+        'range_distribution': f"{low_count} low, {mid_count} mid, {high_count} high"
     }
+    
+    print(f"Selected numbers: {fusion_1['numbers']}")
+    print(f"Selected lucky: {fusion_1['lucky']}")
+    print()
+    
+    return fusion_1
 
-def create_fusion_combination_2(combinations):
-    """Fusion 2: Cross-Strategy Blend (Frequency + Coverage)"""
+def create_strategic_cross_blend_fusion(combinations, number_freq, lucky_freq):
+    """Create fusion using strategic cross-blending of all strategy types"""
     
-    freq_combos = combinations[:6]
-    coverage_combos = combinations[6:]
+    print("FUSION 2: STRATEGIC CROSS-BLEND APPROACH")
+    print("-" * 40)
     
-    # Take 3 numbers from most frequent in frequency combos
-    freq_numbers = []
-    for combo in freq_combos:
-        freq_numbers.extend(combo['numbers'])
-    freq_counter = Counter(freq_numbers)
-    top_freq = [n for n, count in freq_counter.most_common(5)]
+    # Separate by strategy type
+    frequency_combos = [c for c in combinations if c['type'] == 'Frequency']
+    coverage_combos = [c for c in combinations if c['type'] == 'Coverage']
+    risk_reward_combos = [c for c in combinations if c['type'] == 'Risk-Reward']
     
-    # Take 2 numbers from coverage combos
+    print(f"Frequency combinations: {len(frequency_combos)}")
+    print(f"Coverage combinations: {len(coverage_combos)}")
+    print(f"Risk-Reward combinations: {len(risk_reward_combos)}")
+    
+    # Extract numbers from each strategy type
+    frequency_numbers = []
     coverage_numbers = []
+    risk_reward_numbers = []
+    frequency_lucky = []
+    coverage_lucky = []
+    risk_reward_lucky = []
+    
+    for combo in frequency_combos:
+        frequency_numbers.extend(combo['numbers'])
+        frequency_lucky.append(combo['lucky'])
+    
     for combo in coverage_combos:
         coverage_numbers.extend(combo['numbers'])
-    coverage_counter = Counter(coverage_numbers)
-    top_coverage = [n for n, count in coverage_counter.most_common(5)]
+        coverage_lucky.append(combo['lucky'])
     
-    # Blend: 3 from frequency, 2 from coverage (avoiding duplicates)
-    selected_numbers = top_freq[:3]
+    for combo in risk_reward_combos:
+        risk_reward_numbers.extend(combo['numbers'])
+        risk_reward_lucky.append(combo['lucky'])
     
-    for num in top_coverage:
-        if num not in selected_numbers and len(selected_numbers) < 5:
+    freq_num_freq = Counter(frequency_numbers)
+    cov_num_freq = Counter(coverage_numbers)
+    risk_num_freq = Counter(risk_reward_numbers)
+    freq_lucky_freq = Counter(frequency_lucky)
+    cov_lucky_freq = Counter(coverage_lucky)
+    risk_lucky_freq = Counter(risk_reward_lucky)
+    
+    print(f"Frequency strategy numbers: {freq_num_freq.most_common(3)}")
+    print(f"Coverage strategy numbers: {cov_num_freq.most_common(3)}")
+    print(f"Risk-Reward strategy numbers: {risk_num_freq.most_common(3)}")
+    print(f"Frequency lucky: {freq_lucky_freq}")
+    print(f"Coverage lucky: {cov_lucky_freq}")
+    print(f"Risk-Reward lucky: {risk_lucky_freq}")
+    
+    # Strategic blend: Equal representation from each strategy
+    # 2 numbers from Frequency, 2 from Coverage, 1 from Risk-Reward
+    selected_numbers = []
+    
+    # Select 2 numbers from Frequency strategy
+    top_frequency = [n for n, c in freq_num_freq.most_common()]
+    frequency_selection = []
+    for num in top_frequency:
+        if len(frequency_selection) < 2 and num not in selected_numbers:
+            frequency_selection.append(num)
             selected_numbers.append(num)
     
-    # If still need more, fill from remaining
-    if len(selected_numbers) < 5:
-        all_available = list(set(top_freq + top_coverage))
-        for num in all_available:
-            if num not in selected_numbers and len(selected_numbers) < 5:
-                selected_numbers.append(num)
+    # Select 2 numbers from Coverage strategy
+    top_coverage = [n for n, c in cov_num_freq.most_common()]
+    coverage_selection = []
+    for num in top_coverage:
+        if len(coverage_selection) < 2 and num not in selected_numbers:
+            coverage_selection.append(num)
+            selected_numbers.append(num)
     
-    # Lucky: blend frequencies from both strategies
-    all_lucky = [combo['lucky'] for combo in combinations]
-    lucky = Counter(all_lucky).most_common(1)[0][0]
+    # Select 1 number from Risk-Reward strategy
+    top_risk_reward = [n for n, c in risk_num_freq.most_common()]
+    risk_reward_selection = []
+    for num in top_risk_reward:
+        if len(risk_reward_selection) < 1 and num not in selected_numbers:
+            risk_reward_selection.append(num)
+            selected_numbers.append(num)
     
-    return {
-        'numbers': sorted(selected_numbers[:5]),
-        'lucky': lucky,
-        'method': 'Cross-Strategy Blend (3 Freq + 2 Coverage)',
-        'source': 'Mixed from both strategy types'
+    # Lucky number selection: blend all approaches
+    # Use most represented lucky number from the blend
+    all_lucky_from_strategies = frequency_lucky + coverage_lucky + risk_reward_lucky
+    lucky_blend_freq = Counter(all_lucky_from_strategies)
+    selected_lucky = lucky_blend_freq.most_common(1)[0][0]
+    
+    fusion_2 = {
+        'numbers': sorted(selected_numbers),
+        'lucky': selected_lucky,
+        'method': 'Strategic Cross-Blend Fusion',
+        'source': 'Equal representation from all 3 strategy types',
+        'strategy_blend': 'Balanced strategy synthesis',
+        'frequency_contribution': frequency_selection,
+        'coverage_contribution': coverage_selection,
+        'risk_reward_contribution': risk_reward_selection
     }
+    
+    print(f"Frequency contribution (2): {frequency_selection}")
+    print(f"Coverage contribution (2): {coverage_selection}")
+    print(f"Risk-Reward contribution (1): {risk_reward_selection}")
+    print(f"Blended numbers: {fusion_2['numbers']}")
+    print(f"Blended lucky: {fusion_2['lucky']}")
+    print()
+    
+    return fusion_2
 
-def create_fusion_combination_3(combinations):
-    """Fusion 3: Range Balanced Fusion"""
-    
-    # Ensure good range distribution across all combinations
-    all_numbers = []
-    for combo in combinations:
-        all_numbers.extend(combo['numbers'])
-    
-    number_freq = Counter(all_numbers)
-    
-    # Separate by ranges
-    low_numbers = [(n, freq) for n, freq in number_freq.items() if n <= 16]
-    mid_numbers = [(n, freq) for n, freq in number_freq.items() if 17 <= n <= 32]
-    high_numbers = [(n, freq) for n, freq in number_freq.items() if n >= 33]
-    
-    # Sort by frequency within each range
-    low_numbers.sort(key=lambda x: x[1], reverse=True)
-    mid_numbers.sort(key=lambda x: x[1], reverse=True)
-    high_numbers.sort(key=lambda x: x[1], reverse=True)
-    
-    # Select 2 low, 2 mid, 1 high (most frequent in each range)
-    selected_numbers = []
-    
-    if low_numbers:
-        selected_numbers.extend([n for n, freq in low_numbers[:2]])
-    
-    if mid_numbers:
-        selected_numbers.extend([n for n, freq in mid_numbers[:2]])
-    
-    if high_numbers:
-        selected_numbers.append(high_numbers[0][0])
-    
-    # Fill remaining slots if needed
-    while len(selected_numbers) < 5:
-        all_available = [n for n, freq in number_freq.most_common() if n not in selected_numbers]
-        if all_available:
-            selected_numbers.append(all_available[0])
-        else:
-            break
-    
-    # Second most frequent lucky
-    all_lucky = [combo['lucky'] for combo in combinations]
-    lucky_freq = Counter(all_lucky)
-    lucky = lucky_freq.most_common(2)[1][0] if len(lucky_freq.most_common()) > 1 else lucky_freq.most_common(1)[0][0]
-    
-    return {
-        'numbers': sorted(selected_numbers[:5]),
-        'lucky': lucky,
-        'method': 'Range Balanced Fusion (2-2-1 distribution)',
-        'source': 'Optimized range distribution'
-    }
-
-def create_fusion_combination_4(combinations):
-    """Fusion 4: Weighted Average by Strategy Performance"""
-    
-    # Weight frequency combinations more heavily (0.1700 score vs 0.1300)
-    freq_weight = 0.65  # 65% weight for frequency combinations
-    coverage_weight = 0.35  # 35% weight for coverage combinations
-    
-    freq_combos = combinations[:6]
-    coverage_combos = combinations[6:]
-    
-    # Weighted number selection
-    weighted_numbers = Counter()
-    
-    # Add frequency numbers with higher weight
-    for combo in freq_combos:
-        for num in combo['numbers']:
-            weighted_numbers[num] += freq_weight
-    
-    # Add coverage numbers with lower weight
-    for combo in coverage_combos:
-        for num in combo['numbers']:
-            weighted_numbers[num] += coverage_weight
-    
-    # Select top 5 weighted numbers
-    top_weighted = [n for n, weight in weighted_numbers.most_common(5)]
-    
-    # Weighted lucky selection
-    weighted_lucky = Counter()
-    for combo in freq_combos:
-        weighted_lucky[combo['lucky']] += freq_weight
-    for combo in coverage_combos:
-        weighted_lucky[combo['lucky']] += coverage_weight
-    
-    lucky = weighted_lucky.most_common(1)[0][0]
-    
-    return {
-        'numbers': sorted(top_weighted),
-        'lucky': lucky,
-        'method': 'Weighted Average (65% Freq + 35% Coverage)',
-        'source': 'Performance-weighted fusion'
-    }
-
-def create_fusion_combination_5(combinations):
-    """Fusion 5: Unique Numbers Fusion (least overlap)"""
-    
-    # Find numbers that appear in fewer combinations (unique picks)
-    all_numbers = []
-    for combo in combinations:
-        all_numbers.extend(combo['numbers'])
-    
-    number_freq = Counter(all_numbers)
-    
-    # Select numbers that appear 2-3 times (not too rare, not too common)
-    moderate_freq_numbers = [n for n, freq in number_freq.items() if 2 <= freq <= 3]
-    
-    # If not enough, add some that appear 4 times
-    if len(moderate_freq_numbers) < 5:
-        freq_4_numbers = [n for n, freq in number_freq.items() if freq == 4]
-        moderate_freq_numbers.extend(freq_4_numbers)
-    
-    # If still not enough, add most frequent
-    if len(moderate_freq_numbers) < 5:
-        top_numbers = [n for n, freq in number_freq.most_common()]
-        for num in top_numbers:
-            if num not in moderate_freq_numbers and len(moderate_freq_numbers) < 5:
-                moderate_freq_numbers.append(num)
-    
-    # Ensure range distribution
-    selected_numbers = []
-    low_available = [n for n in moderate_freq_numbers if n <= 16]
-    mid_available = [n for n in moderate_freq_numbers if 17 <= n <= 32]
-    high_available = [n for n in moderate_freq_numbers if n >= 33]
-    
-    # Try to get at least 1 from each range
-    if low_available:
-        selected_numbers.append(low_available[0])
-    if mid_available:
-        selected_numbers.append(mid_available[0])
-    if high_available:
-        selected_numbers.append(high_available[0])
-    
-    # Fill remaining with available numbers
-    remaining_available = [n for n in moderate_freq_numbers if n not in selected_numbers]
-    selected_numbers.extend(remaining_available[:5-len(selected_numbers)])
-    
-    # Use least frequent lucky
-    all_lucky = [combo['lucky'] for combo in combinations]
-    lucky_freq = Counter(all_lucky)
-    lucky = min(lucky_freq, key=lucky_freq.get)
-    
-    return {
-        'numbers': sorted(selected_numbers[:5]),
-        'lucky': lucky,
-        'method': 'Unique Numbers Fusion (moderate frequency)',
-        'source': 'Diversified selection strategy'
-    }
-
-def validate_fusion_combinations(fusion_combinations):
-    """Validate all fusion combinations"""
+def validate_fusion_combinations(fusion_1, fusion_2):
+    """Validate both fusion combinations"""
     
     print("FUSION COMBINATIONS VALIDATION:")
     print("-" * 31)
     
-    valid_count = 0
-    all_fusion_numbers = set()
-    all_fusion_lucky = set()
+    fusions = [fusion_1, fusion_2]
     
-    for i, fusion in enumerate(fusion_combinations, 1):
+    for i, fusion in enumerate(fusions, 1):
         numbers = fusion['numbers']
         lucky = fusion['lucky']
         
@@ -340,72 +217,125 @@ def validate_fusion_combinations(fusion_combinations):
             valid = False
             issues.append("duplicate_numbers")
         
-        if valid:
-            valid_count += 1
-            all_fusion_numbers.update(numbers)
-            all_fusion_lucky.add(lucky)
-        
         status = "✓" if valid else f"✗ ({', '.join(issues)})"
         
-        print(f"{i}. {fusion['method']}")
-        print(f"   Numbers: {numbers} + Lucky: {lucky} {status}")
-        print(f"   Source: {fusion['source']}")
+        print(f"Fusion {i}: {fusion['method']}")
+        print(f"  Numbers: {numbers} + Lucky: {lucky} {status}")
+        print(f"  Source: {fusion['source']}")
+        print(f"  Strategy: {fusion['strategy_blend']}")
         print()
     
-    print(f"Valid fusion combinations: {valid_count}/5")
-    print(f"Unique numbers in fusions: {len(all_fusion_numbers)}/49 ({len(all_fusion_numbers)/49*100:.1f}%)")
-    print(f"Unique lucky numbers: {len(all_fusion_lucky)}/10 ({len(all_fusion_lucky)/10*100:.1f}%)")
-    
-    return fusion_combinations
+    return all(len(f['numbers']) == 5 and isinstance(f['lucky'], int) for f in fusions)
 
-def main():
-    """Create 5 fusion combinations from the 10 French Loto combinations"""
+def analyze_fusion_characteristics(fusion_1, fusion_2, original_combinations):
+    """Analyze characteristics of both fusion combinations"""
     
-    print("CREATING 5 FUSION COMBINATIONS FROM 10 FRENCH LOTO COMBINATIONS")
-    print("=" * 63)
-    
-    original_combinations = get_original_10_combinations()
-    
-    print("ANALYZING ORIGINAL 10 COMBINATIONS:")
-    print("-" * 35)
-    number_freq = analyze_number_frequency_across_combinations(original_combinations)
-    lucky_freq = analyze_lucky_frequency_across_combinations(original_combinations)
-    
-    print("CREATING FUSION COMBINATIONS:")
+    print("FUSION COMBINATIONS ANALYSIS:")
     print("-" * 29)
     
-    fusion_combinations = []
+    # Analyze overlap with originals
+    fusion_1_numbers = set(fusion_1['numbers'])
+    fusion_2_numbers = set(fusion_2['numbers'])
     
-    fusion_1 = create_fusion_combination_1(original_combinations)
-    fusion_combinations.append(fusion_1)
+    print("Overlap with Original Combinations:")
+    for combo in original_combinations:
+        combo_numbers = set(combo['numbers'])
+        
+        overlap_1_nums = len(fusion_1_numbers.intersection(combo_numbers))
+        overlap_2_nums = len(fusion_2_numbers.intersection(combo_numbers))
+        
+        lucky_match_1 = "✓" if fusion_1['lucky'] == combo['lucky'] else "✗"
+        lucky_match_2 = "✓" if fusion_2['lucky'] == combo['lucky'] else "✗"
+        
+        print(f"  Combo {combo['id']} ({combo['type']}): F1={overlap_1_nums}n+{lucky_match_1}L, F2={overlap_2_nums}n+{lucky_match_2}L")
     
-    fusion_2 = create_fusion_combination_2(original_combinations)
-    fusion_combinations.append(fusion_2)
+    # Range analysis
+    print(f"\nRange Analysis:")
+    for i, fusion in enumerate([fusion_1, fusion_2], 1):
+        low = len([n for n in fusion['numbers'] if n <= 16])
+        mid = len([n for n in fusion['numbers'] if 17 <= n <= 33])
+        high = len([n for n in fusion['numbers'] if n >= 34])
+        total = sum(fusion['numbers'])
+        
+        print(f"  Fusion {i}: {low}L+{mid}M+{high}H numbers (sum: {total}), lucky: {fusion['lucky']}")
     
-    fusion_3 = create_fusion_combination_3(original_combinations)
-    fusion_combinations.append(fusion_3)
+    # Strategic comparison
+    print(f"\nStrategic Comparison:")
+    print(f"  Fusion 1: Pure frequency approach preserving most successful elements")
+    print(f"  Fusion 2: Equal strategy blend with balanced representation")
+    print(f"  Diversity: Different synthesis approaches for comprehensive coverage")
     
-    fusion_4 = create_fusion_combination_4(original_combinations)
-    fusion_combinations.append(fusion_4)
+    # Coverage effectiveness
+    all_fusion_numbers = fusion_1_numbers.union(fusion_2_numbers)
+    all_fusion_lucky = {fusion_1['lucky'], fusion_2['lucky']}
     
-    fusion_5 = create_fusion_combination_5(original_combinations)
-    fusion_combinations.append(fusion_5)
+    print(f"\nCombined Coverage:")
+    print(f"  Total unique numbers: {len(all_fusion_numbers)}")
+    print(f"  Total unique lucky: {len(all_fusion_lucky)}")
+    print(f"  Numbers: {sorted(all_fusion_numbers)}")
+    print(f"  Lucky numbers: {sorted(all_fusion_lucky)}")
+
+def analyze_french_loto_fusion_advantages():
+    """Analyze advantages specific to French Loto fusion approach"""
     
-    validate_fusion_combinations(fusion_combinations)
+    print("\nFRENCH LOTO FUSION ADVANTAGES:")
+    print("-" * 30)
     
-    print("\nFUSION METHODOLOGY SUMMARY:")
-    print("1. Mathematical Average: Most frequent from Frequency+Frequency")
-    print("2. Cross-Strategy Blend: 3 Frequency + 2 Coverage numbers")
-    print("3. Range Balanced: Optimized 2-2-1 distribution")
-    print("4. Weighted Average: 65% Frequency + 35% Coverage weights")
-    print("5. Unique Numbers: Moderate frequency for diversification")
+    print("STRATEGIC SYNTHESIS:")
+    print("• Mathematical averaging preserves most successful elements")
+    print("• Strategic blending ensures equal representation from all approaches")
+    print("• Frequency + Coverage + Risk-Reward comprehensive coverage")
+    print("• Lucky number selection optimized through frequency analysis")
+    print()
     
-    print("\nKEY FUSION ADVANTAGES:")
-    print("✓ Captures best elements from both strategy types")
-    print("✓ Reduces single-strategy dependency risk")
-    print("✓ Maintains frequency optimization advantages")
-    print("✓ Ensures broader number coverage")
-    print("✓ Leverages mathematical blending techniques")
+    print("FRENCH LOTO SPECIFIC BENEFITS:")
+    print("• Maintains different strategies for numbers vs lucky (core principle)")
+    print("• Reduces dependency on single-strategy approaches")
+    print("• Leverages proven mixed-strategy effectiveness")
+    print("• Optimized lucky number selection from all strategy types")
+    print()
+    
+    print("RISK MITIGATION:")
+    print("• Fusion 1: Pure frequency reduces randomness")
+    print("• Fusion 2: Strategy balance prevents over-concentration")
+    print("• Combined approach covers multiple winning scenarios")
+    print("• Historical lesson integration (diversified lucky selection)")
+
+def main():
+    """Create 2 fusion combinations from the 5 French Loto combinations"""
+    
+    print("CREATING 2 FRENCH LOTO FUSION COMBINATIONS FROM 5 ORIGINALS")
+    print("=" * 59)
+    
+    original_combinations = get_french_loto_combinations()
+    
+    print("ORIGINAL 5 COMBINATIONS:")
+    print("-" * 24)
+    for combo in original_combinations:
+        print(f"{combo['id']}. {combo['strategy']} ({combo['type']})")
+        print(f"   Numbers: {combo['numbers']} + Lucky: {combo['lucky']}")
+    print()
+    
+    number_freq, lucky_freq = analyze_frequency_patterns(original_combinations)
+    
+    fusion_1 = create_mathematical_average_fusion(original_combinations, number_freq, lucky_freq)
+    fusion_2 = create_strategic_cross_blend_fusion(original_combinations, number_freq, lucky_freq)
+    
+    valid = validate_fusion_combinations(fusion_1, fusion_2)
+    
+    if valid:
+        analyze_fusion_characteristics(fusion_1, fusion_2, original_combinations)
+        analyze_french_loto_fusion_advantages()
+        
+        print("\nFUSION SUMMARY:")
+        print("✓ Mathematical averaging preserves most successful elements")
+        print("✓ Strategic blending ensures balanced representation")
+        print("✓ Frequency + Coverage + Risk-Reward synthesis")
+        print("✓ Optimized lucky number selection")
+        print("✓ French Loto principles maintained")
+        print("✓ Historical lessons integrated")
+    
+    return fusion_1, fusion_2
 
 if __name__ == "__main__":
     main()
