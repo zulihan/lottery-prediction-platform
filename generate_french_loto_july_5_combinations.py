@@ -227,52 +227,59 @@ def generate_risk_reward_refined(hot_numbers, warm_numbers, cold_numbers, variat
     
     return sorted(selected[:5])
 
-def generate_enhanced_lucky_number(lucky_freq, main_numbers, strategy_type, variation=0):
-    """Enhanced lucky number generation based on July 4 success"""
+def generate_proper_lucky_number(lucky_freq, main_numbers, strategy_type, variation=0):
+    """
+    Proper lucky number generation using DIFFERENT strategy than main numbers
+    French Loto principle: Different approaches for numbers vs lucky number
+    """
     
-    # July 4 lesson: Lucky 10 was highly successful (57.1% hit rate)
     sorted_lucky = sorted(lucky_freq.items(), key=lambda x: x[1], reverse=True)
+    total_lucky = len(sorted_lucky)
     
-    # Enhanced lucky strategies emphasizing successful patterns
-    if strategy_type == 'frequency_success':
-        # Emphasize lucky 10 (July 4 success)
-        if variation == 0:
-            return 10  # Direct success replication
-        else:
-            # Top frequency alternatives
-            return sorted_lucky[variation % min(3, len(sorted_lucky))][0]
+    # Categorize lucky numbers independently
+    frequent_lucky = [l for l, _ in sorted_lucky[:total_lucky//3]]
+    medium_lucky = [l for l, _ in sorted_lucky[total_lucky//3:2*total_lucky//3]]
+    rare_lucky = [l for l, _ in sorted_lucky[2*total_lucky//3:]]
     
-    elif strategy_type == 'range_complement_enhanced':
-        # Enhanced range complement with July 4 bias
+    if strategy_type == 'frequency_opposite':
+        # If main numbers used frequency analysis, use rarity for lucky
+        candidates = rare_lucky + medium_lucky
+        return random.choice(candidates) if candidates else random.choice(frequent_lucky)
+    
+    elif strategy_type == 'range_complement':
+        # Complement main number range sum independently
         main_sum = sum(main_numbers)
-        if main_sum < 90:  # Lower sum
-            # Favor higher lucky numbers including 10
-            high_lucky = [l for l in [10, 9, 8] if l in [item[0] for item in sorted_lucky]]
-            return random.choice(high_lucky) if high_lucky else 10
-        else:  # Higher sum
-            # Favor lower lucky but include 10 option
-            candidates = [l for l in [1, 2, 3, 10] if l in [item[0] for item in sorted_lucky]]
-            return random.choice(candidates) if candidates else 10
+        if main_sum < 90:  # Lower sum main numbers
+            # Use higher lucky numbers (6-10)
+            high_lucky = [l for l in frequent_lucky + medium_lucky if l >= 6]
+            return random.choice(high_lucky) if high_lucky else random.choice(frequent_lucky)
+        else:  # Higher sum main numbers
+            # Use lower lucky numbers (1-5)
+            low_lucky = [l for l in frequent_lucky + medium_lucky if l <= 5]
+            return random.choice(low_lucky) if low_lucky else random.choice(frequent_lucky)
     
-    elif strategy_type == 'contrarian_refined':
-        # Refined contrarian with July 4 lesson integration
-        rare_lucky = [l for l, f in sorted_lucky[len(sorted_lucky)//2:]]
-        # But include 10 as backup option
-        if variation == 0 and 10 not in rare_lucky:
-            return 10
+    elif strategy_type == 'contrarian':
+        # Pure contrarian approach - use least frequent
+        return random.choice(rare_lucky) if rare_lucky else random.choice(medium_lucky)
+    
+    elif strategy_type == 'pure_frequency':
+        # Pure frequency approach - most frequent
+        return frequent_lucky[0] if frequent_lucky else 1
+    
+    elif strategy_type == 'balanced_mix':
+        # Balanced selection across all frequency tiers
+        all_candidates = frequent_lucky + medium_lucky + rare_lucky
+        return random.choice(all_candidates)
+    
+    else:  # mathematical_pattern
+        # Use mathematical pattern based on main numbers
+        number_patterns = sum(main_numbers) % 10
+        if number_patterns <= 3:
+            return random.choice(frequent_lucky[:3]) if len(frequent_lucky) >= 3 else frequent_lucky[0]
+        elif number_patterns <= 6:
+            return random.choice(medium_lucky) if medium_lucky else random.choice(frequent_lucky)
         else:
-            return random.choice(rare_lucky) if rare_lucky else 10
-    
-    elif strategy_type == 'balanced_enhanced':
-        # Balanced approach with July 4 success weighting
-        all_lucky = [l for l, f in sorted_lucky]
-        # Weight toward 10 and top performers
-        weighted_options = [10] * 3 + all_lucky[:3] + all_lucky[3:6]
-        return random.choice(weighted_options)
-    
-    else:  # pure_success
-        # Pure July 4 success strategy
-        return 10
+            return random.choice(rare_lucky + medium_lucky) if rare_lucky + medium_lucky else random.choice(frequent_lucky)
 
 def generate_july_5_combinations(training_data):
     """Generate 5 enhanced combinations for July 5, 2025"""
@@ -287,23 +294,23 @@ def generate_july_5_combinations(training_data):
     
     combinations = []
     
-    # Combination 1: Enhanced Coverage Optimization (Best July 4 strategy)
+    # Combination 1: Enhanced Coverage Optimization + Frequency Opposite Lucky
     numbers_1 = generate_enhanced_coverage_optimization(hot_numbers, warm_numbers, cold_numbers, low_nums, mid_nums, high_nums, 0)
-    lucky_1 = generate_enhanced_lucky_number(lucky_freq, numbers_1, 'frequency_success', 0)
+    lucky_1 = generate_proper_lucky_number(lucky_freq, numbers_1, 'frequency_opposite', 0)
     
     combinations.append({
         'id': 1,
         'numbers': numbers_1,
         'lucky': lucky_1,
-        'strategy': 'Enhanced Coverage Optimization + Success Lucky',
+        'strategy': 'Enhanced Coverage Optimization + Frequency Opposite Lucky',
         'numbers_focus': 'Better low coverage with range balance',
-        'lucky_focus': 'July 4 success pattern (Lucky 10)',
+        'lucky_focus': 'Opposite of frequency (rarity focus)',
         'july_4_lesson': 'Addresses missing low number gap'
     })
     
-    # Combination 2: Enhanced Coverage Optimization (Low emphasis)
+    # Combination 2: Enhanced Coverage Optimization (Low emphasis) + Range Complement
     numbers_2 = generate_enhanced_coverage_optimization(hot_numbers, warm_numbers, cold_numbers, low_nums, mid_nums, high_nums, 1)
-    lucky_2 = generate_enhanced_lucky_number(lucky_freq, numbers_2, 'range_complement_enhanced', 0)
+    lucky_2 = generate_proper_lucky_number(lucky_freq, numbers_2, 'range_complement', 0)
     
     combinations.append({
         'id': 2,
@@ -311,49 +318,49 @@ def generate_july_5_combinations(training_data):
         'lucky': lucky_2,
         'strategy': 'Enhanced Coverage Optimization (Low Focus) + Range Complement',
         'numbers_focus': 'Emphasizes 1-16 range to address July 4 gap',
-        'lucky_focus': 'Range complement with success bias',
+        'lucky_focus': 'Complements main number range sum',
         'july_4_lesson': 'Direct response to missing number 9'
     })
     
-    # Combination 3: Frequency Analysis Enhanced (July 4 successful model)
+    # Combination 3: Frequency Analysis Enhanced + Pure Frequency Lucky
     numbers_3 = generate_frequency_analysis_enhanced(hot_numbers, warm_numbers, cold_numbers, 1)
-    lucky_3 = generate_enhanced_lucky_number(lucky_freq, numbers_3, 'frequency_success', 1)
+    lucky_3 = generate_proper_lucky_number(lucky_freq, numbers_3, 'pure_frequency', 0)
     
     combinations.append({
         'id': 3,
         'numbers': numbers_3,
         'lucky': lucky_3,
-        'strategy': 'Frequency Analysis Enhanced + Success Lucky Alt',
+        'strategy': 'Frequency Analysis Enhanced + Pure Frequency Lucky',
         'numbers_focus': 'Hot emphasis similar to July 4 winner',
-        'lucky_focus': 'Success pattern alternative',
+        'lucky_focus': 'Most frequent lucky number',
         'july_4_lesson': 'Replicates Combo 4 success model'
     })
     
-    # Combination 4: Risk-Reward Refined + Success Lucky
+    # Combination 4: Risk-Reward Refined + Contrarian Lucky
     numbers_4 = generate_risk_reward_refined(hot_numbers, warm_numbers, cold_numbers, 0)
-    lucky_4 = generate_enhanced_lucky_number(lucky_freq, numbers_4, 'pure_success', 0)
+    lucky_4 = generate_proper_lucky_number(lucky_freq, numbers_4, 'contrarian', 0)
     
     combinations.append({
         'id': 4,
         'numbers': numbers_4,
         'lucky': lucky_4,
-        'strategy': 'Risk-Reward Refined + Pure Success Lucky',
+        'strategy': 'Risk-Reward Refined + Contrarian Lucky',
         'numbers_focus': 'Cold emphasis with refinement',
-        'lucky_focus': 'Pure July 4 success (Lucky 10)',
-        'july_4_lesson': 'Maintains successful lucky strategy'
+        'lucky_focus': 'Least frequent lucky numbers',
+        'july_4_lesson': 'Different approach maintains diversity'
     })
     
-    # Combination 5: Enhanced Coverage + Mid-High Strength
+    # Combination 5: Enhanced Coverage + Mathematical Pattern Lucky
     numbers_5 = generate_enhanced_coverage_optimization(hot_numbers, warm_numbers, cold_numbers, low_nums, mid_nums, high_nums, 2)
-    lucky_5 = generate_enhanced_lucky_number(lucky_freq, numbers_5, 'balanced_enhanced', 0)
+    lucky_5 = generate_proper_lucky_number(lucky_freq, numbers_5, 'mathematical_pattern', 0)
     
     combinations.append({
         'id': 5,
         'numbers': numbers_5,
         'lucky': lucky_5,
-        'strategy': 'Enhanced Coverage (Mid-High) + Balanced Enhanced Lucky',
+        'strategy': 'Enhanced Coverage (Mid-High) + Mathematical Pattern Lucky',
         'numbers_focus': 'Leverages successful mid-high ranges',
-        'lucky_focus': 'Balanced with success weighting',
+        'lucky_focus': 'Mathematical pattern from main sum',
         'july_4_lesson': 'Builds on successful ranges 17-49'
     })
     
