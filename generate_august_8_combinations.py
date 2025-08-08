@@ -119,20 +119,34 @@ def generate_8_adaptive_combinations(data):
     
     combinations = []
     
-    # Strategy 1: August Pattern Focus (if August data exists)
+    # Get recent winning combinations to avoid
+    recent_winning_sets = []
+    for draw in data['recent_draws'][:5]:
+        _, n1, n2, n3, n4, n5, _, _ = draw
+        recent_winning_sets.append(set([n1, n2, n3, n4, n5]))
+    
+    # Strategy 1: August Smart Play (avoiding exact repeats)
     if data['august_numbers']:
-        august_hot = Counter(data['august_numbers']).most_common(10)
-        numbers1 = [n for n, _ in august_hot[:5]]
-        if len(numbers1) < 5:
-            numbers1.extend(random.sample(data['recent_hot'], 5 - len(numbers1)))
+        august_hot = Counter(data['august_numbers']).most_common(15)
+        # Mix august hot with other patterns, avoiding exact repeat
+        pool = [n for n, _ in august_hot] + data['recent_hot'][:10]
+        pool = list(set(pool))  # Remove duplicates
+        
+        numbers1 = []
+        attempts = 0
+        while len(numbers1) < 5 or set(numbers1) in recent_winning_sets:
+            numbers1 = random.sample(pool, 5)
+            attempts += 1
+            if attempts > 10:  # Fallback to ensure we get a valid combo
+                numbers1 = random.sample(data['frequent_historical'][:20], 5)
+                break
     else:
-        # Use recent hot as fallback
         numbers1 = random.sample(data['recent_hot'][:15], 5)
     
     combinations.append({
         'numbers': sorted(numbers1[:5]),
-        'strategy': 'August Momentum',
-        'focus': 'Capturing August-specific patterns'
+        'strategy': 'August Smart Play',
+        'focus': 'August patterns without exact repeats'
     })
     
     # Strategy 2: Overdue Numbers Integration
