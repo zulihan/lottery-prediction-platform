@@ -351,7 +351,7 @@ def generate_adaptive_star_strategies(data, combination_id):
     return sorted(stars)
 
 def generate_2_power_fusions(main_combinations, data):
-    """Generate 2 fusion combinations with fresh approach"""
+    """Generate 2 fusion combinations by strategically mixing the 8 main combinations"""
     
     all_numbers = []
     all_stars = []
@@ -363,55 +363,80 @@ def generate_2_power_fusions(main_combinations, data):
     number_freq = Counter(all_numbers)
     star_freq = Counter(all_stars)
     
-    # Fusion 1: Convergence Point
-    # Numbers appearing most across strategies
+    # Fusion 1: High Frequency Convergence
+    # Take the numbers that appear most frequently across all 8 combinations
+    top_recurring = sorted(number_freq.items(), key=lambda x: x[1], reverse=True)
+    
     fusion1_numbers = []
-    top_recurring = [n for n, count in number_freq.most_common() if count >= 2]
+    # Get numbers that appear in multiple combinations (at least 2)
+    for num, count in top_recurring:
+        if count >= 2 and len(fusion1_numbers) < 5:
+            fusion1_numbers.append(num)
     
-    if len(top_recurring) >= 5:
-        fusion1_numbers = top_recurring[:5]
-    else:
-        fusion1_numbers = top_recurring + random.sample(data['recent_hot'], 5 - len(top_recurring))
+    # If we don't have 5, add the next most frequent
+    if len(fusion1_numbers) < 5:
+        for num, count in top_recurring:
+            if num not in fusion1_numbers and len(fusion1_numbers) < 5:
+                fusion1_numbers.append(num)
     
+    # Most common stars across combinations
     fusion1_stars = [s for s, _ in star_freq.most_common(2)]
     
     fusion1 = {
         'id': 'F1',
         'numbers': sorted(fusion1_numbers[:5]),
         'stars': sorted(fusion1_stars),
-        'strategy': 'Strategic Convergence',
-        'focus': 'Multi-strategy consensus picks'
+        'strategy': 'High Frequency Convergence',
+        'focus': 'Numbers appearing most across all strategies'
     }
     
-    # Fusion 2: Adaptive Balance
-    # Smart mix based on current patterns
+    # Fusion 2: Balanced Selection Mix
+    # Strategic mix: take one number from each of 5 different combinations
     fusion2_numbers = []
+    used_combos = set()
     
-    # Include at least one overdue if available
-    if data['overdue_numbers']:
-        fusion2_numbers.append(random.choice(data['overdue_numbers'][:5]))
+    # First, try to get one number from different combinations
+    for i, combo in enumerate(main_combinations):
+        if i not in used_combos and len(fusion2_numbers) < 5:
+            # Pick a number from this combo that's not already in fusion2
+            available = [n for n in combo['numbers'] if n not in fusion2_numbers]
+            if available:
+                # Prefer numbers that appear less frequently overall
+                selected = min(available, key=lambda x: number_freq[x])
+                fusion2_numbers.append(selected)
+                used_combos.add(i)
     
-    # Add hot numbers
-    fusion2_numbers.extend(random.sample(data['recent_hot'][:10], 2))
-    
-    # Add medium frequency
-    fusion2_numbers.extend(random.sample(data['medium_historical'], 2))
-    
-    # Ensure we have 5 numbers
+    # If we still need numbers, add from remaining combinations
     if len(fusion2_numbers) < 5:
-        remaining = [n for n in data['frequent_historical'] if n not in fusion2_numbers]
-        fusion2_numbers.extend(random.sample(remaining, 5 - len(fusion2_numbers)))
+        remaining_numbers = []
+        for i, combo in enumerate(main_combinations):
+            if i not in used_combos:
+                remaining_numbers.extend(combo['numbers'])
+        
+        remaining_unique = [n for n in set(remaining_numbers) if n not in fusion2_numbers]
+        fusion2_numbers.extend(random.sample(remaining_unique, min(5 - len(fusion2_numbers), len(remaining_unique))))
     
-    # Different star strategy
-    all_star_options = list(set(range(1, 13)) - set(fusion1_stars))
-    fusion2_stars = random.sample(all_star_options, 2)
+    # For stars, pick the least used ones for variety
+    star_counts = sorted(star_freq.items(), key=lambda x: x[1])
+    fusion2_stars = []
+    for star, _ in star_counts:
+        if len(fusion2_stars) < 2:
+            fusion2_stars.append(star)
+    
+    # If we don't have enough unique stars, use moderately frequent ones
+    if len(fusion2_stars) < 2:
+        mid_freq_stars = [s for s, c in star_freq.items() if c == 2]
+        if mid_freq_stars:
+            fusion2_stars.extend(random.sample(mid_freq_stars, min(2 - len(fusion2_stars), len(mid_freq_stars))))
+        else:
+            fusion2_stars = random.sample(list(star_freq.keys()), 2)
     
     fusion2 = {
         'id': 'F2',
         'numbers': sorted(fusion2_numbers[:5]),
-        'stars': sorted(fusion2_stars),
-        'strategy': 'Adaptive Balance',
-        'focus': 'Smart frequency distribution'
+        'stars': sorted(fusion2_stars[:2]),
+        'strategy': 'Balanced Selection Mix',
+        'focus': 'Strategic mix from different combinations'
     }
     
     return [fusion1, fusion2]
