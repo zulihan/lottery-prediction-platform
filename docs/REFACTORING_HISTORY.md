@@ -55,18 +55,24 @@ This refactoring aims to create a clean, maintainable, well-documented codebase 
 
 ## Refactoring Plan
 
-### Phase 1: Preparation ✓
+### Phase 1: Preparation ✅ COMPLETE
 - [x] Create git safety: branch + tag
 - [x] Create file system backup (2.3MB compressed)
 - [x] Create directory structure (src/, docs/, archive/, tests/)
 - [x] Create documentation templates
+- **Completed:** 2026-01-02
+- **Commits:** fb6649a, f69388d
 
-### Phase 2: Archive One-Off Scripts
-- [ ] Archive ~40 analysis scripts
-- [ ] Archive ~60 generation scripts
-- [ ] Archive ~15 fix/correction scripts
-- [ ] Test app after each archival
-- [ ] Commit incrementally
+### Phase 2: Archive One-Off Scripts ✅ COMPLETE
+- [x] Archive 31 analysis scripts
+- [x] Archive 78 generation scripts
+- [x] Archive 19 fix/correction scripts
+- [x] Test app after each archival
+- [x] Commit incrementally
+- **Started:** 2026-01-02
+- **Completed:** 2026-01-02
+- **Commits:** 35e2da9, 0564fe0, [pending]
+- **Files archived:** 128 total (268 → 140 files)
 
 ### Phase 3: Archive App Variants
 - [ ] Extract unique code from app_with_fibonacci.py
@@ -132,6 +138,73 @@ This refactoring aims to create a clean, maintainable, well-documented codebase 
 - Directory structure created
 
 **Status:** Phase 1 Complete ✓
+
+---
+
+### 2026-01-02: Phase 1 Complete - Preparation ✅
+
+**Phase 1 Deliverables:**
+- Created refactoring branch: `refactor/codebase-cleanup`
+- Created safety tag: `pre-refactor-20260102`
+- Created file system backup: 2.3MB compressed archive
+- Created directory structure:
+  - `src/core/{database,strategies,statistics,models,visualization}/`
+  - `src/{utils,tools,pages}/`
+  - `src/tools/{data_import,backtesting}/`
+  - `archive/{app_variants,analysis_scripts,generation_scripts,strategy_experiments,backtest_scripts,fixes_and_corrections}/`
+  - `docs/`, `tests/`
+- Created documentation templates:
+  - `docs/REFACTORING_HISTORY.md` - This tracking document
+  - `docs/EXTRACTED_CODE.md` - Template for preserving unique code
+  - `archive/ARCHIVE_INDEX.md` - Template for archive catalog
+  - `CLAUDE.md` - Comprehensive codebase guide (committed to main)
+
+**Commits:**
+- `fb6649a` - Phase 1 Complete: Setup directory structure and documentation templates
+- `f69388d` - Add CLAUDE.md with codebase documentation for future Claude instances
+
+**Time Invested:** ~30 minutes
+**Risk Level:** None - Only setup, no code changes
+**Next Phase:** Phase 2 - Archive one-off scripts
+
+---
+
+### 2026-01-02: Phase 2 Complete - Archive One-Off Scripts ✅
+
+**Phase 2 Deliverables:**
+
+**2.1 Analysis Scripts (31 files archived)**
+- Moved all `analyze_*.py` files to `archive/analysis_scripts/`
+- Scripts for date-specific draw analysis (May-July 2024)
+- Performance evaluation and results analysis
+- Files: 268 → 237
+
+**2.2 Generation Scripts (78 files archived)**
+- Moved all `generate_*.py` and `create_*combinations*.py` to `archive/generation_scripts/`
+- One-time combination generation for specific draws
+- Experimental prediction sets
+- Files: 237 → 159
+
+**2.3 Fix/Correction Scripts (19 files archived)**
+- Moved all `correct_*.py`, `fix_*.py`, `*_fix.py` to `archive/fixes_and_corrections/`
+- One-time database fixes and emergency patches
+- Data correction scripts
+- Files: 159 → 140
+
+**Summary:**
+- **Total files archived:** 128 files
+- **File reduction:** 268 → 140 files (-48%!)
+- **Core files:** All verified intact (app.py, database.py, strategies.py, etc.)
+- **Risk level:** Low - No imports broken
+- **Testing:** Core files verified after each archival step
+
+**Commits:**
+- `35e2da9` - Phase 2.1: Archive 31 analysis scripts
+- `0564fe0` - Phase 2.2: Archive 78 generation scripts
+- `80ed455` - Phase 2.3: Archive 19 fix/correction scripts
+
+**Time Invested:** ~15 minutes
+**Next Phase:** Phase 3 - Archive app variants and extract unique code
 
 ---
 
