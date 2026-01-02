@@ -210,35 +210,6 @@ class PredictionStrategies:
             
         return combinations
         
-    def stratified_sampling_strategy(self, num_combinations=5, confidence=0.8):
-        """Generate combinations using stratified sampling across number ranges."""
-        combinations = []
-        
-        # Define strata (number ranges)
-        strata = [(1, 10), (11, 20), (21, 30), (31, 40), (41, 50)]
-        
-        for _ in range(num_combinations):
-            numbers = []
-            
-            # Select one number from each stratum
-            for start, end in strata:
-                # Create weights for numbers in this range
-                range_weights = {i: self.stats.get_frequency(i) for i in range(start, end+1)}
-                selected = self._weighted_sample(range_weights, 1)[0]
-                numbers.append(selected)
-            
-            # Get star frequencies
-            star_freq = self.stats.get_weighted_star_frequency(0.5)
-            stars = self._weighted_sample(star_freq, 2)
-            
-            combinations.append({
-                'numbers': sorted(numbers),
-                'stars': sorted(stars),
-                'score': round(random.uniform(75, 90), 2)
-            })
-            
-        return combinations
-        
     def coverage_optimization_strategy(self, num_combinations=5, balance=0.6):
         """Generate combinations optimizing for coverage across the number space."""
         combinations = []
@@ -598,15 +569,24 @@ class PredictionStrategies:
         # Get frequencies for each number
         number_freq = self.stats.get_frequency()
         star_freq = self.stats.get_star_frequency()
-        
+
         # Get range distribution to determine optimal sampling
-        range_dist = self.stats.get_number_range_distribution()
-        
+        # TODO: Remove fallback in Phase 5 when get_number_range_distribution() is implemented
+        try:
+            range_dist = self.stats.get_number_range_distribution()
+        except AttributeError:
+            # Temporary fallback: Equal distribution across ranges
+            range_dist = {"1-10": 20, "11-20": 20, "21-30": 20, "31-40": 20, "41-50": 20}
+
         # Get even/odd distribution
-        even_odd_dist = self.stats.get_even_odd_distribution()
-        
-        # Find most common even/odd pattern
-        max_even_count = max(even_odd_dist.items(), key=lambda x: x[1])[0]
+        # TODO: Remove fallback in Phase 5 when get_even_odd_distribution() is implemented
+        try:
+            even_odd_dist = self.stats.get_even_odd_distribution()
+            max_even_count = max(even_odd_dist.items(), key=lambda x: x[1])[0]
+        except AttributeError:
+            # Temporary fallback: Assume 2-3 even numbers is most common
+            even_odd_dist = {2: 30, 3: 40, 1: 15, 4: 10, 0: 3, 5: 2}
+            max_even_count = 3
         
         # Define ranges for decade-based stratification
         ranges = [
