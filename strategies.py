@@ -91,103 +91,6 @@ class PredictionStrategies:
         
         return combinations
         
-    def risk_reward_strategy(self, num_combinations=5, risk_level=0.5):
-        """
-        Generate combinations balancing risk and reward.
-        
-        Parameters:
-        -----------
-        num_combinations : int
-            Number of combinations to generate
-        risk_level : float
-            Risk level from 0.0 (conservative) to 1.0 (aggressive)
-            
-        Returns:
-        --------
-        list of dict
-            List of combinations, each with 'numbers', 'stars', and 'score'
-        """
-        # Get base frequencies
-        number_freq = self.stats.get_weighted_frequency(0.3)  # Less weight on recent
-        star_freq = self.stats.get_weighted_star_frequency(0.3)
-        
-        # Calculate hot and cold numbers
-        hot_numbers = self.stats.get_hot_numbers(10)
-        cold_numbers = self.stats.get_cold_numbers(10)
-        
-        hot_stars = self.stats.get_hot_stars(3)
-        cold_stars = self.stats.get_cold_stars(3)
-        
-        combinations = []
-        
-        for _ in range(num_combinations):
-            # Higher risk_level means more cold numbers (higher variance)
-            hot_count = max(1, min(4, int(5 * (1 - risk_level))))
-            cold_count = 5 - hot_count
-            
-            # Select hot numbers (more common, lower risk)
-            selected_hot = random.sample(hot_numbers, min(hot_count, len(hot_numbers)))
-            
-            # Fill remaining with weighted selection from non-hot numbers
-            remaining_numbers = {num: freq for num, freq in number_freq.items() 
-                               if num not in selected_hot}
-            
-            # For cold numbers, invert the weights to prefer rare numbers
-            if cold_count > 0 and cold_numbers:
-                # Calculate max frequency for inversion
-                max_freq = max(remaining_numbers.values())
-                # Invert and scale weights for cold numbers
-                cold_weights = {num: max_freq - remaining_numbers.get(num, 0) + 1 
-                              for num in cold_numbers}
-                
-                selected_cold = self._weighted_sample(cold_weights, min(cold_count, len(cold_numbers)))
-                
-                # Remove selected cold numbers from remaining
-                remaining_numbers = {num: freq for num, freq in remaining_numbers.items() 
-                                   if num not in selected_cold}
-                
-                # If we still need more numbers, select from remaining
-                additional_count = 5 - len(selected_hot) - len(selected_cold)
-                additional_numbers = self._weighted_sample(remaining_numbers, additional_count) if additional_count > 0 else []
-                
-                numbers = selected_hot + selected_cold + additional_numbers
-            else:
-                # Just fill remaining with weighted selection
-                additional_count = 5 - len(selected_hot)
-                additional_numbers = self._weighted_sample(remaining_numbers, additional_count) if additional_count > 0 else []
-                numbers = selected_hot + additional_numbers
-            
-            # Similar approach for stars
-            if risk_level > 0.5:  # High risk prefers rare stars
-                if random.random() < risk_level:  # Chance based on risk level
-                    stars = random.sample(cold_stars, min(2, len(cold_stars)))
-                    if len(stars) < 2:
-                        remaining = [s for s in range(1, 13) if s not in stars]
-                        stars += random.sample(remaining, 2 - len(stars))
-                else:
-                    stars = self._weighted_sample(star_freq, 2)
-            else:  # Low risk prefers common stars
-                if random.random() < (1 - risk_level):  # Chance based on risk level
-                    stars = random.sample(hot_stars, min(2, len(hot_stars)))
-                    if len(stars) < 2:
-                        remaining = [s for s in range(1, 13) if s not in stars]
-                        stars += random.sample(remaining, 2 - len(stars))
-                else:
-                    stars = self._weighted_sample(star_freq, 2)
-            
-            # Calculate score based on risk level and number distribution
-            hot_ratio = sum(1 for n in numbers if n in hot_numbers) / 5
-            expected_hot_ratio = 1 - risk_level
-            score = 100 - (abs(hot_ratio - expected_hot_ratio) * 100)
-            
-            combinations.append({
-                'numbers': sorted(numbers),
-                'stars': sorted(stars),
-                'score': round(score, 2)
-            })
-        
-        return combinations
-        
     def temporal_pattern_strategy(self, num_combinations=5, pattern_depth=3):
         """Generate combinations based on temporal patterns in the draw history."""
         combinations = []
@@ -1224,14 +1127,15 @@ class PredictionStrategies:
     def risk_reward_strategy(self, num_combinations=5, risk_level=5):
         """
         Generate combinations optimized for risk/reward ratio.
-        
+
         Parameters:
         -----------
         num_combinations : int
             Number of combinations to generate
-        risk_level : int
-            Risk level (1-10): 1 is conservative, 10 is risky
-        
+        risk_level : int or float
+            Risk level: 1-10 (int) or 0.0-1.0 (float)
+            1 or 0.1 is conservative, 10 or 1.0 is risky
+
         Returns:
         --------
         list of dict
@@ -1240,18 +1144,24 @@ class PredictionStrategies:
         # Get frequency and other statistics
         number_freq = self.stats.get_frequency()
         star_freq = self.stats.get_star_frequency()
-        
+
         # Get sum distribution
         sum_dist = self.stats.get_sum_distribution()
-        
+
         # Convert to probability ranges for sampling
         sum_ranges = []
         for range_str, percentage in sum_dist.items():
             start, end = map(int, range_str.split('-'))
             sum_ranges.append((start, end, percentage / 100))
-        
-        # Adjust risk level to a scale of 0.0 to 1.0
-        risk_factor = risk_level / 10.0
+
+        # Normalize risk_level to 0.0-1.0 scale (backward compatible)
+        # Accept both 1-10 scale and 0.0-1.0 scale
+        if risk_level > 1.0:
+            # Legacy 1-10 scale
+            risk_factor = risk_level / 10.0
+        else:
+            # 0.0-1.0 scale (from old definition)
+            risk_factor = risk_level
         
         # At high risk levels, we'll favor:
         # 1. Less common number sums (unusual combinations)
