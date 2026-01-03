@@ -8,7 +8,7 @@ import os
 import io
 import json
 from datetime import datetime, date, timedelta
-from database import init_db, get_db_connection
+from src.core.database import init_db, get_db_connection
 import logging
 
 # Import strategy and analysis tools
@@ -594,7 +594,7 @@ def main():
                                             # Save to database button
                                             if st.button(f"Save #{i+1}", key=f"save_combo_{i}"):
                                                 try:
-                                                    from database import GeneratedCombination, get_session
+                                                    from src.core.database import GeneratedCombination, get_session
                                                     
                                                     # Create new combination record
                                                     new_combo = GeneratedCombination(
@@ -820,7 +820,7 @@ def main():
                                             # Save to database button
                                             if st.button(f"Save #{i+1}", key=f"save_loto_combo_{i}"):
                                                 try:
-                                                    from database import FrenchLotoPrediction, get_session
+                                                    from src.core.database import FrenchLotoPrediction, get_session
                                                     
                                                     # Format numbers as dash-separated string
                                                     numbers_str = "-".join([str(n) for n in combo['numbers']])
@@ -919,7 +919,7 @@ def main():
                     else:
                         try:
                             # Import EuromillionsDrawing model
-                            from database import EuromillionsDrawing, get_session
+                            from src.core.database import EuromillionsDrawing, get_session
                             
                             # Create new drawing
                             new_draw = EuromillionsDrawing(
@@ -1035,7 +1035,7 @@ def main():
                     else:
                         try:
                             # Import FrenchLotoDrawing model
-                            from database import FrenchLotoDrawing, get_session
+                            from src.core.database import FrenchLotoDrawing, get_session
                             
                             # Create new drawing
                             new_draw = FrenchLotoDrawing(
