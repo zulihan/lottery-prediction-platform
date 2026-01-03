@@ -4,7 +4,7 @@ import random
 from collections import Counter, defaultdict
 import itertools
 import math
-from models import BayesianModel, MarkovModel, TimeSeriesModel
+from src.core.models import BayesianModel, MarkovModel, TimeSeriesModel
 
 class PredictionStrategies:
     """
