@@ -21,6 +21,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # Flag to track if database is available
 DB_AVAILABLE = True
 
+# Constants for exponential backoff (production-grade retry logic)
+MIN_RETRY_DELAY = 0.5  # Starting delay of 0.5 seconds
+MAX_RETRY_DELAY = 10   # Maximum delay of 10 seconds
+BACKOFF_FACTOR = 2     # Multiply delay by this factor for each retry
+JITTER = 0.1           # Add ±10% random jitter to avoid thundering herd
+
 # If no DATABASE_URL is set, try to use local SQLite files
 if not DATABASE_URL:
     # Check for local SQLite database files
@@ -83,12 +89,24 @@ except Exception as e:
 Session = scoped_session(sessionmaker(bind=engine, autoflush=True, autocommit=False))
 
 # Function to get a fresh session with retry logic
-def get_session(max_retries=3, retry_delay=2):
-    """Get a database session with retry logic for connection issues"""
+def get_session(max_retries=3):
+    """
+    Get a database session with production-grade retry logic.
+
+    Uses jittered exponential backoff to avoid thundering herd problem
+    and properly handles rate limits.
+
+    Args:
+        max_retries: Maximum number of retry attempts
+
+    Returns:
+        SQLAlchemy session
+    """
     retries = 0
+    retry_delay = MIN_RETRY_DELAY
     last_error = None
     session = None
-    
+
     while retries < max_retries:
         try:
             # Create a new session
@@ -99,47 +117,89 @@ def get_session(max_retries=3, retry_delay=2):
             return session
         except exc.DBAPIError as e:
             last_error = e
-            
+            retries += 1
+
             # Check if it's a rate limit error
             error_str = str(e).lower()
             if "rate limit" in error_str or "too many connections" in error_str:
-                logger.warning(f"Database rate limit hit (attempt {retries+1}/{max_retries}). Waiting before retry...")
+                logger.warning(f"Database rate limit hit (attempt {retries}/{max_retries})")
             else:
-                logger.warning(f"Database connection error (attempt {retries+1}/{max_retries}): {str(e)}")
-            
+                logger.warning(f"Database connection error (attempt {retries}/{max_retries}): {str(e)}")
+
             # Close the session if it was created
             if session:
                 session.close()
-                
-            # Exponential backoff with jitter
-            current_delay = retry_delay * (2 ** retries)
-            jitter = random.uniform(0, current_delay / 2)
-            wait_time = current_delay + jitter
-            
-            logger.info(f"Retrying in {wait_time:.1f} seconds...")
-            time.sleep(wait_time)
-            retries += 1
-            
+
+            # Only retry if we haven't hit max retries
+            if retries < max_retries:
+                # Calculate jittered exponential backoff (±10% jitter)
+                jitter_amount = random.uniform(-JITTER, JITTER) * retry_delay
+                actual_delay = retry_delay + jitter_amount
+                logger.info(f"Retrying in {actual_delay:.2f} seconds...")
+                time.sleep(actual_delay)
+
+                # Exponential backoff (double each time, up to MAX_RETRY_DELAY)
+                retry_delay = min(retry_delay * BACKOFF_FACTOR, MAX_RETRY_DELAY)
+
     # If we got here, all retries failed
-    logger.error(f"Failed to establish database connection after {max_retries} attempts: {str(last_error)}")
+    logger.error(f"Failed to establish database session after {max_retries} attempts: {str(last_error)}")
     # Return a session anyway - let the caller handle any exceptions
     return Session()
 
-def get_db_connection():
-    """Get a direct database connection from engine"""
+def get_db_connection(max_retries=3):
+    """
+    Get a direct database connection from engine with production-grade retry logic.
+
+    Uses jittered exponential backoff for robust connection handling.
+
+    Args:
+        max_retries: Maximum number of retry attempts
+
+    Returns:
+        SQLAlchemy connection or None if unavailable
+    """
     if not DB_AVAILABLE:
         logger.error("Database not available")
         return None
-    
-    try:
-        conn = engine.connect()
-        # Test connection
-        from sqlalchemy import text
-        conn.execute(text("SELECT 1"))
-        return conn
-    except Exception as e:
-        logger.error(f"Database connection error: {str(e)}")
-        return None
+
+    retries = 0
+    retry_delay = MIN_RETRY_DELAY
+    last_error = None
+
+    while retries < max_retries:
+        try:
+            conn = engine.connect()
+            # Test connection
+            from sqlalchemy import text
+            conn.execute(text("SELECT 1"))
+            return conn
+        except Exception as e:
+            last_error = e
+            retries += 1
+
+            # Check if this is a rate limit error
+            error_str = str(e).lower()
+            if "rate limit" in error_str or "too many connections" in error_str:
+                logger.warning(f"Rate limit hit (attempt {retries}/{max_retries})")
+            else:
+                logger.warning(f"Database connection error (attempt {retries}/{max_retries}): {str(e)}")
+
+            # Close the connection if it was created
+            if 'conn' in locals():
+                conn.close()
+
+            # Only retry if we haven't hit max retries
+            if retries < max_retries:
+                # Calculate jittered exponential backoff
+                jitter_amount = random.uniform(-JITTER, JITTER) * retry_delay
+                actual_delay = retry_delay + jitter_amount
+                logger.info(f"Retrying in {actual_delay:.2f} seconds...")
+                time.sleep(actual_delay)
+                retry_delay = min(retry_delay * BACKOFF_FACTOR, MAX_RETRY_DELAY)
+
+    # If we got here, all retries failed
+    logger.error(f"Failed to establish database connection after {max_retries} attempts: {str(last_error)}")
+    return None
 
 # Create Base class for declarative models
 Base = declarative_base()
