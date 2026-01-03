@@ -1,0 +1,4 @@
+"""
+Lottery prediction platform package.
+"""
+

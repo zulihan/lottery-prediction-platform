@@ -5,7 +5,7 @@ Tests the PredictionStrategies class and individual strategy methods.
 """
 
 import pytest
-from tests.conftest import validate_combination_format
+from conftest import validate_combination_format
 
 
 @pytest.mark.unit
