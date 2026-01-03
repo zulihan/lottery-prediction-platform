@@ -87,28 +87,37 @@ This refactoring aims to create a clean, maintainable, well-documented codebase 
 
 ### Phase 4: Fix Code Quality Issues ✅ COMPLETE
 - [x] Merge duplicate method definitions
-- [ ] Add missing statistics methods (moved to Phase 5)
+- [x] Add missing statistics methods (completed in Phase 5)
 - [ ] Unit test each fixed method (deferred to Phase 8)
 - [x] Commit after each fix
 - **Completed:** 2026-01-03
 - **Commits:** 16460d8, f1180ad, e97a4d3, 18e85f4, 29c1e84, d276b50
 - **Lines reduced:** 227 (1690 → 1463 lines)
 
-### Phase 5: Reorganize Code
+### Phase 5: Add Missing Statistics Methods ✅ COMPLETE
+- [x] Implement get_number_range_distribution()
+- [x] Implement get_even_odd_distribution()
+- [x] Remove temporary fallback code from strategies.py
+- [x] Verify Python syntax for both files
+- **Completed:** 2026-01-03
+- **Commits:** 01543bb, be33d91
+- **Lines added:** 77 to statistics.py, -9 from strategies.py (net +68)
+
+### Phase 6: Reorganize Code
 - [ ] Move core files to src/core/
 - [ ] Move utilities to src/utils/
 - [ ] Move tools to src/tools/
 - [ ] Update imports
 - [ ] Use symlinks for transition
 
-### Phase 6: Create Documentation
+### Phase 7: Create Documentation
 - [ ] ARCHITECTURE.md - System design
 - [ ] API_REFERENCE.md - Strategy API
 - [ ] STATISTICS_API.md - Statistics classes
 - [ ] TESTING_GUIDE.md - Testing patterns
 - [ ] Update CLAUDE.md
 
-### Phase 7: Add Test Infrastructure
+### Phase 8: Add Test Infrastructure
 - [ ] Setup pytest
 - [ ] Create test fixtures
 - [ ] Add unit tests for strategies
@@ -321,6 +330,61 @@ All duplicate method definitions in strategies.py have been successfully merged 
 
 ---
 
+### 2026-01-03: Phase 5 Complete - Add Missing Methods ✅
+
+**Phase 5 Deliverables:**
+
+**5.1 Implemented Missing Statistics Methods (2 methods added)**
+
+Added the two methods that were referenced by strategies but not implemented:
+
+1. **get_number_range_distribution()** (Lines 405-433, 29 lines)
+   - Purpose: Get distribution of numbers across specified ranges
+   - Parameters: `ranges` (optional) - list of (start, end) tuples, defaults to [(1,10), (11,20), (21,30), (31,40), (41,50)]
+   - Returns: Dictionary mapping range labels to occurrence counts
+   - Example: `{"1-10": 45, "11-20": 52, "21-30": 48, "31-40": 51, "41-50": 54}`
+   - Used by: `stratified_sampling_strategy()` for range-based stratification
+
+2. **get_even_odd_distribution()** (Lines 435-480, 46 lines)
+   - Purpose: Get distribution of even vs odd numbers in historical draws
+   - Returns: Comprehensive dictionary with:
+     - Total even/odd counts across all draws
+     - Even/odd ratios (0.0-1.0)
+     - Distribution of draws by number of even numbers (0-5 even numbers per draw)
+   - Used by: `stratified_sampling_strategy()` for even/odd pattern analysis
+
+**5.2 Removed Temporary Fallback Code**
+
+Cleaned up `strategies.py` by removing try/except fallback blocks:
+- Removed 14 lines of temporary fallback code
+- Replaced with direct calls to newly implemented methods
+- Added filtering logic to extract per-draw distribution from even_odd_dist
+
+**Summary:**
+- **Methods implemented:** 2 methods in statistics.py
+- **Lines added to statistics.py:** 77 lines (402 → 479 lines)
+- **Lines removed from strategies.py:** 9 lines (1463 → 1454 lines)
+- **Net change:** +68 lines (cleaner, more maintainable code)
+- **Backup created:** statistics.py.backup-phase5
+- **Risk level:** Medium - New functionality, but well-documented
+- **Testing:** Python syntax verified for both files
+
+**Commits:**
+- `01543bb` - Add missing methods to statistics.py (+77 lines)
+- `be33d91` - Remove temporary fallbacks from strategies.py (-9 lines)
+
+**Verification:**
+```python
+# Both methods now available in EuromillionsStatistics:
+stats.get_number_range_distribution()  # Returns range distribution
+stats.get_even_odd_distribution()      # Returns even/odd analysis
+```
+
+**Time Invested:** ~15 minutes
+**Next Phase:** Phase 6 - Reorganize core code into src/ structure
+
+---
+
 ## Decisions Made
 
 ### Documentation Strategy
@@ -371,7 +435,7 @@ All duplicate method definitions in strategies.py have been successfully merged 
 |--------|--------|--------|----------|
 | Files in root | 268 | <30 | 130 (-51.5%) ✅ |
 | Duplicate methods | 6+ | 0 | 0 ✅ |
-| Missing methods | 2 | 0 | 2 |
+| Missing methods | 2 | 0 | 0 ✅ |
 | Documentation files | 2 | 7+ | 4 |
 | Test coverage | 0% | >50% | 0% |
 | Organized structure | No | Yes | In Progress |
@@ -382,8 +446,8 @@ All duplicate method definitions in strategies.py have been successfully merged 
 
 *Updated as refactoring progresses*
 
-**Current Phase:** Phase 4 Complete ✓
-**Next Phase:** Phase 5 - Add missing methods to statistics.py
+**Current Phase:** Phase 5 Complete ✓
+**Next Phase:** Phase 6 - Reorganize core code into src/ structure
 
 ---
 
