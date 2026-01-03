@@ -157,25 +157,6 @@ class PredictionStrategies:
             
         return combinations
         
-    def time_series_strategy(self, num_combinations=5, lag=3):
-        """Generate combinations using time series analysis."""
-        combinations = []
-        
-        # Simple implementation for now
-        for _ in range(num_combinations):
-            number_freq = self.stats.get_weighted_frequency(0.7)  # Higher recency weight
-            star_freq = self.stats.get_weighted_star_frequency(0.7)
-            
-            numbers = self._weighted_sample(number_freq, 5)
-            stars = self._weighted_sample(star_freq, 2)
-            
-            combinations.append({
-                'numbers': sorted(numbers),
-                'stars': sorted(stars),
-                'score': round(random.uniform(75, 90), 2)
-            })
-            
-        return combinations
         
     def cognitive_bias_strategy(self, num_combinations=5, window_size=10):
         """Generate combinations avoiding cognitive biases."""
