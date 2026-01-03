@@ -401,3 +401,80 @@ class EuromillionsStatistics:
                 "last_appearance": appearances[0],
                 "draws_since_last": appearances[0] if appearances else -1
             }
+
+    def get_number_range_distribution(self, ranges=None):
+        """
+        Get distribution of numbers across specified ranges.
+
+        Parameters:
+        -----------
+        ranges : list of tuples, optional
+            List of (start, end) tuples defining ranges
+            Default: [(1,10), (11,20), (21,30), (31,40), (41,50)]
+
+        Returns:
+        --------
+        dict
+            Dictionary mapping range labels to occurrence counts
+            Example: {"1-10": 45, "11-20": 52, ...}
+        """
+        if ranges is None:
+            ranges = [(1, 10), (11, 20), (21, 30), (31, 40), (41, 50)]
+
+        distribution = {}
+        for start, end in ranges:
+            range_label = f"{start}-{end}"
+            count = sum(
+                self.number_frequency.get(num, 0)
+                for num in range(start, end + 1)
+            )
+            distribution[range_label] = count
+
+        return distribution
+
+    def get_even_odd_distribution(self):
+        """
+        Get distribution of even vs odd numbers in historical draws.
+
+        Returns:
+        --------
+        dict
+            Dictionary with even/odd counts and ratios:
+            {
+                'even_count': int,      # Total occurrences of even numbers
+                'odd_count': int,       # Total occurrences of odd numbers
+                'even_ratio': float,    # Proportion of even numbers (0.0-1.0)
+                'odd_ratio': float,     # Proportion of odd numbers (0.0-1.0)
+                0: int,                 # Count of draws with 0 even numbers
+                1: int,                 # Count of draws with 1 even number
+                2: int,                 # Count of draws with 2 even numbers
+                3: int,                 # Count of draws with 3 even numbers
+                4: int,                 # Count of draws with 4 even numbers
+                5: int                  # Count of draws with 5 even numbers
+            }
+        """
+        # Calculate total even/odd occurrences across all draws
+        even_count = sum(
+            count for num, count in self.number_frequency.items()
+            if num % 2 == 0
+        )
+        odd_count = sum(
+            count for num, count in self.number_frequency.items()
+            if num % 2 == 1
+        )
+        total = even_count + odd_count
+
+        # Calculate how many draws have 0, 1, 2, 3, 4, or 5 even numbers
+        even_per_draw = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for _, row in self.data.iterrows():
+            numbers = [row[col] for col in self.number_cols]
+            even_in_draw = sum(1 for n in numbers if n % 2 == 0)
+            even_per_draw[even_in_draw] = even_per_draw.get(even_in_draw, 0) + 1
+
+        return {
+            'even_count': even_count,
+            'odd_count': odd_count,
+            'even_ratio': even_count / total if total > 0 else 0,
+            'odd_ratio': odd_count / total if total > 0 else 0,
+            **even_per_draw  # Unpack the distribution of even numbers per draw
+        }
