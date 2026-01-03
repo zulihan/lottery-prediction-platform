@@ -85,11 +85,14 @@ This refactoring aims to create a clean, maintainable, well-documented codebase 
 - **Commit:** ba6a95b
 - **Files archived:** 11 (140 → 130 files)
 
-### Phase 4: Fix Code Quality Issues
-- [ ] Merge duplicate method definitions
-- [ ] Add missing statistics methods
-- [ ] Unit test each fixed method
-- [ ] Commit after each fix
+### Phase 4: Fix Code Quality Issues ✅ COMPLETE
+- [x] Merge duplicate method definitions
+- [ ] Add missing statistics methods (moved to Phase 5)
+- [ ] Unit test each fixed method (deferred to Phase 8)
+- [x] Commit after each fix
+- **Completed:** 2026-01-03
+- **Commits:** 16460d8, f1180ad, e97a4d3, 18e85f4, 29c1e84, d276b50
+- **Lines reduced:** 227 (1690 → 1463 lines)
 
 ### Phase 5: Reorganize Code
 - [ ] Move core files to src/core/
@@ -252,6 +255,72 @@ Moved to `archive/app_variants/`:
 
 ---
 
+### 2026-01-03: Phase 4 Complete - Fix Duplicate Methods ✅
+
+**Phase 4 Deliverables:**
+
+**4.1 Duplicate Method Analysis and Fixes (6 duplicates resolved)**
+
+All duplicate method definitions in strategies.py have been successfully merged into single, comprehensive implementations:
+
+1. **stratified_sampling_strategy** (Commit: 16460d8)
+   - Removed: Simple definition (lines 213-240, 28 lines)
+   - Kept: Comprehensive definition with multiple strata_type options
+   - Added: Temporary fallbacks for missing statistics methods (to be implemented in Phase 5)
+
+2. **risk_reward_strategy** (Commit: f1180ad)
+   - Removed: First definition (lines 94-190, 97 lines)
+   - Kept: Comprehensive definition with sum distribution analysis
+   - Added: Backward compatibility for both parameter scales (0.0-1.0 and 1-10)
+
+3. **bayesian_strategy** (Commit: e97a4d3)
+   - Removed: Placeholder (lines 160-181, 22 lines)
+   - Kept: Comprehensive definition with prior_type and update_method parameters
+
+4. **markov_chain_strategy → markov_strategy** (Commit: 18e85f4)
+   - Removed: markov_chain_strategy placeholder (lines 160-179, 20 lines)
+   - Kept: markov_strategy as canonical name using MarkovModel class
+
+5. **time_series_strategy** (Commit: 29c1e84)
+   - Removed: Simple placeholder (lines 160-178, 19 lines)
+   - Kept: Comprehensive TimeSeriesModel implementation with detailed docstring
+
+6. **cognitive_bias_strategy** (Commit: d276b50)
+   - Removed: Simple version (lines 161-216, 56 lines)
+   - Kept: Sophisticated anti-bias weighting implementation with calculated scoring factors
+
+**Summary:**
+- **Total duplicates fixed:** 6 methods
+- **Lines removed:** 227 lines (1690 → 1463 lines)
+- **File reduction:** 13.4% size reduction
+- **Backup created:** strategies.py.backup-phase4
+- **Risk level:** High - Core logic changes, but committed incrementally
+- **Testing:** Python syntax verified after each fix
+
+**Commits:**
+- `16460d8` - Fix duplicate 1/6: stratified_sampling_strategy
+- `f1180ad` - Fix duplicate 2/6: risk_reward_strategy
+- `e97a4d3` - Fix duplicate 3/6: bayesian_strategy
+- `18e85f4` - Fix duplicate 4/6: markov methods (standardize to markov_strategy)
+- `29c1e84` - Fix duplicate 5/6: time_series_strategy
+- `d276b50` - Fix duplicate 6/6: cognitive_bias_strategy
+
+**Verification:**
+```bash
+# Only one definition of each method remains:
+# - stratified_sampling_strategy (line 330)
+# - risk_reward_strategy (line 1010)
+# - bayesian_strategy (line 1169)
+# - markov_strategy (line 1242)
+# - time_series_strategy (line 1285)
+# - cognitive_bias_strategy (line 1319)
+```
+
+**Time Invested:** ~30 minutes
+**Next Phase:** Phase 5 - Add missing methods to statistics.py
+
+---
+
 ## Decisions Made
 
 ### Documentation Strategy
@@ -300,10 +369,10 @@ Moved to `archive/app_variants/`:
 
 | Metric | Before | Target | Progress |
 |--------|--------|--------|----------|
-| Files in root | 268 | <30 | 268 |
-| Duplicate methods | 6+ | 0 | 6+ |
+| Files in root | 268 | <30 | 130 (-51.5%) ✅ |
+| Duplicate methods | 6+ | 0 | 0 ✅ |
 | Missing methods | 2 | 0 | 2 |
-| Documentation files | 2 | 7+ | 3 |
+| Documentation files | 2 | 7+ | 4 |
 | Test coverage | 0% | >50% | 0% |
 | Organized structure | No | Yes | In Progress |
 
@@ -313,8 +382,8 @@ Moved to `archive/app_variants/`:
 
 *Updated as refactoring progresses*
 
-**Current Phase:** Phase 1 Complete ✓
-**Next Phase:** Phase 2 - Archive one-off scripts
+**Current Phase:** Phase 4 Complete ✓
+**Next Phase:** Phase 5 - Add missing methods to statistics.py
 
 ---
 
