@@ -372,9 +372,12 @@ def main():
                         stats = None
                     
                     if stats:
-                        # Get hot and cold numbers
-                        hot_numbers, cold_numbers = stats.get_hot_cold_numbers()
-                        hot_lucky, cold_lucky = stats.get_hot_cold_lucky_numbers()
+                        # Get hot and cold numbers (returns a dict)
+                        hot_cold = stats.get_hot_cold_numbers()
+                        hot_numbers = hot_cold.get('hot_numbers', [])
+                        cold_numbers = hot_cold.get('cold_numbers', [])
+                        hot_lucky = hot_cold.get('hot_lucky', [])
+                        cold_lucky = hot_cold.get('cold_lucky', [])
                         
                         # Display hot and cold numbers
                         st.subheader("Hot and Cold Numbers")

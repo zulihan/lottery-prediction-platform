@@ -510,6 +510,127 @@ class FrenchLotoStatistics:
         }
         
         return stats
+    
+    def get_frequency_dataframes(self):
+        """
+        Get frequency dataframes for main numbers and lucky numbers
+        
+        Returns:
+            tuple: (main_freq_df, lucky_freq_df) - DataFrames with number and frequency columns
+        """
+        if not hasattr(self, 'main_number_freq'):
+            self.analyze_frequencies()
+        
+        # Create DataFrame for main numbers
+        main_freq_df = pd.DataFrame({
+            'number': list(self.main_number_freq.keys()),
+            'frequency': list(self.main_number_freq.values())
+        })
+        
+        # Create DataFrame for lucky numbers
+        lucky_freq_df = pd.DataFrame({
+            'number': list(self.lucky_number_freq.keys()),
+            'frequency': list(self.lucky_number_freq.values())
+        })
+        
+        return main_freq_df, lucky_freq_df
+    
+    def get_distribution_stats(self):
+        """
+        Get distribution statistics including even/odd and low/high patterns
+        
+        Returns:
+            dict: Dictionary with distribution statistics
+        """
+        if self.data is None or len(self.data) == 0:
+            return {
+                'even_odd_pattern': 'N/A',
+                'low_high_pattern': 'N/A'
+            }
+        
+        # Get column names for main numbers
+        main_cols = ['n1', 'n2', 'n3', 'n4', 'n5']
+        if 'n1' not in self.data.columns and 'number1' in self.data.columns:
+            main_cols = ['number1', 'number2', 'number3', 'number4', 'number5']
+        
+        # Calculate even/odd patterns
+        even_odd_patterns = []
+        low_high_patterns = []
+        
+        for _, row in self.data.iterrows():
+            numbers = [int(row[col]) for col in main_cols]
+            even_count = sum(1 for n in numbers if n % 2 == 0)
+            odd_count = 5 - even_count
+            even_odd_patterns.append(f"{even_count}e-{odd_count}o")
+            
+            # Low/high: numbers 1-24 are low, 25-49 are high
+            low_count = sum(1 for n in numbers if n <= 24)
+            high_count = 5 - low_count
+            low_high_patterns.append(f"{low_count}l-{high_count}h")
+        
+        # Get most common pattern
+        from collections import Counter
+        most_common_even_odd = Counter(even_odd_patterns).most_common(1)[0][0]
+        most_common_low_high = Counter(low_high_patterns).most_common(1)[0][0]
+        
+        return {
+            'even_odd_pattern': most_common_even_odd,
+            'low_high_pattern': most_common_low_high
+        }
+    
+    def get_recency_stats(self, draws=20):
+        """
+        Get statistics about recent draws
+        
+        Args:
+            draws: Number of recent draws to analyze
+            
+        Returns:
+            dict: Dictionary with recent statistics including hot numbers and hot lucky numbers
+        """
+        if self.data is None or len(self.data) == 0:
+            return {
+                'hot_numbers': [],
+                'hot_lucky': []
+            }
+        
+        # Get recent draws
+        recent_data = self.data.sort_values('date', ascending=False).head(draws)
+        
+        # Get column names
+        main_cols = ['n1', 'n2', 'n3', 'n4', 'n5']
+        if 'n1' not in self.data.columns and 'number1' in self.data.columns:
+            main_cols = ['number1', 'number2', 'number3', 'number4', 'number5']
+        lucky_col = 'lucky' if 'lucky' in self.data.columns else 'lucky_number'
+        
+        # Count frequencies in recent draws
+        recent_main_numbers = []
+        for col in main_cols:
+            recent_main_numbers.extend(recent_data[col].tolist())
+        
+        recent_main_freq = {}
+        for i in range(1, 50):
+            recent_main_freq[i] = recent_main_numbers.count(i)
+        
+        recent_lucky_numbers = recent_data[lucky_col].tolist()
+        recent_lucky_freq = {}
+        for i in range(1, 11):
+            recent_lucky_freq[i] = recent_lucky_numbers.count(i)
+        
+        # Get hot numbers (above average)
+        avg_main_freq = sum(recent_main_freq.values()) / len(recent_main_freq) if recent_main_freq else 0
+        hot_numbers = [n for n, freq in recent_main_freq.items() 
+                      if freq > avg_main_freq * 1.2]
+        
+        # Get hot lucky numbers
+        avg_lucky_freq = sum(recent_lucky_freq.values()) / len(recent_lucky_freq) if recent_lucky_freq else 0
+        hot_lucky = [n for n, freq in recent_lucky_freq.items() 
+                    if freq > avg_lucky_freq * 1.2]
+        
+        return {
+            'hot_numbers': sorted(hot_numbers),
+            'hot_lucky': sorted(hot_lucky)
+        }
 
 def get_french_loto_data():
     """
