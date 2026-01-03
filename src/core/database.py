@@ -21,20 +21,48 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # Flag to track if database is available
 DB_AVAILABLE = True
 
+# If no DATABASE_URL is set, try to use local SQLite files
+if not DATABASE_URL:
+    # Check for local SQLite database files
+    sqlite_files = [
+        'lottery_predictions.db',
+        'euromillions_predictions.db'
+    ]
+    
+    for sqlite_file in sqlite_files:
+        if os.path.exists(sqlite_file):
+            DATABASE_URL = f'sqlite:///{sqlite_file}'
+            logger.info(f"Using local SQLite database: {sqlite_file}")
+            break
+    
+    # If no local file found, use in-memory SQLite
+    if not DATABASE_URL:
+        DATABASE_URL = 'sqlite:///:memory:'
+        logger.warning("No DATABASE_URL set and no local SQLite files found. Using in-memory database.")
+
 # Create SQLAlchemy engine with improved connection pooling
 # Modified to reduce likelihood of hitting rate limits
 try:
-    engine = create_engine(
-        DATABASE_URL,
-        isolation_level="AUTOCOMMIT",
-        pool_size=2,  # Reduced pool size to avoid rate limits
-        max_overflow=3,  # Reduced overflow connections
-        pool_timeout=30,
-        pool_recycle=1800,  # Recycle connections after 30 minutes
-        pool_pre_ping=True,  # Verify connections before using them
-        poolclass=QueuePool,
-        connect_args={'connect_timeout': 10}
-    )
+    if DATABASE_URL.startswith('sqlite'):
+        # SQLite doesn't support all PostgreSQL connection options
+        engine = create_engine(
+            DATABASE_URL,
+            connect_args={'check_same_thread': False} if 'sqlite' in DATABASE_URL else {}
+        )
+    else:
+        # PostgreSQL connection with pooling
+        engine = create_engine(
+            DATABASE_URL,
+            isolation_level="AUTOCOMMIT",
+            pool_size=2,  # Reduced pool size to avoid rate limits
+            max_overflow=3,  # Reduced overflow connections
+            pool_timeout=30,
+            pool_recycle=1800,  # Recycle connections after 30 minutes
+            pool_pre_ping=True,  # Verify connections before using them
+            poolclass=QueuePool,
+            connect_args={'connect_timeout': 10}
+        )
+    
     # Test connection quickly
     from sqlalchemy import text
     with engine.connect() as conn:

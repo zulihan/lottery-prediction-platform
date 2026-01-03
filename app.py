@@ -19,8 +19,15 @@ try:
     from src.utils.combination_analysis import analyze_full_combinations, analyze_number_combinations
     from src.utils.strategy_recommendation import get_ordered_strategy_list, get_strategy_info_text, get_base_strategy_name
     from src.core.fibonacci_strategy import generate_fibonacci_combinations, get_fibonacci_strategy_info, save_fibonacci_to_database
-except ImportError:
-    logging.warning("Strategy modules not found. Some features may be unavailable.")
+except ImportError as e:
+    logging.warning(f"Strategy modules not found. Some features may be unavailable. Error: {str(e)}")
+    # Define fallback functions
+    def get_strategy_info_text():
+        return "Strategy information not available."
+    def get_ordered_strategy_list():
+        return []
+    def get_base_strategy_name(strategy):
+        return strategy
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
