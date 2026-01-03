@@ -2,9 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 📚 Documentation Index
+
+**Quick Reference (This File):** Core commands, architecture overview, common patterns
+
+**Comprehensive Documentation:**
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture, data flow, design patterns
+- **[docs/API_REFERENCE.md](docs/API_REFERENCE.md)** - Complete strategy API with examples
+- **[docs/STATISTICS_API.md](docs/STATISTICS_API.md)** - Statistics class methods reference
+- **[docs/REFACTORING_HISTORY.md](docs/REFACTORING_HISTORY.md)** - Refactoring phases & decisions
+- **[docs/EXTRACTED_CODE.md](docs/EXTRACTED_CODE.md)** - Useful code from archived files
+- **[strategy_descriptions.md](strategy_descriptions.md)** - User-facing strategy descriptions
+
+---
+
 ## Project Overview
 
-A comprehensive lottery prediction platform for Euromillions and French Loto that uses advanced statistical analysis and machine learning techniques. The application combines multiple prediction strategies including frequency analysis, Fibonacci sequences, risk/reward models, Markov chains, and time series analysis.
+A comprehensive lottery prediction platform for Euromillions and French Loto that uses advanced statistical analysis and machine learning techniques. The application combines 15+ prediction strategies including frequency analysis, Fibonacci sequences, risk/reward models, Bayesian inference, Markov chains, and time series analysis.
 
 ## Core Commands
 
@@ -30,16 +44,43 @@ export DATABASE_URL="postgresql://postgres:password@localhost:5432/lottery_predi
 ```
 
 ### Testing
-Note: This project does not have a formal test suite. Strategy validation is done through backtesting scripts (e.g., `comprehensive_strategy_backtest.py`, `full_historical_backtest.py`).
+Note: Formal test infrastructure is planned for Phase 8. Current validation is through backtesting scripts.
 
 ## Architecture
 
+**📚 For detailed architecture documentation, see:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
+### Project Structure (Post-Refactoring)
+```
+lottery-prediction-platform/
+├── app.py                          # Main Streamlit application
+├── src/
+│   ├── core/                       # Core production code
+│   │   ├── database.py            # PostgreSQL models & connection
+│   │   ├── models.py              # ML models (Bayesian, Markov, TimeSeries)
+│   │   ├── statistics.py          # Euromillions statistics
+│   │   ├── strategies.py          # 15+ prediction strategies
+│   │   ├── french_loto_strategy.py
+│   │   ├── french_loto_statistics.py
+│   │   └── fibonacci_strategy.py
+│   └── utils/                      # Shared utilities
+│       ├── combination_analysis.py
+│       └── strategy_recommendation.py
+├── archive/                        # Archived development files (139 files)
+├── docs/                           # Comprehensive documentation
+│   ├── ARCHITECTURE.md            # System design & data flow
+│   ├── API_REFERENCE.md           # Strategy API reference
+│   ├── STATISTICS_API.md          # Statistics class reference
+│   ├── REFACTORING_HISTORY.md     # Refactoring log
+│   └── EXTRACTED_CODE.md          # Code preserved from variants
+└── tests/                          # Test suite (future)
+```
+
 ### Application Stack
-- **Frontend**: Streamlit-based web application with multi-page navigation
+- **Frontend**: Streamlit-based web application
 - **Database**: PostgreSQL 16 with SQLAlchemy ORM
 - **Data Processing**: Pandas/NumPy for statistical analysis
 - **Visualization**: Plotly and Matplotlib for interactive charts
-- **Caching**: Local file-based pickle caching with 24-hour expiration
 
 ### Database Architecture
 The database uses SQLAlchemy with connection pooling and retry logic to handle rate limits:
