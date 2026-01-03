@@ -853,10 +853,12 @@ def main():
                                             
                                             st.divider()
                                 
-                                # Store combinations in session state for mixing
+                                # Store combinations in session state for mixing (append, don't replace)
                                 if 'loto_generated_combinations' not in st.session_state:
                                     st.session_state.loto_generated_combinations = []
-                                st.session_state.loto_generated_combinations = combinations
+                                # Add new combinations to existing ones
+                                st.session_state.loto_generated_combinations.extend(combinations)
+                                st.info(f"💾 {len(combinations)} combination(s) added to mixing pool (Total: {len(st.session_state.loto_generated_combinations)})")
                                 
                             except Exception as e:
                                 st.error(f"Error generating combinations: {str(e)}")
@@ -864,39 +866,120 @@ def main():
                                 st.error(f"Traceback: {traceback.format_exc()}")
                     
                     # Mix Combinations Section
-                    if 'loto_generated_combinations' in st.session_state and len(st.session_state.loto_generated_combinations) >= 2:
-                        st.divider()
-                        st.subheader("🔀 Mix Combinations for Maximum Score")
-                        st.markdown("Combine multiple generated combinations to create an optimal new combination with the highest possible score.")
-                        
+                    st.divider()
+                    st.subheader("🔀 Mix Combinations for Maximum Score")
+                    st.markdown("Combine multiple combinations to create an optimal new combination with the highest possible score.")
+                    
+                    # Initialize session state if needed
+                    if 'loto_generated_combinations' not in st.session_state:
+                        st.session_state.loto_generated_combinations = []
+                    
+                    available_combos = st.session_state.loto_generated_combinations
+                    
+                    # Management buttons
+                    col_reset, col_add_manual, col_count = st.columns([1, 1, 2])
+                    
+                    with col_reset:
+                        if st.button("🗑️ Reset All", key="loto_reset_combos", help="Clear all combinations from mixing pool"):
+                            st.session_state.loto_generated_combinations = []
+                            st.rerun()
+                    
+                    with col_add_manual:
+                        show_manual_form = st.button("➕ Add Manual Combination", key="loto_show_manual", help="Add a combination manually")
+                    
+                    with col_count:
+                        st.caption(f"**Total combinations in pool:** {len(available_combos)}")
+                    
+                    # Manual combination input form
+                    if show_manual_form:
+                        with st.expander("➕ Add Manual Combination", expanded=True):
+                            with st.form(key="loto_manual_combo_form"):
+                                st.markdown("Enter a combination manually:")
+                                
+                                col1, col2, col3, col4, col5 = st.columns(5)
+                                with col1:
+                                    n1 = st.number_input("Number 1", min_value=1, max_value=49, value=1, key="manual_n1")
+                                with col2:
+                                    n2 = st.number_input("Number 2", min_value=1, max_value=49, value=2, key="manual_n2")
+                                with col3:
+                                    n3 = st.number_input("Number 3", min_value=1, max_value=49, value=3, key="manual_n3")
+                                with col4:
+                                    n4 = st.number_input("Number 4", min_value=1, max_value=49, value=4, key="manual_n4")
+                                with col5:
+                                    n5 = st.number_input("Number 5", min_value=1, max_value=49, value=5, key="manual_n5")
+                                
+                                lucky = st.number_input("Lucky Number", min_value=1, max_value=10, value=1, key="manual_lucky")
+                                
+                                manual_score = st.slider("Score (optional)", min_value=0.0, max_value=100.0, value=75.0, key="manual_score")
+                                
+                                manual_strategy = st.text_input("Strategy Name (optional)", value="Manual Entry", key="manual_strategy")
+                                
+                                submit_manual = st.form_submit_button("✅ Add to Pool")
+                                
+                                if submit_manual:
+                                    # Validate numbers are unique
+                                    numbers = [n1, n2, n3, n4, n5]
+                                    if len(set(numbers)) != 5:
+                                        st.error("❌ All 5 numbers must be unique!")
+                                    else:
+                                        manual_combo = {
+                                            'main_numbers': sorted(numbers),
+                                            'lucky_number': int(lucky),
+                                            'score': float(manual_score),
+                                            'strategy': manual_strategy,
+                                            'date_generated': datetime.now().strftime('%Y-%m-%d')
+                                        }
+                                        st.session_state.loto_generated_combinations.append(manual_combo)
+                                        st.success(f"✅ Added manual combination: {sorted(numbers)} (Lucky: {lucky})")
+                                        st.rerun()
+                    
+                    if len(available_combos) >= 2:
                         # Display available combinations
                         st.markdown("**Available Combinations to Mix:**")
-                        available_combos = st.session_state.loto_generated_combinations
                         
-                        # Create checkboxes for selection
+                        # Create checkboxes for selection with delete option
                         selected_indices = []
-                        cols = st.columns(min(3, len(available_combos)))
                         
-                        for i, combo in enumerate(available_combos):
-                            with cols[i % len(cols)]:
-                                if 'main_numbers' in combo:
-                                    numbers_str = ", ".join([str(n) for n in combo['main_numbers']])
-                                    lucky_str = str(combo.get('lucky_number', 'N/A'))
-                                    score = combo.get('score', 0)
-                                else:
-                                    numbers_str = ", ".join([str(n) for n in combo.get('numbers', [])])
-                                    lucky_str = "N/A"
-                                    score = combo.get('score', 0)
-                                
-                                if st.checkbox(
-                                    f"Combo {i+1} (Score: {score:.1f})",
-                                    key=f"loto_mix_select_{i}",
-                                    value=(i < 2)  # Pre-select first 2 by default
-                                ):
-                                    selected_indices.append(i)
-                                
-                                st.caption(f"Numbers: {numbers_str}")
-                                st.caption(f"Lucky: {lucky_str}")
+                        # Group combinations in rows of 3
+                        for row_start in range(0, len(available_combos), 3):
+                            cols = st.columns(3)
+                            row_combos = available_combos[row_start:row_start+3]
+                            
+                            for col_idx, (i, combo) in enumerate(zip(range(row_start, row_start+len(row_combos)), row_combos)):
+                                with cols[col_idx]:
+                                    if 'main_numbers' in combo:
+                                        numbers_str = ", ".join([str(n) for n in combo['main_numbers']])
+                                        lucky_str = str(combo.get('lucky_number', 'N/A'))
+                                        score = combo.get('score', 0)
+                                        strategy = combo.get('strategy', 'Unknown')
+                                    else:
+                                        numbers_str = ", ".join([str(n) for n in combo.get('numbers', [])])
+                                        lucky_str = "N/A"
+                                        score = combo.get('score', 0)
+                                        strategy = combo.get('strategy', 'Unknown')
+                                    
+                                    # Container for each combo
+                                    with st.container():
+                                        # Checkbox for selection
+                                        if st.checkbox(
+                                            f"Combo {i+1}",
+                                            key=f"loto_mix_select_{i}",
+                                            value=(i < 2 and row_start == 0)  # Pre-select first 2
+                                        ):
+                                            selected_indices.append(i)
+                                        
+                                        # Display combo info
+                                        st.markdown(f"**Score:** {score:.1f}")
+                                        st.caption(f"Numbers: {numbers_str}")
+                                        st.caption(f"Lucky: {lucky_str}")
+                                        st.caption(f"Strategy: {strategy}")
+                                        
+                                        # Delete button
+                                        if st.button("🗑️", key=f"loto_delete_{i}", help="Remove this combination"):
+                                            st.session_state.loto_generated_combinations.pop(i)
+                                            st.rerun()
+                                        
+                                        st.divider()
                         
                         if len(selected_indices) >= 2:
                             mix_button = st.button("✨ Mix Selected Combinations", type="primary", key="loto_mix_button")
