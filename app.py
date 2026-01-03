@@ -14,11 +14,11 @@ import logging
 # Import strategy and analysis tools
 try:
     from src.core.strategies import PredictionStrategies
-    from french_loto_strategy import FrenchLotoStrategy
-    from french_loto_statistics import FrenchLotoStatistics
-    from combination_analysis import analyze_full_combinations, analyze_number_combinations
-    from strategy_recommendation import get_ordered_strategy_list, get_strategy_info_text, get_base_strategy_name
-    from fibonacci_strategy import generate_fibonacci_combinations, get_fibonacci_strategy_info, save_fibonacci_to_database
+    from src.core.french_loto_strategy import FrenchLotoStrategy
+    from src.core.french_loto_statistics import FrenchLotoStatistics
+    from src.utils.combination_analysis import analyze_full_combinations, analyze_number_combinations
+    from src.utils.strategy_recommendation import get_ordered_strategy_list, get_strategy_info_text, get_base_strategy_name
+    from src.core.fibonacci_strategy import generate_fibonacci_combinations, get_fibonacci_strategy_info, save_fibonacci_to_database
 except ImportError:
     logging.warning("Strategy modules not found. Some features may be unavailable.")
 
