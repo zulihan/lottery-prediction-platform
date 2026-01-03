@@ -157,28 +157,6 @@ class PredictionStrategies:
             
         return combinations
         
-    def bayesian_strategy(self, num_combinations=5, prior_type="adaptive", recent_draws_count=20, prior_strength=1.0):
-        """Generate combinations using Bayesian inference."""
-        combinations = []
-        
-        # Simple implementation for now
-        for _ in range(num_combinations):
-            # Get weighted frequencies with higher weight on recent draws
-            number_freq = self.stats.get_weighted_frequency(0.6)
-            star_freq = self.stats.get_weighted_star_frequency(0.6)
-            
-            # Generate using weighted sampling
-            numbers = self._weighted_sample(number_freq, 5)
-            stars = self._weighted_sample(star_freq, 2)
-            
-            combinations.append({
-                'numbers': sorted(numbers),
-                'stars': sorted(stars),
-                'score': round(random.uniform(75, 95), 2)
-            })
-            
-        return combinations
-        
     def markov_chain_strategy(self, num_combinations=5, balanced=0.7):
         """Generate combinations using Markov chain model."""
         combinations = []
