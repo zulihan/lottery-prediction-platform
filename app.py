@@ -90,6 +90,29 @@ def main():
         if st.session_state.data_loaded:
             st.success(f"✅ {len(st.session_state.processed_data)} Euromillions drawings loaded")
         
+        # Update Euromillions from FDJ API
+        st.subheader("Update from FDJ API")
+        update_euromillions_button = st.button("🔄 Update Euromillions", help="Download latest drawings from FDJ API")
+        
+        if update_euromillions_button:
+            with st.spinner("Updating Euromillions from FDJ API..."):
+                try:
+                    from update_latest_draws import update_euromillions
+                    count = update_euromillions()
+                    if count > 0:
+                        st.success(f"✅ {count} new Euromillions drawings imported!")
+                        # Reload data
+                        conn = get_db_connection()
+                        if conn:
+                            query = "SELECT * FROM euromillions_drawings ORDER BY date DESC"
+                            data = pd.read_sql(query, conn)
+                            st.session_state.processed_data = data
+                            st.session_state.data_loaded = True
+                    else:
+                        st.info("No new Euromillions drawings found (all already imported)")
+                except Exception as e:
+                    st.error(f"Error updating Euromillions: {str(e)}")
+        
         # French Loto data loading
         st.subheader("French Loto Data")
         load_french_loto_button = st.button("Load French Loto Data")
@@ -108,9 +131,31 @@ def main():
                         st.error(f"Error loading data: {str(e)}")
                 else:
                     st.error("Could not connect to database.")
-            
-            if st.session_state.french_loto_data_loaded:
-                st.success(f"✅ {len(st.session_state.french_loto_data)} French Loto drawings loaded")
+        
+        # Update French Loto from FDJ API
+        if st.session_state.french_loto_data_loaded:
+            st.success(f"✅ {len(st.session_state.french_loto_data)} French Loto drawings loaded")
+        
+        update_french_loto_button = st.button("🔄 Update French Loto", help="Download latest drawings from FDJ API")
+        
+        if update_french_loto_button:
+            with st.spinner("Updating French Loto from FDJ API..."):
+                try:
+                    from update_latest_draws import update_french_loto
+                    count = update_french_loto()
+                    if count > 0:
+                        st.success(f"✅ {count} new French Loto drawings imported!")
+                        # Reload data
+                        conn = get_db_connection()
+                        if conn:
+                            query = "SELECT * FROM french_loto_drawings ORDER BY date DESC"
+                            data = pd.read_sql(query, conn)
+                            st.session_state.french_loto_data = data
+                            st.session_state.french_loto_data_loaded = True
+                    else:
+                        st.info("No new French Loto drawings found (all already imported)")
+                except Exception as e:
+                    st.error(f"Error updating French Loto: {str(e)}")
     
     # Create tabs for different application functionalities
     tabs = st.tabs([
