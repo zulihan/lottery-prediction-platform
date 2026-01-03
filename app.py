@@ -13,7 +13,7 @@ import logging
 
 # Import strategy and analysis tools
 try:
-    from strategies import PredictionStrategies
+    from src.core.strategies import PredictionStrategies
     from french_loto_strategy import FrenchLotoStrategy
     from french_loto_statistics import FrenchLotoStatistics
     from combination_analysis import analyze_full_combinations, analyze_number_combinations
