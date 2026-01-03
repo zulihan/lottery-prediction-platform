@@ -398,7 +398,7 @@ def main():
                 # Initialize strategies
                 try:
                     # Create a simple statistics class for Euromillions data
-                    from statistics import EuromillionsStatistics
+                    from src.core.statistics import EuromillionsStatistics
                     euro_stats = EuromillionsStatistics(st.session_state.processed_data)
                     strategies = PredictionStrategies(euro_stats)
                 except Exception as e:
