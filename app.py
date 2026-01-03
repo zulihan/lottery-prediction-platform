@@ -886,7 +886,13 @@ def main():
                             st.rerun()
                     
                     with col_add_manual:
-                        show_manual_form = st.button("➕ Add Manual Combination", key="loto_show_manual", help="Add a combination manually")
+                        # Use session state to keep form open
+                        if 'loto_show_manual_form' not in st.session_state:
+                            st.session_state.loto_show_manual_form = False
+                        
+                        if st.button("➕ Add Manual Combination", key="loto_show_manual", help="Add a combination manually"):
+                            st.session_state.loto_show_manual_form = not st.session_state.loto_show_manual_form
+                            st.rerun()
                     
                     with col_count:
                         # Get fresh count
@@ -894,7 +900,7 @@ def main():
                         st.caption(f"**Total combinations in pool:** {current_count}")
                     
                     # Manual combination input form
-                    if show_manual_form:
+                    if st.session_state.loto_show_manual_form:
                         with st.expander("➕ Add Manual Combination", expanded=True):
                             with st.form(key="loto_manual_combo_form"):
                                 st.markdown("Enter a combination manually:")
@@ -917,11 +923,17 @@ def main():
                                 
                                 manual_strategy = st.text_input("Strategy Name (optional)", value="Manual Entry", key="manual_strategy")
                                 
-                                submit_manual = st.form_submit_button("✅ Add to Pool")
+                                col_submit, col_close = st.columns([1, 1])
+                                with col_submit:
+                                    submit_manual = st.form_submit_button("✅ Add to Pool", type="primary")
+                                with col_close:
+                                    if st.form_submit_button("❌ Close"):
+                                        st.session_state.loto_show_manual_form = False
+                                        st.rerun()
                                 
                                 if submit_manual:
                                     # Validate numbers are unique
-                                    numbers = [n1, n2, n3, n4, n5]
+                                    numbers = [int(n1), int(n2), int(n3), int(n4), int(n5)]
                                     if len(set(numbers)) != 5:
                                         st.error("❌ All 5 numbers must be unique!")
                                     else:
@@ -934,6 +946,7 @@ def main():
                                         }
                                         st.session_state.loto_generated_combinations.append(manual_combo)
                                         st.success(f"✅ Added manual combination: {sorted(numbers)} (Lucky: {lucky})")
+                                        # Keep form open for adding more
                                         st.rerun()
                     
                     # Always show available combinations (even if less than 2)
