@@ -1306,8 +1306,260 @@ def main():
     
     # Results Analysis tab
     with tabs[3]:
-        st.header("Results Analysis")
-        st.write("Results analysis functionality will be implemented here.")
+        st.header("📊 Results Analysis")
+        st.markdown("Compare your saved predictions against actual draw results and analyze performance.")
+        
+        # Lottery type selection
+        lottery_type = st.radio(
+            "Select Lottery Type",
+            ["French Loto", "Euromillions"],
+            horizontal=True,
+            key="results_lottery_type"
+        )
+        
+        if lottery_type == "French Loto":
+            st.subheader("French Loto Results Analysis")
+            
+            # Get latest drawing date
+            conn = get_db_connection()
+            if conn:
+                try:
+                    latest_drawing_query = "SELECT MAX(date) as latest_date FROM french_loto_drawings"
+                    latest_drawing = pd.read_sql(latest_drawing_query, conn)
+                    latest_date = latest_drawing['latest_date'].iloc[0] if not latest_drawing.empty and latest_drawing['latest_date'].iloc[0] else None
+                    
+                    if latest_date:
+                        st.info(f"📅 Latest draw in database: {latest_date}")
+                    else:
+                        st.warning("⚠️ No drawings found in database. Add a drawing first.")
+                except Exception as e:
+                    st.error(f"Error checking latest drawing: {str(e)}")
+                    latest_date = None
+            else:
+                latest_date = None
+                st.error("Could not connect to database.")
+            
+            # Section 1: Add/Update Draw Result
+            st.subheader("1️⃣ Add or Update Draw Result")
+            with st.expander("➕ Add New Draw Result", expanded=False):
+                with st.form(key="add_draw_result_form"):
+                    draw_date = st.date_input("Draw Date", value=date.today(), key="result_draw_date")
+                    
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    with col1:
+                        n1 = st.number_input("Number 1", min_value=1, max_value=49, value=1, key="result_n1")
+                    with col2:
+                        n2 = st.number_input("Number 2", min_value=1, max_value=49, value=2, key="result_n2")
+                    with col3:
+                        n3 = st.number_input("Number 3", min_value=1, max_value=49, value=3, key="result_n3")
+                    with col4:
+                        n4 = st.number_input("Number 4", min_value=1, max_value=49, value=4, key="result_n4")
+                    with col5:
+                        n5 = st.number_input("Number 5", min_value=1, max_value=49, value=5, key="result_n5")
+                    
+                    lucky = st.number_input("Lucky Number", min_value=1, max_value=10, value=1, key="result_lucky")
+                    
+                    submit_draw = st.form_submit_button("✅ Add Draw Result", type="primary")
+                    
+                    if submit_draw:
+                        # Validate numbers are unique
+                        numbers = [int(n1), int(n2), int(n3), int(n4), int(n5)]
+                        if len(set(numbers)) != 5:
+                            st.error("❌ All 5 numbers must be unique!")
+                        else:
+                            try:
+                                from src.core.database import add_french_loto_drawing_with_details
+                                success = add_french_loto_drawing_with_details(
+                                    date=draw_date,
+                                    numbers=sorted(numbers),
+                                    lucky=int(lucky),
+                                    draw_num=1
+                                )
+                                if success:
+                                    st.success(f"✅ Draw result added for {draw_date}!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Failed to add draw result. It may already exist.")
+                            except Exception as e:
+                                st.error(f"Error adding draw: {str(e)}")
+            
+            # Section 2: Analyze Predictions vs Results
+            st.subheader("2️⃣ Analyze Predictions Against Latest Draw")
+            
+            if latest_date:
+                # Get latest drawing
+                try:
+                    latest_draw_query = f"""
+                        SELECT date, n1, n2, n3, n4, n5, lucky 
+                        FROM french_loto_drawings 
+                        WHERE date = '{latest_date}'
+                        ORDER BY draw_num DESC
+                        LIMIT 1
+                    """
+                    latest_draw_df = pd.read_sql(latest_draw_query, conn)
+                    
+                    if not latest_draw_df.empty:
+                        draw = latest_draw_df.iloc[0]
+                        actual_numbers = sorted([int(draw['n1']), int(draw['n2']), int(draw['n3']), int(draw['n4']), int(draw['n5'])])
+                        actual_lucky = int(draw['lucky'])
+                        
+                        st.markdown(f"**Latest Draw: {draw['date']}**")
+                        st.markdown(f"**Numbers:** {', '.join(map(str, actual_numbers))}")
+                        st.markdown(f"**Lucky Number:** {actual_lucky}")
+                        
+                        # Get predictions for this date or before
+                        predictions_query = f"""
+                            SELECT id, date_generated, numbers, lucky, strategy, score
+                            FROM french_loto_predictions
+                            WHERE date_generated <= '{latest_date}'
+                            ORDER BY date_generated DESC, score DESC
+                            LIMIT 50
+                        """
+                        predictions_df = pd.read_sql(predictions_query, conn)
+                        
+                        if not predictions_df.empty:
+                            st.markdown(f"**Found {len(predictions_df)} predictions to analyze**")
+                            
+                            # Analyze each prediction
+                            results = []
+                            for idx, pred in predictions_df.iterrows():
+                                pred_numbers = [int(n) for n in pred['numbers'].split('-')]
+                                pred_lucky = int(pred['lucky'])
+                                
+                                # Count matches
+                                number_matches = len(set(pred_numbers) & set(actual_numbers))
+                                lucky_match = 1 if pred_lucky == actual_lucky else 0
+                                
+                                # Calculate score (French Loto scoring)
+                                if number_matches == 5 and lucky_match == 1:
+                                    match_score = 100  # Jackpot
+                                    prize_tier = "Rank 1 (Jackpot)"
+                                elif number_matches == 5 and lucky_match == 0:
+                                    match_score = 20
+                                    prize_tier = "Rank 2"
+                                elif number_matches == 4 and lucky_match == 1:
+                                    match_score = 10
+                                    prize_tier = "Rank 3"
+                                elif number_matches == 4 and lucky_match == 0:
+                                    match_score = 5
+                                    prize_tier = "Rank 4"
+                                elif number_matches == 3 and lucky_match == 1:
+                                    match_score = 3
+                                    prize_tier = "Rank 5"
+                                elif number_matches == 3 and lucky_match == 0:
+                                    match_score = 2
+                                    prize_tier = "Rank 6"
+                                elif number_matches == 2 and lucky_match == 1:
+                                    match_score = 2
+                                    prize_tier = "Rank 7"
+                                elif number_matches == 2 and lucky_match == 0:
+                                    match_score = 1
+                                    prize_tier = "Rank 8"
+                                elif number_matches == 1 and lucky_match == 1:
+                                    match_score = 1
+                                    prize_tier = "Rank 9"
+                                else:
+                                    match_score = 0
+                                    prize_tier = "No win"
+                                
+                                results.append({
+                                    'id': pred['id'],
+                                    'date_generated': pred['date_generated'],
+                                    'predicted_numbers': pred_numbers,
+                                    'predicted_lucky': pred_lucky,
+                                    'strategy': pred['strategy'],
+                                    'prediction_score': pred['score'],
+                                    'number_matches': number_matches,
+                                    'lucky_match': lucky_match,
+                                    'match_score': match_score,
+                                    'prize_tier': prize_tier
+                                })
+                            
+                            # Display results
+                            results_df = pd.DataFrame(results)
+                            
+                            # Summary statistics
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                st.metric("Total Predictions", len(results_df))
+                            with col2:
+                                winners = len(results_df[results_df['match_score'] > 0])
+                                st.metric("Winners", winners, f"{winners/len(results_df)*100:.1f}%")
+                            with col3:
+                                avg_matches = results_df['number_matches'].mean()
+                                st.metric("Avg Number Matches", f"{avg_matches:.2f}")
+                            with col4:
+                                best_score = results_df['match_score'].max()
+                                st.metric("Best Result", best_score)
+                            
+                            # Strategy performance
+                            st.subheader("📈 Strategy Performance")
+                            strategy_stats = results_df.groupby('strategy').agg({
+                                'match_score': ['mean', 'max', 'count'],
+                                'number_matches': 'mean',
+                                'lucky_match': 'sum'
+                            }).round(2)
+                            strategy_stats.columns = ['Avg Score', 'Best Score', 'Count', 'Avg Matches', 'Lucky Hits']
+                            strategy_stats = strategy_stats.sort_values('Avg Score', ascending=False)
+                            st.dataframe(strategy_stats, use_container_width=True)
+                            
+                            # Detailed results table
+                            st.subheader("📋 Detailed Results")
+                            
+                            # Filter options
+                            col_filter1, col_filter2 = st.columns(2)
+                            with col_filter1:
+                                min_matches = st.slider("Minimum number matches", 0, 5, 0, key="min_matches_filter")
+                            with col_filter2:
+                                show_only_winners = st.checkbox("Show only winners", value=False, key="winners_only")
+                            
+                            filtered_results = results_df[
+                                (results_df['number_matches'] >= min_matches) &
+                                ((results_df['match_score'] > 0) if show_only_winners else True)
+                            ]
+                            
+                            # Display filtered results
+                            for idx, result in filtered_results.iterrows():
+                                with st.container():
+                                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+                                    
+                                    with col1:
+                                        pred_nums_str = ", ".join(map(str, result['predicted_numbers']))
+                                        st.markdown(f"**Prediction #{result['id']}** ({result['date_generated']})")
+                                        st.caption(f"Numbers: {pred_nums_str} | Lucky: {result['predicted_lucky']}")
+                                        st.caption(f"Strategy: {result['strategy']} | Predicted Score: {result['prediction_score']:.1f}")
+                                    
+                                    with col2:
+                                        st.markdown(f"**Matches:** {result['number_matches']}/5 numbers")
+                                        st.markdown(f"**Lucky:** {'✅' if result['lucky_match'] else '❌'}")
+                                    
+                                    with col3:
+                                        st.metric("Result Score", result['match_score'])
+                                        st.caption(result['prize_tier'])
+                                    
+                                    with col4:
+                                        if result['match_score'] >= 10:
+                                            st.success("🏆")
+                                        elif result['match_score'] > 0:
+                                            st.info("🎯")
+                                        else:
+                                            st.write("")
+                                    
+                                    st.divider()
+                        else:
+                            st.info("No predictions found for analysis. Generate and save some predictions first!")
+                    else:
+                        st.warning("Could not retrieve latest draw from database.")
+                except Exception as e:
+                    st.error(f"Error analyzing predictions: {str(e)}")
+                    import traceback
+                    st.error(f"Traceback: {traceback.format_exc()}")
+            else:
+                st.warning("⚠️ No drawings found in database. Add a draw result first to analyze predictions.")
+        
+        else:  # Euromillions
+            st.subheader("Euromillions Results Analysis")
+            st.info("Euromillions results analysis will be implemented similarly. Coming soon!")
         
     # Visualizations tab
     with tabs[4]:
