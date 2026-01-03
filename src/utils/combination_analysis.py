@@ -1,18 +1,30 @@
 import pandas as pd
 import json
 from collections import Counter
-import database
 
-def analyze_full_combinations():
+def analyze_full_combinations(data=None):
     """
     Analyze the full combinations (all 5 numbers + 2 stars) in the Euromillions history.
     Check if any complete combinations have ever repeated.
     
+    Args:
+        data: pandas DataFrame with Euromillions data. If None, will try to get from database.
+    
     Returns:
         dict: Analysis results including any repeated combinations and statistics
     """
-    # Get all drawings from database
-    data = database.get_all_drawings()
+    # Get all drawings from database if data not provided
+    if data is None:
+        try:
+            from src.core.database import get_db_connection
+            conn = get_db_connection()
+            if conn:
+                data = pd.read_sql("SELECT * FROM euromillions_drawings ORDER BY date DESC", conn)
+            else:
+                return {"error": "Could not connect to database"}
+        except Exception as e:
+            return {"error": f"Error getting data: {str(e)}"}
+    
     if not isinstance(data, pd.DataFrame) or data.empty:
         return {"error": "No data available for analysis"}
     
@@ -48,18 +60,29 @@ def analyze_full_combinations():
         'repeated_details': repeated_details
     }
 
-def analyze_number_combinations(size=3):
+def analyze_number_combinations(data=None, size=3):
     """
     Analyze partial combinations (subsets of the main 5 numbers) to find the most frequent ones.
     
     Args:
+        data: pandas DataFrame with Euromillions data. If None, will try to get from database.
         size (int): Size of number subsets to analyze (default: 3, for triplets)
     
     Returns:
         dict: Analysis results including the most frequent number combinations
     """
-    # Get all drawings from database
-    data = database.get_all_drawings()
+    # Get all drawings from database if data not provided
+    if data is None:
+        try:
+            from src.core.database import get_db_connection
+            conn = get_db_connection()
+            if conn:
+                data = pd.read_sql("SELECT * FROM euromillions_drawings ORDER BY date DESC", conn)
+            else:
+                return {"error": "Could not connect to database"}
+        except Exception as e:
+            return {"error": f"Error getting data: {str(e)}"}
+    
     if not isinstance(data, pd.DataFrame) or data.empty:
         return {"error": "No data available for analysis"}
     
@@ -84,15 +107,28 @@ def analyze_number_combinations(size=3):
         'most_frequent_combinations': top_combos
     }
 
-def analyze_star_combinations():
+def analyze_star_combinations(data=None):
     """
     Analyze star combinations to find the most frequent pairs.
+    
+    Args:
+        data: pandas DataFrame with Euromillions data. If None, will try to get from database.
     
     Returns:
         dict: Analysis results including the most frequent star combinations
     """
-    # Get all drawings from database
-    data = database.get_all_drawings()
+    # Get all drawings from database if data not provided
+    if data is None:
+        try:
+            from src.core.database import get_db_connection
+            conn = get_db_connection()
+            if conn:
+                data = pd.read_sql("SELECT * FROM euromillions_drawings ORDER BY date DESC", conn)
+            else:
+                return {"error": "Could not connect to database"}
+        except Exception as e:
+            return {"error": f"Error getting data: {str(e)}"}
+    
     if not isinstance(data, pd.DataFrame) or data.empty:
         return {"error": "No data available for analysis"}
     

@@ -28,6 +28,11 @@ except ImportError as e:
         return []
     def get_base_strategy_name(strategy):
         return strategy
+    # Define fallback for combination analysis
+    def analyze_number_combinations(size=3):
+        return {"error": "Combination analysis not available"}
+    def analyze_full_combinations():
+        return {"error": "Combination analysis not available"}
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -332,12 +337,21 @@ def main():
                 try:
                     combination_size = st.slider("Combination Size", 1, 5, 3)
                     st.write(f"Analyzing {combination_size}-number combinations...")
-                    combination_analysis = analyze_number_combinations(size=combination_size)
-                    
-                    if combination_analysis and 'most_frequent' in combination_analysis:
-                        st.write(f"Most Frequent {combination_size}-Number Combinations:")
-                        for combo, freq in combination_analysis['most_frequent']:
-                            st.write(f"Numbers {combo}: {freq} occurrences")
+                    # Pass the data to the analysis function
+                    if 'analyze_number_combinations' in globals():
+                        combination_analysis = analyze_number_combinations(
+                            data=st.session_state.processed_data,
+                            size=combination_size
+                        )
+                        
+                        if combination_analysis and 'most_frequent_combinations' in combination_analysis:
+                            st.write(f"Most Frequent {combination_size}-Number Combinations:")
+                            for combo, freq in combination_analysis['most_frequent_combinations']:
+                                st.write(f"Numbers {combo}: {freq} occurrences")
+                        elif combination_analysis and 'error' in combination_analysis:
+                            st.warning(combination_analysis['error'])
+                    else:
+                        st.warning("Combination analysis function not available")
                 except Exception as e:
                     st.error(f"Error in combination analysis: {str(e)}")
         
