@@ -158,62 +158,6 @@ class PredictionStrategies:
         return combinations
         
         
-    def cognitive_bias_strategy(self, num_combinations=5, window_size=10):
-        """Generate combinations avoiding cognitive biases."""
-        combinations = []
-        
-        # Get base frequencies
-        number_freq = self.stats.get_weighted_frequency(0.4)
-        star_freq = self.stats.get_weighted_star_frequency(0.4)
-        
-        # Identify potentially overplayed patterns (cognitive biases)
-        # 1. Sequential numbers
-        # 2. Numbers forming patterns (e.g., 1,11,21,31,41)
-        # 3. Calendar numbers (1-31, especially dates)
-        # 4. Very hot numbers that might be overplayed
-        
-        hot_numbers = self.stats.get_hot_numbers(5)
-        calendar_numbers = list(range(1, 32))
-        
-        for _ in range(num_combinations):
-            # Start with weighted selection
-            candidate_numbers = self._weighted_sample(number_freq, 10)  # Get more than needed
-            
-            # Filter out bias-prone numbers with some probability
-            filtered_numbers = []
-            for num in candidate_numbers:
-                # Avoid calendar numbers with higher probability
-                if num in calendar_numbers and random.random() < 0.7:
-                    continue
-                    
-                # Avoid extremely hot numbers with some probability
-                if num in hot_numbers and random.random() < 0.5:
-                    continue
-                    
-                filtered_numbers.append(num)
-                if len(filtered_numbers) >= 5:
-                    break
-            
-            # If we don't have enough numbers after filtering, add more
-            while len(filtered_numbers) < 5:
-                # Get numbers not already selected
-                remaining = {num: freq for num, freq in number_freq.items() 
-                           if num not in filtered_numbers}
-                if not remaining:
-                    break
-                    
-                filtered_numbers.append(self._weighted_sample(remaining, 1)[0])
-            
-            # For stars, use standard frequency-based selection
-            stars = self._weighted_sample(star_freq, 2)
-            
-            combinations.append({
-                'numbers': sorted(filtered_numbers),
-                'stars': sorted(stars),
-                'score': round(random.uniform(70, 85), 2)
-            })
-            
-        return combinations
     
     def mixed_strategy(self, num_combinations=5, hot_ratio=0.7):
         """
