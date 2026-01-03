@@ -136,10 +136,10 @@ def main():
                         st.error(f"Error loading data: {str(e)}")
                 else:
                     st.error("Could not connect to database.")
-        
+            
         # Update French Loto from FDJ API
-        if st.session_state.french_loto_data_loaded:
-            st.success(f"✅ {len(st.session_state.french_loto_data)} French Loto drawings loaded")
+            if st.session_state.french_loto_data_loaded:
+                st.success(f"✅ {len(st.session_state.french_loto_data)} French Loto drawings loaded")
         
         update_french_loto_button = st.button("🔄 Update French Loto", help="Download latest drawings from FDJ API")
         
@@ -1343,7 +1343,7 @@ def main():
             st.subheader("1️⃣ Add or Update Draw Result")
             with st.expander("➕ Add New Draw Result", expanded=False):
                 with st.form(key="add_draw_result_form"):
-                    draw_date = st.date_input("Draw Date", value=date.today(), key="result_draw_date")
+                    draw_date = st.date_input("Draw Date", value=datetime.now().date(), key="result_draw_date")
                     
                     col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
