@@ -11,7 +11,8 @@
       "Bash(tree:*)",
       "Bash(python:*)",
       "Bash(ln:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(pip install -r requirements-test.txt)"
     ]
   }
 }
