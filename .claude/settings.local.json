@@ -12,7 +12,8 @@
       "Bash(python:*)",
       "Bash(ln:*)",
       "Bash(wc:*)",
-      "Bash(pip install -r requirements-test.txt)"
+      "Bash(pip install -r requirements-test.txt)",
+      "Bash(done)"
     ]
   }
 }
