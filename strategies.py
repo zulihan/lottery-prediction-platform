@@ -357,22 +357,13 @@ class PredictionStrategies:
         star_freq = self.stats.get_star_frequency()
 
         # Get range distribution to determine optimal sampling
-        # TODO: Remove fallback in Phase 5 when get_number_range_distribution() is implemented
-        try:
-            range_dist = self.stats.get_number_range_distribution()
-        except AttributeError:
-            # Temporary fallback: Equal distribution across ranges
-            range_dist = {"1-10": 20, "11-20": 20, "21-30": 20, "31-40": 20, "41-50": 20}
+        range_dist = self.stats.get_number_range_distribution()
 
         # Get even/odd distribution
-        # TODO: Remove fallback in Phase 5 when get_even_odd_distribution() is implemented
-        try:
-            even_odd_dist = self.stats.get_even_odd_distribution()
-            max_even_count = max(even_odd_dist.items(), key=lambda x: x[1])[0]
-        except AttributeError:
-            # Temporary fallback: Assume 2-3 even numbers is most common
-            even_odd_dist = {2: 30, 3: 40, 1: 15, 4: 10, 0: 3, 5: 2}
-            max_even_count = 3
+        even_odd_dist = self.stats.get_even_odd_distribution()
+        # Extract just the per-draw distribution (keys 0-5) for finding max
+        per_draw_dist = {k: v for k, v in even_odd_dist.items() if isinstance(k, int) and 0 <= k <= 5}
+        max_even_count = max(per_draw_dist.items(), key=lambda x: x[1])[0]
         
         # Define ranges for decade-based stratification
         ranges = [
