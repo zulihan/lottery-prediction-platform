@@ -218,35 +218,45 @@ class EuromillionsStatistics:
         dict
             Dictionary with distribution statistics
         """
-        even_odd_patterns = []
-        low_high_patterns = []
+        # Collect all numbers from all draws
+        all_numbers = []
+        for _, row in self.data.iterrows():
+            all_numbers.extend([row[col] for col in self.number_cols])
         
-        # Analyze each draw
+        # Calculate statistics on all numbers
+        number_series = pd.Series(all_numbers)
+        
+        return {
+            "mean": float(number_series.mean()),
+            "median": float(number_series.median()),
+            "std": float(number_series.std()),
+            "min": int(number_series.min()),
+            "max": int(number_series.max()),
+            "even_odd_pattern": self._get_most_common_even_odd_pattern(),
+            "low_high_pattern": self._get_most_common_low_high_pattern()
+        }
+    
+    def _get_most_common_even_odd_pattern(self):
+        """Helper to get most common even/odd pattern."""
+        even_odd_patterns = []
         for _, row in self.data.iterrows():
             numbers = [row[col] for col in self.number_cols]
-            
-            # Even/odd analysis
             odd_count = sum(1 for n in numbers if n % 2 == 1)
             even_count = 5 - odd_count
             even_odd_patterns.append(f"{even_count}e-{odd_count}o")
-            
-            # Low/high analysis
+        even_odd_counts = Counter(even_odd_patterns)
+        return even_odd_counts.most_common(1)[0][0] if even_odd_counts else "Unknown"
+    
+    def _get_most_common_low_high_pattern(self):
+        """Helper to get most common low/high pattern."""
+        low_high_patterns = []
+        for _, row in self.data.iterrows():
+            numbers = [row[col] for col in self.number_cols]
             low_count = sum(1 for n in numbers if n <= 25)
             high_count = 5 - low_count
             low_high_patterns.append(f"{low_count}l-{high_count}h")
-        
-        # Count patterns
-        even_odd_counts = Counter(even_odd_patterns)
         low_high_counts = Counter(low_high_patterns)
-        
-        # Get most common patterns
-        most_common_even_odd = even_odd_counts.most_common(1)[0][0] if even_odd_counts else "Unknown"
-        most_common_low_high = low_high_counts.most_common(1)[0][0] if low_high_counts else "Unknown"
-        
-        return {
-            "even_odd_pattern": most_common_even_odd,
-            "low_high_pattern": most_common_low_high
-        }
+        return low_high_counts.most_common(1)[0][0] if low_high_counts else "Unknown"
     
     def get_recency_stats(self, draws=20):
         """
@@ -312,11 +322,17 @@ class EuromillionsStatistics:
         except:
             range_dict = {}
         
+        # Create sum_frequency dict from range_dict
+        sum_frequency = {}
+        for range_str, count in range_dict.items():
+            sum_frequency[range_str] = count
+        
         return {
             "min_sum": min_sum,
             "max_sum": max_sum,
             "mean_sum": mean_sum,
             "median_sum": median_sum,
+            "sum_frequency": sum_frequency,
             "most_common_ranges": range_dict
         }
         
@@ -375,7 +391,9 @@ class EuromillionsStatistics:
                         appearances.append(i)
                 
                 if len(appearances) > 1:
-                    gaps = [appearances[i] - appearances[i+1] for i in range(len(appearances)-1)]
+                    # Calculate gaps: difference between consecutive appearances
+                    # appearances are in chronological order (0, 1, 2, ...)
+                    gaps = [appearances[i+1] - appearances[i] for i in range(len(appearances)-1)]
                     avg_gaps[num] = sum(gaps) / len(gaps) if gaps else 0
             
             return {
@@ -393,13 +411,14 @@ class EuromillionsStatistics:
                 return {"gaps": [], "avg_gap": 0, "last_appearance": appearances[0] if appearances else -1}
             
             # Calculate gaps between appearances
-            gaps = [appearances[i] - appearances[i+1] for i in range(len(appearances)-1)]
+            # appearances are in chronological order (0, 1, 2, ...)
+            gaps = [appearances[i+1] - appearances[i] for i in range(len(appearances)-1)]
             
             return {
                 "gaps": gaps,
-                "avg_gap": sum(gaps) / len(gaps),
-                "last_appearance": appearances[0],
-                "draws_since_last": appearances[0] if appearances else -1
+                "avg_gap": sum(gaps) / len(gaps) if gaps else 0,
+                "last_appearance": appearances[-1] if appearances else -1,
+                "draws_since_last": len(self.data) - 1 - appearances[-1] if appearances else -1
             }
 
     def get_number_range_distribution(self, ranges=None):

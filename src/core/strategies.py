@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import random
+import re
 from collections import Counter, defaultdict
 import itertools
 import math
@@ -84,8 +85,8 @@ class PredictionStrategies:
             normalized_score = round(avg_score * 100, 2)  # Scale to 0-100
             
             combinations.append({
-                'numbers': numbers,
-                'stars': stars,
+                'numbers': sorted(numbers),
+                'stars': sorted(stars),
                 'score': normalized_score
             })
         
@@ -179,13 +180,17 @@ class PredictionStrategies:
         number_freq = self.stats.get_frequency()
         star_freq = self.stats.get_star_frequency()
         
+        # Convert dict to Series for quantile calculation
+        number_freq_series = pd.Series(list(number_freq.values()))
+        star_freq_series = pd.Series(list(star_freq.values()))
+        
         # Split into hot and cold numbers
-        hot_threshold = number_freq.quantile(1 - hot_ratio)
+        hot_threshold = number_freq_series.quantile(1 - hot_ratio)
         hot_numbers = [n for n, freq in number_freq.items() if freq >= hot_threshold]
         cold_numbers = [n for n, freq in number_freq.items() if freq < hot_threshold]
         
         # Same for stars
-        hot_stars_threshold = star_freq.quantile(0.7)  # 70% for stars
+        hot_stars_threshold = star_freq_series.quantile(0.7)  # 70% for stars
         hot_stars = [s for s, freq in star_freq.items() if freq >= hot_stars_threshold]
         cold_stars = [s for s, freq in star_freq.items() if freq < hot_stars_threshold]
         
@@ -235,8 +240,8 @@ class PredictionStrategies:
             normalized_score = round((avg_freq + diversity_bonus) * 100, 2)  # Scale to 0-100
             
             combinations.append({
-                'numbers': numbers,
-                'stars': stars,
+                'numbers': sorted(numbers),
+                'stars': sorted(stars),
                 'score': normalized_score
             })
         
@@ -320,8 +325,8 @@ class PredictionStrategies:
             normalized_score = round((0.7 * pattern_score + 0.3 * recency_score) * 100, 2)
             
             combinations.append({
-                'numbers': selected_numbers,
-                'stars': stars,
+                'numbers': sorted(selected_numbers),
+                'stars': sorted(stars),
                 'score': normalized_score
             })
         
@@ -857,8 +862,8 @@ class PredictionStrategies:
             stars = self._weighted_sample(star_freq, 2)
             
             combinations.append({
-                'numbers': selected_numbers,
-                'stars': stars,
+                'numbers': sorted(selected_numbers),
+                'stars': sorted(stars),
                 'score': normalized_score,
                 'strategy': strategy_name
             })
@@ -991,8 +996,8 @@ class PredictionStrategies:
             normalized_score = round((coverage_weight * (num_coverage + star_coverage) / 2 + freq_weight * freq_score) * 100, 2)
             
             combinations.append({
-                'numbers': numbers,
-                'stars': stars,
+                'numbers': sorted(numbers),
+                'stars': sorted(stars),
                 'score': normalized_score
             })
         
@@ -1023,10 +1028,37 @@ class PredictionStrategies:
         sum_dist = self.stats.get_sum_distribution()
 
         # Convert to probability ranges for sampling
+        # sum_dist contains 'min_sum', 'max_sum', 'mean_sum', 'median_sum', and 'most_common_ranges'
         sum_ranges = []
-        for range_str, percentage in sum_dist.items():
-            start, end = map(int, range_str.split('-'))
-            sum_ranges.append((start, end, percentage / 100))
+        if 'most_common_ranges' in sum_dist:
+            for range_str, count in sum_dist['most_common_ranges'].items():
+                try:
+                    # Parse range string like "(104.955, 114.0]"
+                    # Extract numbers from the range string
+                    import re
+                    numbers = re.findall(r'[\d.]+', range_str)
+                    if len(numbers) >= 2:
+                        start = int(float(numbers[0]))
+                        end = int(float(numbers[1]))
+                        # Use count as weight (normalize later)
+                        sum_ranges.append((start, end, count))
+                except (ValueError, IndexError):
+                    continue
+        
+        # If no ranges found, create default ranges based on min/max
+        if not sum_ranges and 'min_sum' in sum_dist and 'max_sum' in sum_dist:
+            min_sum = sum_dist['min_sum']
+            max_sum = sum_dist['max_sum']
+            range_size = (max_sum - min_sum) / 5
+            for i in range(5):
+                start = int(min_sum + i * range_size)
+                end = int(min_sum + (i + 1) * range_size)
+                sum_ranges.append((start, end, 1.0))
+        
+        # Normalize weights
+        total_weight = sum(w for _, _, w in sum_ranges)
+        if total_weight > 0:
+            sum_ranges = [(s, e, w / total_weight) for s, e, w in sum_ranges]
 
         # Normalize risk_level to 0.0-1.0 scale (backward compatible)
         # Accept both 1-10 scale and 0.0-1.0 scale
@@ -1150,8 +1182,8 @@ class PredictionStrategies:
                 normalized_score = round(uniqueness_score * 100, 2)
             
             combinations.append({
-                'numbers': numbers,
-                'stars': stars,
+                'numbers': sorted(numbers),
+                'stars': sorted(stars),
                 'score': normalized_score
             })
         
@@ -1405,8 +1437,8 @@ class PredictionStrategies:
             final_score = round((sum_score + pattern_score + distribution_score) / 1.3 * 100, 2)
             
             combinations.append({
-                'numbers': numbers,
-                'stars': stars,
+                'numbers': sorted(numbers),
+                'stars': sorted(stars),
                 'score': final_score,
                 'strategy': 'Anti-Bias'
             })
