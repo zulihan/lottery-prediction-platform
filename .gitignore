@@ -37,6 +37,7 @@ ENV/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -49,4 +50,5 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+
 
