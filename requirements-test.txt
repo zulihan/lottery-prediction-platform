@@ -1,0 +1,14 @@
+# Testing dependencies for lottery prediction platform
+# Install with: pip install -r requirements-test.txt
+
+# Core testing framework
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Test helpers
+pytest-mock>=3.11.1
+pytest-xdist>=3.3.1  # For parallel test execution
+
+# For testing database code (optional)
+# Uncomment if adding database tests
+# pytest-postgresql>=5.0.0
