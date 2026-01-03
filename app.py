@@ -679,7 +679,10 @@ def main():
                 
                 # Initialize strategies
                 try:
-                    strategies = FrenchLotoStrategy(st.session_state.french_loto_data)
+                    # Create a statistics class for French Loto data
+                    from src.core.french_loto_statistics import FrenchLotoStatistics
+                    loto_stats = FrenchLotoStatistics(st.session_state.french_loto_data)
+                    strategies = FrenchLotoStrategy(loto_stats)
                 except Exception as e:
                     st.error(f"Error initializing French Loto strategies: {str(e)}")
                     strategies = None

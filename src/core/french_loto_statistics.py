@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sqlalchemy import text
-import database
 import logging
 import os
 from datetime import date, timedelta, datetime
@@ -519,7 +518,8 @@ def get_french_loto_data():
     Returns:
         pandas.DataFrame: DataFrame containing all French Loto drawings
     """
-    conn = database.get_db_connection()
+    from src.core.database import get_db_connection
+    conn = get_db_connection()
     
     if conn is None:
         logger.error("Could not connect to database")
@@ -530,8 +530,8 @@ def get_french_loto_data():
         query = """
             SELECT 
                 date, 
-                number1, number2, number3, number4, number5,
-                lucky_number,
+                n1, n2, n3, n4, n5,
+                lucky,
                 draw_num
             FROM french_loto_drawings
             ORDER BY date DESC, draw_num DESC
