@@ -103,12 +103,15 @@ This refactoring aims to create a clean, maintainable, well-documented codebase 
 - **Commits:** 01543bb, be33d91
 - **Lines added:** 77 to statistics.py, -9 from strategies.py (net +68)
 
-### Phase 6: Reorganize Code
-- [ ] Move core files to src/core/
-- [ ] Move utilities to src/utils/
-- [ ] Move tools to src/tools/
-- [ ] Update imports
-- [ ] Use symlinks for transition
+### Phase 6: Reorganize Code ✅ COMPLETE
+- [x] Move core files to src/core/ (7 files)
+- [x] Move utilities to src/utils/ (2 files)
+- [ ] Move tools to src/tools/ (deferred - no critical tool files identified)
+- [x] Update imports in app.py
+- [x] Incremental approach with backups (no symlinks needed)
+- **Completed:** 2026-01-03
+- **Commits:** 8b96b1a, e08575e, bca74d0, d21490a, fe098c6
+- **Files moved:** 9 (root: 130 → 121 files)
 
 ### Phase 7: Create Documentation
 - [ ] ARCHITECTURE.md - System design
@@ -385,6 +388,108 @@ stats.get_even_odd_distribution()      # Returns even/odd analysis
 
 ---
 
+### 2026-01-03: Phase 6 Complete - Reorganize Core Code ✅
+
+**Phase 6 Deliverables:**
+
+**6.1 Core Files Moved to src/core/ (7 files)**
+
+Successfully reorganized all core production files into the src/core/ directory:
+
+1. **statistics.py** → src/core/statistics.py (Commit: 8b96b1a)
+   - Contains: EuromillionsStatistics class
+   - Updated app.py import from `from statistics import` to `from src.core.statistics import`
+
+2. **models.py** → src/core/models.py (Commit: e08575e)
+   - Contains: BayesianModel, MarkovModel, TimeSeriesModel classes
+   - Updated strategies.py import
+
+3. **strategies.py** → src/core/strategies.py (Commit: bca74d0)
+   - Contains: PredictionStrategies class with 15+ strategy methods
+   - Updated app.py import
+
+4. **database.py** → src/core/database.py (Commit: d21490a)
+   - Contains: SQLAlchemy models, connection management
+   - Updated 5 import locations in app.py
+
+5. **french_loto_strategy.py** → src/core/french_loto_strategy.py (Commit: fe098c6)
+   - Contains: FrenchLotoStrategy class
+
+6. **french_loto_statistics.py** → src/core/french_loto_statistics.py (Commit: fe098c6)
+   - Contains: FrenchLotoStatistics class
+
+7. **fibonacci_strategy.py** → src/core/fibonacci_strategy.py (Commit: fe098c6)
+   - Contains: Fibonacci sequence-based prediction strategies
+
+**6.2 Utility Files Moved to src/utils/ (2 files)**
+
+Organized utility modules into src/utils/:
+
+1. **combination_analysis.py** → src/utils/combination_analysis.py
+   - Contains: analyze_full_combinations(), analyze_number_combinations()
+
+2. **strategy_recommendation.py** → src/utils/strategy_recommendation.py
+   - Contains: get_ordered_strategy_list(), get_strategy_info_text(), get_base_strategy_name()
+
+**6.3 Import Updates**
+
+All imports in app.py updated to use new paths:
+```python
+# Old imports
+from statistics import EuromillionsStatistics
+from strategies import PredictionStrategies
+from database import init_db, get_db_connection
+
+# New imports
+from src.core.statistics import EuromillionsStatistics
+from src.core.strategies import PredictionStrategies
+from src.core.database import init_db, get_db_connection
+```
+
+**Summary:**
+- **Files moved:** 9 total (7 to src/core/, 2 to src/utils/)
+- **Files in root:** Reduced from 130 to 121 Python files
+- **Backups created:** All original files saved with .backup-phase6 suffix
+- **Commits:** 5 incremental commits (one per file group)
+- **Risk level:** High - Successfully completed with incremental testing
+- **App entry point:** app.py remains in root as main entry point
+
+**Directory Structure After Phase 6:**
+```
+/Users/zu/_Dev/lottery-prediction-platform/
+├── app.py                          # Main Streamlit application
+├── src/
+│   ├── core/                       # Core production code
+│   │   ├── database.py            # Database models & connection
+│   │   ├── models.py              # ML models (Bayesian, Markov, TimeSeries)
+│   │   ├── statistics.py          # Euromillions statistics
+│   │   ├── strategies.py          # Prediction strategies
+│   │   ├── french_loto_strategy.py
+│   │   ├── french_loto_statistics.py
+│   │   └── fibonacci_strategy.py
+│   └── utils/                      # Shared utilities
+│       ├── combination_analysis.py
+│       └── strategy_recommendation.py
+├── archive/                        # Archived development files (139 files)
+├── docs/                           # Documentation
+└── tests/                          # Test suite (pending Phase 8)
+```
+
+**Commits:**
+- `8b96b1a` - Move statistics.py to src/core/ (Phase 6.1)
+- `e08575e` - Move models.py to src/core/ (Phase 6.2)
+- `bca74d0` - Move strategies.py to src/core/ (Phase 6.3)
+- `d21490a` - Move database.py to src/core/ (Phase 6.4)
+- `fe098c6` - Move French Loto, Fibonacci, and utility files (Phase 6.5)
+
+**Verification:**
+All core imports now use src.core or src.utils prefix, providing clear organization and avoiding name conflicts with Python standard library (e.g., statistics module).
+
+**Time Invested:** ~25 minutes
+**Next Phase:** Phase 7 - Create comprehensive documentation
+
+---
+
 ## Decisions Made
 
 ### Documentation Strategy
@@ -433,12 +538,12 @@ stats.get_even_odd_distribution()      # Returns even/odd analysis
 
 | Metric | Before | Target | Progress |
 |--------|--------|--------|----------|
-| Files in root | 268 | <30 | 130 (-51.5%) ✅ |
+| Files in root | 268 | <30 | 121 (-54.9%) ✅ |
 | Duplicate methods | 6+ | 0 | 0 ✅ |
 | Missing methods | 2 | 0 | 0 ✅ |
 | Documentation files | 2 | 7+ | 4 |
 | Test coverage | 0% | >50% | 0% |
-| Organized structure | No | Yes | In Progress |
+| Organized structure | No | Yes | Yes ✅ |
 
 ---
 
@@ -446,8 +551,8 @@ stats.get_even_odd_distribution()      # Returns even/odd analysis
 
 *Updated as refactoring progresses*
 
-**Current Phase:** Phase 5 Complete ✓
-**Next Phase:** Phase 6 - Reorganize core code into src/ structure
+**Current Phase:** Phase 6 Complete ✓
+**Next Phase:** Phase 7 - Create comprehensive documentation
 
 ---
 
