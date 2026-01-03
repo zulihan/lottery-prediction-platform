@@ -746,11 +746,6 @@ def main():
                             5, 50, 20,
                             help="Number of recent draws to factor into the Bayesian model"
                         )
-                        prior_strength = st.slider(
-                            "Prior Strength",
-                            0.1, 5.0, 1.0,
-                            help="Strength of the prior distribution"
-                        )
                     
                     elif base_strategy_type == "Risk/Reward Balance":
                         risk_level = st.slider(
@@ -760,24 +755,17 @@ def main():
                         )
                     
                     elif base_strategy_type == "Markov Chain Model":
-                        balanced = st.slider(
-                            "Balance Factor",
-                            0.0, 1.0, 0.7,
-                            help="Balance between pattern prediction and randomness"
-                        )
-                    
-                    elif base_strategy_type == "Time Series Analysis":
                         lag = st.slider(
                             "Lag Parameter",
                             1, 10, 3,
-                            help="Lag for time series forecasting"
+                            help="Lag for Markov chain transitions"
                         )
                     
-                    elif base_strategy_type == "Anti-Cognitive Bias":
+                    elif base_strategy_type == "Time Series Analysis":
                         window_size = st.slider(
-                            "Analysis Window",
+                            "Window Size",
                             5, 30, 10,
-                            help="Window size for analyzing cognitive biases"
+                            help="Window size for time series analysis"
                         )
                     
                     # Number of combinations to generate
@@ -794,33 +782,31 @@ def main():
                                 if base_strategy_type == "Frequency Analysis":
                                     combinations = strategies.frequency_strategy(
                                         num_combinations=num_combinations,
-                                        recency_weight=recency_weight
+                                        recent_weight=recency_weight
                                     )
                                 
                                 elif base_strategy_type == "Temporal Patterns":
-                                    combinations = strategies.temporal_pattern_strategy(
+                                    combinations = strategies.temporal_strategy(
                                         num_combinations=num_combinations,
-                                        pattern_depth=pattern_depth
+                                        lookback_period=pattern_depth * 10
                                     )
                                 
                                 elif base_strategy_type == "Stratified Sampling":
                                     combinations = strategies.stratified_sampling_strategy(
                                         num_combinations=num_combinations,
-                                        confidence=confidence
+                                        balance_factor=confidence
                                     )
                                 
                                 elif base_strategy_type == "Coverage Optimization":
-                                    combinations = strategies.coverage_optimization_strategy(
+                                    combinations = strategies.coverage_strategy(
                                         num_combinations=num_combinations,
-                                        balance=balance
+                                        balanced=(balance > 0.5)
                                     )
                                 
                                 elif base_strategy_type == "Bayesian Inference":
                                     combinations = strategies.bayesian_strategy(
                                         num_combinations=num_combinations,
-                                        prior_type="adaptive",
-                                        recent_draws_count=recent_draws_count,
-                                        prior_strength=prior_strength
+                                        recent_draws_count=recent_draws_count
                                     )
                                 
                                 elif base_strategy_type == "Risk/Reward Balance":
@@ -830,21 +816,20 @@ def main():
                                     )
                                 
                                 elif base_strategy_type == "Markov Chain Model":
-                                    combinations = strategies.markov_chain_strategy(
+                                    combinations = strategies.markov_strategy(
                                         num_combinations=num_combinations,
-                                        balanced=balanced
+                                        lag=lag
                                     )
                                 
                                 elif base_strategy_type == "Time Series Analysis":
                                     combinations = strategies.time_series_strategy(
                                         num_combinations=num_combinations,
-                                        lag=lag
+                                        window_size=window_size
                                     )
                                 
                                 elif base_strategy_type == "Anti-Cognitive Bias":
                                     combinations = strategies.cognitive_bias_strategy(
-                                        num_combinations=num_combinations,
-                                        window_size=window_size
+                                        num_combinations=num_combinations
                                     )
                                 
                                 elif base_strategy_type == "Mixed Strategy":
@@ -861,9 +846,18 @@ def main():
                                         
                                         with col1:
                                             st.write(f"**Combination {i+1}**")
-                                            numbers_str = ", ".join([str(n) for n in combo['numbers']])
-                                            st.write(f"Numbers: {numbers_str}")
-                                            st.write(f"Lucky Number: {combo['lucky']}")
+                                            # French Loto uses 'main_numbers' and 'lucky_number', Euromillions uses 'numbers' and 'stars'
+                                            if 'main_numbers' in combo:
+                                                # French Loto format
+                                                numbers_str = ", ".join([str(n) for n in combo['main_numbers']])
+                                                st.write(f"Numbers: {numbers_str}")
+                                                st.write(f"Lucky Number: {combo.get('lucky_number', 'N/A')}")
+                                            else:
+                                                # Euromillions format
+                                                numbers_str = ", ".join([str(n) for n in combo.get('numbers', [])])
+                                                stars_str = ", ".join([str(s) for s in combo.get('stars', [])])
+                                                st.write(f"Numbers: {numbers_str}")
+                                                st.write(f"Stars: {stars_str}")
                                         
                                         with col2:
                                             if 'score' in combo:
@@ -878,13 +872,21 @@ def main():
                                                     from src.core.database import FrenchLotoPrediction, get_session
                                                     
                                                     # Format numbers as dash-separated string
-                                                    numbers_str = "-".join([str(n) for n in combo['numbers']])
+                                                    # French Loto uses 'main_numbers', Euromillions uses 'numbers'
+                                                    if 'main_numbers' in combo:
+                                                        numbers_list = combo['main_numbers']
+                                                        lucky = combo.get('lucky_number', None)
+                                                    else:
+                                                        numbers_list = combo.get('numbers', [])
+                                                        lucky = combo.get('lucky', None)
+                                                    
+                                                    numbers_str = "-".join([str(n) for n in numbers_list])
                                                     
                                                     # Create new prediction record
                                                     new_combo = FrenchLotoPrediction(
                                                         date_generated=date.today(),
                                                         numbers=numbers_str,
-                                                        lucky=combo['lucky'],
+                                                        lucky=lucky,
                                                         strategy=strategy_type,
                                                         score=combo.get('score', 0.0)
                                                     )
