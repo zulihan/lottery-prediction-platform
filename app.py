@@ -874,7 +874,8 @@ def main():
                     if 'loto_generated_combinations' not in st.session_state:
                         st.session_state.loto_generated_combinations = []
                     
-                    available_combos = st.session_state.loto_generated_combinations
+                    # Always get fresh reference to session state
+                    available_combos = st.session_state.loto_generated_combinations.copy() if st.session_state.loto_generated_combinations else []
                     
                     # Management buttons
                     col_reset, col_add_manual, col_count = st.columns([1, 1, 2])
@@ -888,7 +889,9 @@ def main():
                         show_manual_form = st.button("➕ Add Manual Combination", key="loto_show_manual", help="Add a combination manually")
                     
                     with col_count:
-                        st.caption(f"**Total combinations in pool:** {len(available_combos)}")
+                        # Get fresh count
+                        current_count = len(st.session_state.loto_generated_combinations)
+                        st.caption(f"**Total combinations in pool:** {current_count}")
                     
                     # Manual combination input form
                     if show_manual_form:
@@ -933,7 +936,9 @@ def main():
                                         st.success(f"✅ Added manual combination: {sorted(numbers)} (Lucky: {lucky})")
                                         st.rerun()
                     
-                    if len(available_combos) >= 2:
+                    # Always show available combinations (even if less than 2)
+                    current_combos = st.session_state.loto_generated_combinations
+                    if len(current_combos) > 0:
                         # Display available combinations
                         st.markdown("**Available Combinations to Mix:**")
                         
@@ -941,9 +946,9 @@ def main():
                         selected_indices = []
                         
                         # Group combinations in rows of 3
-                        for row_start in range(0, len(available_combos), 3):
+                        for row_start in range(0, len(current_combos), 3):
                             cols = st.columns(3)
-                            row_combos = available_combos[row_start:row_start+3]
+                            row_combos = current_combos[row_start:row_start+3]
                             
                             for col_idx, (i, combo) in enumerate(zip(range(row_start, row_start+len(row_combos)), row_combos)):
                                 with cols[col_idx]:
@@ -976,18 +981,20 @@ def main():
                                         
                                         # Delete button
                                         if st.button("🗑️", key=f"loto_delete_{i}", help="Remove this combination"):
-                                            st.session_state.loto_generated_combinations.pop(i)
-                                            st.rerun()
+                                            if i < len(st.session_state.loto_generated_combinations):
+                                                st.session_state.loto_generated_combinations.pop(i)
+                                                st.rerun()
                                         
                                         st.divider()
                         
+                        # Show mix button if at least 2 combinations are selected
                         if len(selected_indices) >= 2:
                             mix_button = st.button("✨ Mix Selected Combinations", type="primary", key="loto_mix_button")
                             
                             if mix_button:
                                 with st.spinner("Mixing combinations to find optimal solution..."):
                                     try:
-                                        selected_combos = [available_combos[i] for i in selected_indices]
+                                        selected_combos = [current_combos[i] for i in selected_indices if i < len(current_combos)]
                                         mixed_combo = strategies.mix_combinations(selected_combos, max_iterations=200)
                                         
                                         if mixed_combo:
@@ -1036,7 +1043,8 @@ def main():
                                             with st.expander("📊 Mixing Details"):
                                                 st.write(f"**Combined {len(selected_indices)} combinations:**")
                                                 for idx in selected_indices:
-                                                    combo = available_combos[idx]
+                                                    if idx < len(current_combos):
+                                                        combo = current_combos[idx]
                                                     if 'main_numbers' in combo:
                                                         nums = ", ".join([str(n) for n in combo['main_numbers']])
                                                         st.write(f"- Combo {idx+1}: {nums} (Score: {combo.get('score', 0):.1f})")
@@ -1055,7 +1063,12 @@ def main():
                                         import traceback
                                         st.error(f"Traceback: {traceback.format_exc()}")
                         else:
-                            st.info(f"👆 Select at least 2 combinations to mix (currently selected: {len(selected_indices)})")
+                            if len(current_combos) < 2:
+                                st.warning(f"⚠️ You need at least 2 combinations to mix. Currently have {len(current_combos)}. Add more combinations above.")
+                            else:
+                                st.info(f"👆 Select at least 2 combinations to mix (currently selected: {len(selected_indices)})")
+                    else:
+                        st.info("👆 Generate some combinations first, or add them manually using the 'Add Manual Combination' button above.")
                     
                     st.divider()
                     
