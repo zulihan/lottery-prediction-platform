@@ -155,18 +155,48 @@ class FrenchLotoStatistics:
             recent_lucky_freq[i] = recent_lucky_numbers.count(i)
         
         # Identify hot numbers (above average frequency in recent period)
-        avg_main_freq = sum(recent_main_freq.values()) / len(recent_main_freq)
+        avg_main_freq = sum(recent_main_freq.values()) / len(recent_main_freq) if recent_main_freq else 0
         hot_numbers = [n for n, freq in recent_main_freq.items() 
                        if freq > avg_main_freq * 1.2]
-        cold_numbers = [n for n, freq in recent_main_freq.items() 
-                        if freq < avg_main_freq * 0.5]
+        
+        # For cold numbers, use global frequency to ensure we have results
+        # Cold numbers are those with low frequency in recent period AND low overall frequency
+        if not hasattr(self, 'main_number_freq'):
+            self.analyze_frequencies()
+        
+        # Get overall frequencies for comparison
+        overall_avg = sum(self.main_number_freq.values()) / len(self.main_number_freq) if self.main_number_freq else 0
+        
+        # Cold numbers: low in recent period OR low overall (take bottom 20% of recent + bottom 20% overall)
+        recent_sorted = sorted(recent_main_freq.items(), key=lambda x: x[1])
+        cold_threshold_recent = len(recent_sorted) // 5  # Bottom 20%
+        cold_numbers_recent = [n for n, _ in recent_sorted[:max(1, cold_threshold_recent)]]
+        
+        # Also include numbers that are cold overall
+        overall_sorted = sorted(self.main_number_freq.items(), key=lambda x: x[1])
+        cold_threshold_overall = len(overall_sorted) // 5  # Bottom 20%
+        cold_numbers_overall = [n for n, _ in overall_sorted[:max(1, cold_threshold_overall)]]
+        
+        # Combine and deduplicate
+        cold_numbers = sorted(list(set(cold_numbers_recent + cold_numbers_overall)))[:15]  # Limit to 15
         
         # Identify hot lucky numbers
-        avg_lucky_freq = sum(recent_lucky_freq.values()) / len(recent_lucky_freq)
+        avg_lucky_freq = sum(recent_lucky_freq.values()) / len(recent_lucky_freq) if recent_lucky_freq else 0
         hot_lucky = [n for n, freq in recent_lucky_freq.items() 
                      if freq > avg_lucky_freq * 1.2]
-        cold_lucky = [n for n, freq in recent_lucky_freq.items() 
-                      if freq < avg_lucky_freq * 0.5]
+        
+        # For cold lucky numbers, use similar approach
+        if not hasattr(self, 'lucky_number_freq'):
+            self.analyze_frequencies()
+        
+        lucky_sorted = sorted(recent_lucky_freq.items(), key=lambda x: x[1])
+        cold_threshold_lucky = max(1, len(lucky_sorted) // 3)  # Bottom 33%
+        cold_lucky = [n for n, _ in lucky_sorted[:cold_threshold_lucky]]
+        
+        # If still empty, use overall least frequent
+        if not cold_lucky and hasattr(self, 'lucky_number_freq'):
+            overall_lucky_sorted = sorted(self.lucky_number_freq.items(), key=lambda x: x[1])
+            cold_lucky = [n for n, _ in overall_lucky_sorted[:3]]  # Bottom 3
         
         return {
             'hot_numbers': sorted(hot_numbers),
