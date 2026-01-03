@@ -327,6 +327,223 @@ class FrenchLotoStrategy:
         combinations.sort(key=lambda x: x['score'], reverse=True)
         
         return combinations
+    
+    def mix_combinations(self, combinations_list, max_iterations=100):
+        """
+        Mix multiple combinations to create an optimal new combination with highest possible score.
+        
+        Args:
+            combinations_list: List of combination dictionaries with 'main_numbers' and 'lucky_number'
+            max_iterations: Maximum number of iterations to find optimal mix
+            
+        Returns:
+            dict: Optimized combination with highest score
+        """
+        if not combinations_list or len(combinations_list) < 2:
+            raise ValueError("Need at least 2 combinations to mix")
+        
+        # Extract all numbers and lucky numbers from input combinations
+        all_numbers = []
+        all_lucky = []
+        combination_scores = []
+        
+        for combo in combinations_list:
+            if 'main_numbers' in combo:
+                all_numbers.extend(combo['main_numbers'])
+                all_lucky.append(combo.get('lucky_number'))
+                combination_scores.append(combo.get('score', 70))
+            else:
+                all_numbers.extend(combo.get('numbers', []))
+                all_lucky.append(combo.get('lucky', combo.get('lucky_number')))
+                combination_scores.append(combo.get('score', 70))
+        
+        # Get frequency data for scoring
+        if not hasattr(self.statistics, 'main_number_freq'):
+            self.statistics.analyze_frequencies()
+        
+        # Get hot/cold numbers
+        hot_cold = self.statistics.get_hot_cold_numbers()
+        hot_numbers = set(hot_cold.get('hot_numbers', []))
+        cold_numbers = set(hot_cold.get('cold_numbers', []))
+        
+        # Count frequency of each number in the input combinations
+        from collections import Counter
+        number_freq = Counter(all_numbers)
+        lucky_freq = Counter([l for l in all_lucky if l is not None])
+        
+        # Weight numbers by: frequency in combinations + original score + hot/cold status
+        number_weights = {}
+        for num in range(1, 50):
+            weight = 0
+            # Frequency in input combinations (higher = better)
+            weight += number_freq.get(num, 0) * 10
+            # Average score of combinations containing this number
+            containing_combos = [combo for combo in combinations_list 
+                               if num in (combo.get('main_numbers', []) or combo.get('numbers', []))]
+            if containing_combos:
+                avg_score = sum(c.get('score', 70) for c in containing_combos) / len(containing_combos)
+                weight += avg_score * 0.5
+            # Hot number bonus
+            if num in hot_numbers:
+                weight += 15
+            # Historical frequency
+            weight += self.statistics.main_number_freq.get(num, 0) * 0.3
+            number_weights[num] = weight
+        
+        # Weight lucky numbers similarly
+        lucky_weights = {}
+        for lucky in range(1, 11):
+            weight = 0
+            weight += lucky_freq.get(lucky, 0) * 10
+            if lucky in hot_cold.get('hot_lucky', []):
+                weight += 10
+            weight += self.statistics.lucky_number_freq.get(lucky, 0) * 0.3
+            lucky_weights[lucky] = weight
+        
+        # Try multiple combinations to find the best one
+        best_combo = None
+        best_score = 0
+        
+        for _ in range(max_iterations):
+            # Select 5 numbers using weighted random selection
+            sorted_numbers = sorted(number_weights.items(), key=lambda x: x[1], reverse=True)
+            # Take top candidates and add some randomness
+            top_candidates = [n for n, w in sorted_numbers[:20]]
+            
+            # Weighted selection: prefer high-weight numbers but allow some variation
+            selected_numbers = []
+            candidates = top_candidates.copy()
+            
+            while len(selected_numbers) < 5 and candidates:
+                # Use weighted random selection
+                weights = [number_weights[n] for n in candidates]
+                total_weight = sum(weights)
+                if total_weight > 0:
+                    weights = [w / total_weight for w in weights]
+                    selected = np.random.choice(candidates, p=weights)
+                    selected_numbers.append(selected)
+                    candidates.remove(selected)
+                else:
+                    selected_numbers.append(candidates.pop(0))
+            
+            # Fill remaining slots if needed
+            while len(selected_numbers) < 5:
+                remaining = [n for n in range(1, 50) if n not in selected_numbers]
+                if remaining:
+                    selected_numbers.append(random.choice(remaining))
+            
+            selected_numbers = sorted([int(n) for n in selected_numbers[:5]])
+            
+            # Select lucky number
+            sorted_lucky = sorted(lucky_weights.items(), key=lambda x: x[1], reverse=True)
+            top_lucky = [l for l, w in sorted_lucky[:5]]
+            if top_lucky:
+                lucky_weights_list = [lucky_weights[l] for l in top_lucky]
+                total_lucky_weight = sum(lucky_weights_list)
+                if total_lucky_weight > 0:
+                    lucky_weights_list = [w / total_lucky_weight for w in lucky_weights_list]
+                    selected_lucky = np.random.choice(top_lucky, p=lucky_weights_list)
+                else:
+                    selected_lucky = random.choice(top_lucky)
+            else:
+                selected_lucky = random.randint(1, 10)
+            
+            # Calculate score for this combination
+            score = self._calculate_combination_score(selected_numbers, selected_lucky, hot_numbers, cold_numbers)
+            
+            if score > best_score:
+                best_score = score
+                best_combo = {
+                    'main_numbers': selected_numbers,
+                    'lucky_number': selected_lucky,
+                    'score': score,
+                    'strategy': f"Mixed from {len(combinations_list)} combinations",
+                    'date_generated': datetime.now().strftime('%Y-%m-%d'),
+                    'source_combinations': len(combinations_list)
+                }
+        
+        if best_combo:
+            # Ensure numbers are int, not np.int64
+            best_combo['main_numbers'] = [int(n) for n in best_combo['main_numbers']]
+            best_combo['lucky_number'] = int(best_combo['lucky_number'])
+            return best_combo
+        
+        # Fallback
+        fallback_numbers = sorted(all_numbers[:5]) if len(set(all_numbers)) >= 5 else sorted(list(set(all_numbers)) + list(range(1, 50)))[:5]
+        return {
+            'main_numbers': [int(n) for n in fallback_numbers],
+            'lucky_number': int(lucky_freq.most_common(1)[0][0]) if lucky_freq else random.randint(1, 10),
+            'score': 75,
+            'strategy': f"Mixed from {len(combinations_list)} combinations",
+            'date_generated': datetime.now().strftime('%Y-%m-%d')
+        }
+    
+    def _calculate_combination_score(self, numbers, lucky, hot_numbers, cold_numbers):
+        """
+        Calculate a comprehensive score for a combination.
+        
+        Args:
+            numbers: List of 5 main numbers
+            lucky: Lucky number
+            hot_numbers: Set of hot numbers
+            cold_numbers: Set of cold numbers
+            
+        Returns:
+            float: Score from 0-100
+        """
+        score = 50.0  # Base score
+        
+        # Factor 1: Hot numbers (positive)
+        hot_count = len([n for n in numbers if n in hot_numbers])
+        score += hot_count * 8
+        
+        # Factor 2: Historical frequency
+        if hasattr(self.statistics, 'main_number_freq'):
+            avg_freq = sum(self.statistics.main_number_freq.get(n, 0) for n in numbers) / 5
+            score += min(avg_freq * 0.5, 15)
+        
+        # Factor 3: Even/odd balance (prefer 2-3 odd)
+        odd_count = sum(1 for n in numbers if n % 2 == 1)
+        if 2 <= odd_count <= 3:
+            score += 5
+        
+        # Factor 4: Range distribution (prefer balanced)
+        low = sum(1 for n in numbers if 1 <= n <= 16)
+        mid = sum(1 for n in numbers if 17 <= n <= 33)
+        high = sum(1 for n in numbers if 34 <= n <= 49)
+        
+        # Prefer at least one in each range
+        if low > 0 and mid > 0 and high > 0:
+            score += 8
+        elif (low > 0 and mid > 0) or (mid > 0 and high > 0):
+            score += 4
+        
+        # Factor 5: Sum in typical range (100-150)
+        total_sum = sum(numbers)
+        if 100 <= total_sum <= 150:
+            score += 5
+        elif 80 <= total_sum <= 170:
+            score += 2
+        
+        # Factor 6: Lucky number
+        if hasattr(self.statistics, 'lucky_number_freq'):
+            lucky_freq = self.statistics.lucky_number_freq.get(lucky, 0)
+            score += min(lucky_freq * 0.3, 10)
+        
+        # Get hot lucky numbers
+        hot_cold = self.statistics.get_hot_cold_numbers()
+        if lucky in hot_cold.get('hot_lucky', []):
+            score += 5
+        
+        # Factor 7: Avoid too many consecutive numbers
+        consecutive_pairs = sum(1 for i in range(len(numbers)-1) if numbers[i+1] - numbers[i] == 1)
+        if consecutive_pairs <= 1:
+            score += 3
+        elif consecutive_pairs > 2:
+            score -= 5
+        
+        # Normalize to 0-100
+        return max(0, min(100, score))
         
     # Implement interface methods to match Euromillions strategy API
     

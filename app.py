@@ -853,10 +853,126 @@ def main():
                                             
                                             st.divider()
                                 
+                                # Store combinations in session state for mixing
+                                if 'loto_generated_combinations' not in st.session_state:
+                                    st.session_state.loto_generated_combinations = []
+                                st.session_state.loto_generated_combinations = combinations
+                                
                             except Exception as e:
                                 st.error(f"Error generating combinations: {str(e)}")
                                 import traceback
                                 st.error(f"Traceback: {traceback.format_exc()}")
+                    
+                    # Mix Combinations Section
+                    if 'loto_generated_combinations' in st.session_state and len(st.session_state.loto_generated_combinations) >= 2:
+                        st.divider()
+                        st.subheader("🔀 Mix Combinations for Maximum Score")
+                        st.markdown("Combine multiple generated combinations to create an optimal new combination with the highest possible score.")
+                        
+                        # Display available combinations
+                        st.markdown("**Available Combinations to Mix:**")
+                        available_combos = st.session_state.loto_generated_combinations
+                        
+                        # Create checkboxes for selection
+                        selected_indices = []
+                        cols = st.columns(min(3, len(available_combos)))
+                        
+                        for i, combo in enumerate(available_combos):
+                            with cols[i % len(cols)]:
+                                if 'main_numbers' in combo:
+                                    numbers_str = ", ".join([str(n) for n in combo['main_numbers']])
+                                    lucky_str = str(combo.get('lucky_number', 'N/A'))
+                                    score = combo.get('score', 0)
+                                else:
+                                    numbers_str = ", ".join([str(n) for n in combo.get('numbers', [])])
+                                    lucky_str = "N/A"
+                                    score = combo.get('score', 0)
+                                
+                                if st.checkbox(
+                                    f"Combo {i+1} (Score: {score:.1f})",
+                                    key=f"loto_mix_select_{i}",
+                                    value=(i < 2)  # Pre-select first 2 by default
+                                ):
+                                    selected_indices.append(i)
+                                
+                                st.caption(f"Numbers: {numbers_str}")
+                                st.caption(f"Lucky: {lucky_str}")
+                        
+                        if len(selected_indices) >= 2:
+                            mix_button = st.button("✨ Mix Selected Combinations", type="primary", key="loto_mix_button")
+                            
+                            if mix_button:
+                                with st.spinner("Mixing combinations to find optimal solution..."):
+                                    try:
+                                        selected_combos = [available_combos[i] for i in selected_indices]
+                                        mixed_combo = strategies.mix_combinations(selected_combos, max_iterations=200)
+                                        
+                                        if mixed_combo:
+                                            st.success(f"✅ Created optimal mixed combination with score {mixed_combo.get('score', 0):.2f}!")
+                                            st.subheader("🎯 Your Optimized Mixed Combination")
+                                            
+                                            col1, col2, col3 = st.columns([3, 2, 1])
+                                            
+                                            with col1:
+                                                st.markdown("### 🏆 Best Mixed Combination")
+                                                numbers_str = ", ".join([str(n) for n in mixed_combo['main_numbers']])
+                                                st.markdown(f"**Numbers:** {numbers_str}")
+                                                st.markdown(f"**Lucky Number:** {mixed_combo.get('lucky_number', 'N/A')}")
+                                                st.caption(f"Mixed from {len(selected_indices)} combinations")
+                                            
+                                            with col2:
+                                                st.metric("Optimized Score", f"{mixed_combo.get('score', 0):.2f}")
+                                                st.caption("Based on frequency, hot/cold analysis, and balance")
+                                            
+                                            with col3:
+                                                if st.button("💾 Save Mixed", key="loto_save_mixed", type="primary"):
+                                                    try:
+                                                        from src.core.database import FrenchLotoPrediction, get_session
+                                                        from datetime import date
+                                                        
+                                                        numbers_str = "-".join([str(n) for n in mixed_combo['main_numbers']])
+                                                        
+                                                        new_combo = FrenchLotoPrediction(
+                                                            date_generated=date.today(),
+                                                            numbers=numbers_str,
+                                                            lucky=mixed_combo.get('lucky_number'),
+                                                            strategy=f"Mixed from {len(selected_indices)} combos",
+                                                            score=mixed_combo.get('score', 0.0)
+                                                        )
+                                                        
+                                                        session = get_session()
+                                                        session.add(new_combo)
+                                                        session.commit()
+                                                        session.close()
+                                                        
+                                                        st.success("✅ Mixed combination saved!")
+                                                    except Exception as e:
+                                                        st.error(f"Error saving: {str(e)}")
+                                            
+                                            # Show what was mixed
+                                            with st.expander("📊 Mixing Details"):
+                                                st.write(f"**Combined {len(selected_indices)} combinations:**")
+                                                for idx in selected_indices:
+                                                    combo = available_combos[idx]
+                                                    if 'main_numbers' in combo:
+                                                        nums = ", ".join([str(n) for n in combo['main_numbers']])
+                                                        st.write(f"- Combo {idx+1}: {nums} (Score: {combo.get('score', 0):.1f})")
+                                                
+                                                st.write(f"\n**Optimization factors considered:**")
+                                                st.write("- Frequency of numbers across input combinations")
+                                                st.write("- Original scores of source combinations")
+                                                st.write("- Hot/cold number analysis")
+                                                st.write("- Historical frequency patterns")
+                                                st.write("- Even/odd balance")
+                                                st.write("- Range distribution")
+                                                st.write("- Sum optimization")
+                                        
+                                    except Exception as e:
+                                        st.error(f"Error mixing combinations: {str(e)}")
+                                        import traceback
+                                        st.error(f"Traceback: {traceback.format_exc()}")
+                        else:
+                            st.info(f"👆 Select at least 2 combinations to mix (currently selected: {len(selected_indices)})")
                     
                     st.divider()
                     
