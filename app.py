@@ -362,9 +362,13 @@ def main():
                 try:
                     # Initialize the FrenchLotoStatistics module
                     try:
+                        # Import here to ensure it's available even if global import failed
+                        from src.core.french_loto_statistics import FrenchLotoStatistics
                         stats = FrenchLotoStatistics(st.session_state.french_loto_data)
                     except Exception as e:
                         st.error(f"Error initializing statistics module: {str(e)}")
+                        import traceback
+                        st.error(f"Traceback: {traceback.format_exc()}")
                         stats = None
                     
                     if stats:
