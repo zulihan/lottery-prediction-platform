@@ -1267,6 +1267,41 @@ def main():
                                         
                                         st.divider()
                         
+                        # Show previously mixed combo if available
+                        if 'loto_mixed_combo' in st.session_state:
+                            st.subheader("🎯 Last Mixed Combination (Ready to Save)")
+                            last_mixed = st.session_state.loto_mixed_combo
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                nums_str = ", ".join([str(n) for n in last_mixed['main_numbers']])
+                                st.markdown(f"**Numbers:** {nums_str}")
+                                st.markdown(f"**Lucky:** {last_mixed.get('lucky_number', 'N/A')}")
+                            with col2:
+                                st.metric("Score", f"{last_mixed.get('score', 0):.2f}")
+                            with col3:
+                                if st.button("💾 Save This", key="loto_save_last_mixed", type="primary"):
+                                    try:
+                                        from src.core.database import FrenchLotoPrediction, get_session
+                                        from datetime import date
+                                        numbers_str = "-".join([str(n) for n in last_mixed['main_numbers']])
+                                        new_combo = FrenchLotoPrediction(
+                                            date_generated=date.today(),
+                                            numbers=numbers_str,
+                                            lucky=last_mixed.get('lucky_number'),
+                                            strategy="Mixed Optimized",
+                                            score=last_mixed.get('score', 0.0)
+                                        )
+                                        session = get_session()
+                                        session.add(new_combo)
+                                        session.commit()
+                                        session.close()
+                                        st.success(f"✅ Saved! Nums: {numbers_str}, Lucky: {last_mixed.get('lucky_number')}")
+                                        del st.session_state.loto_mixed_combo
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error: {str(e)}")
+                            st.divider()
+                        
                         # Show mix button if at least 2 combinations are selected
                         if len(selected_indices) >= 2:
                             mix_button = st.button("✨ Mix Selected Combinations", type="primary", key="loto_mix_button")
@@ -1278,6 +1313,8 @@ def main():
                                         mixed_combo = strategies.mix_combinations(selected_combos, max_iterations=200)
                                         
                                         if mixed_combo:
+                                            # Store in session state for saving later
+                                            st.session_state.loto_mixed_combo = mixed_combo
                                             st.success(f"✅ Created optimal mixed combination with score {mixed_combo.get('score', 0):.2f}!")
                                             st.subheader("🎯 Your Optimized Mixed Combination")
                                             
@@ -1295,29 +1332,37 @@ def main():
                                                 st.caption("Based on frequency, hot/cold analysis, and balance")
                                             
                                             with col3:
-                                                if st.button("💾 Save Mixed", key="loto_save_mixed", type="primary"):
-                                                    try:
-                                                        from src.core.database import FrenchLotoPrediction, get_session
-                                                        from datetime import date
-                                                        
-                                                        numbers_str = "-".join([str(n) for n in mixed_combo['main_numbers']])
-                                                        
-                                                        new_combo = FrenchLotoPrediction(
-                                                            date_generated=date.today(),
-                                                            numbers=numbers_str,
-                                                            lucky=mixed_combo.get('lucky_number'),
-                                                            strategy=f"Mixed from {len(selected_indices)} combos",
-                                                            score=mixed_combo.get('score', 0.0)
-                                                        )
-                                                        
-                                                        session = get_session()
-                                                        session.add(new_combo)
-                                                        session.commit()
-                                                        session.close()
-                                                        
-                                                        st.success("✅ Mixed combination saved!")
-                                                    except Exception as e:
-                                                        st.error(f"Error saving: {str(e)}")
+                                                save_mixed = st.button("💾 Save Mixed", key="loto_save_mixed", type="primary")
+                                                
+                                            # Handle save outside of columns to avoid rerun issues
+                                            if save_mixed and 'loto_mixed_combo' in st.session_state:
+                                                try:
+                                                    from src.core.database import FrenchLotoPrediction, get_session
+                                                    from datetime import date
+                                                    
+                                                    combo_to_save = st.session_state.loto_mixed_combo
+                                                    numbers_str = "-".join([str(n) for n in combo_to_save['main_numbers']])
+                                                    
+                                                    new_combo = FrenchLotoPrediction(
+                                                        date_generated=date.today(),
+                                                        numbers=numbers_str,
+                                                        lucky=combo_to_save.get('lucky_number'),
+                                                        strategy="Mixed Optimized",
+                                                        score=combo_to_save.get('score', 0.0)
+                                                    )
+                                                    
+                                                    session = get_session()
+                                                    session.add(new_combo)
+                                                    session.commit()
+                                                    session.close()
+                                                    
+                                                    st.success(f"✅ Mixed combination saved! Numbers: {numbers_str}, Lucky: {combo_to_save.get('lucky_number')}")
+                                                    # Clear from session state after saving
+                                                    del st.session_state.loto_mixed_combo
+                                                except Exception as e:
+                                                    st.error(f"Error saving: {str(e)}")
+                                                    import traceback
+                                                    st.error(f"Details: {traceback.format_exc()}")
                                             
                                             # Show what was mixed
                                             with st.expander("📊 Mixing Details"):
