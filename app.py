@@ -2349,14 +2349,25 @@ def main():
 
                             # Show detailed table
                             with st.expander("📊 Detailed Results Table"):
+                                # Select only columns that exist
+                                display_cols = ['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']
+                                available_cols = [col for col in display_cols if col in backtest_results.columns]
                                 st.dataframe(
-                                    backtest_results[['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']],
+                                    backtest_results[available_cols],
                                     use_container_width=True
                                 )
 
                             st.info(f"**Analysis Details**: Backtested {len(backtest_results)} strategies using "
                                   f"{num_preds} predictions each against historical data (30% test set). "
                                   f"Win rate = predictions with 3+ matches (prize threshold).")
+
+                            # Show any errors that occurred
+                            if 'error' in backtest_results.columns:
+                                failed_strategies = backtest_results[backtest_results['error'].notna()]
+                                if len(failed_strategies) > 0:
+                                    with st.expander(f"⚠️ {len(failed_strategies)} Strategy Errors", expanded=False):
+                                        for _, row in failed_strategies.iterrows():
+                                            st.error(f"**{row['strategy']}**: {row['error']}")
 
                         else:
                             st.error("Backtest failed. Please check database connection and ensure you have sufficient historical data.")
@@ -2443,14 +2454,25 @@ def main():
 
                             # Show detailed table
                             with st.expander("📊 Detailed Results Table"):
+                                # Select only columns that exist
+                                display_cols = ['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']
+                                available_cols = [col for col in display_cols if col in backtest_results_euro.columns]
                                 st.dataframe(
-                                    backtest_results_euro[['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']],
+                                    backtest_results_euro[available_cols],
                                     use_container_width=True
                                 )
 
                             st.info(f"**Analysis Details**: Backtested {len(backtest_results_euro)} strategies using "
                                   f"{num_preds_euro} predictions each against historical data (30% test set). "
                                   f"Win rate = predictions with 2+ matches (prize threshold).")
+
+                            # Show any errors that occurred
+                            if 'error' in backtest_results_euro.columns:
+                                failed_strategies = backtest_results_euro[backtest_results_euro['error'].notna()]
+                                if len(failed_strategies) > 0:
+                                    with st.expander(f"⚠️ {len(failed_strategies)} Strategy Errors", expanded=False):
+                                        for _, row in failed_strategies.iterrows():
+                                            st.error(f"**{row['strategy']}**: {row['error']}")
 
                         else:
                             st.error("Backtest failed. Please check database connection and ensure you have sufficient historical data.")

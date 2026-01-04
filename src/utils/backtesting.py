@@ -164,9 +164,13 @@ class StrategyBacktester:
             return {
                 'strategy': strategy_name,
                 'error': str(e),
-                'avg_score': 0,
-                'win_rate': 0,
-                'total_predictions': 0
+                'avg_score': 0.0,
+                'win_rate': 0.0,
+                'max_score': 0,
+                'std_score': 0.0,
+                'total_predictions': 0,
+                'total_tests': 0,
+                'total_scores': 0
             }
 
         # Score predictions against test data
@@ -276,9 +280,13 @@ class StrategyBacktester:
                 results.append({
                     'strategy': strategy_name,
                     'error': str(e),
-                    'avg_score': 0,
-                    'win_rate': 0,
-                    'total_predictions': 0
+                    'avg_score': 0.0,
+                    'win_rate': 0.0,
+                    'max_score': 0,
+                    'std_score': 0.0,
+                    'total_predictions': 0,
+                    'total_tests': 0,
+                    'total_scores': 0
                 })
 
         # Create DataFrame and sort by win rate
