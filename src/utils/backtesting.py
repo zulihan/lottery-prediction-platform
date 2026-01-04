@@ -241,7 +241,7 @@ class StrategyBacktester:
             strategies_to_test = [
                 ('Frequency Analysis', lambda s, **kw: s.frequency_strategy(**kw), {}),
                 ('Risk/Reward Balance', lambda s, **kw: s.risk_reward_strategy(**kw), {}),
-                ('Markov Chain Model', lambda s, **kw: s.markov_chain_strategy(**kw), {}),
+                ('Markov Chain Model', lambda s, **kw: s.markov_strategy(**kw), {}),
                 ('Time Series Analysis', lambda s, **kw: s.time_series_strategy(**kw), {}),
                 ('Bayesian Inference', lambda s, **kw: s.bayesian_strategy(**kw), {}),
                 ('Coverage Optimization', lambda s, **kw: s.coverage_optimization_strategy(**kw), {}),
@@ -257,8 +257,7 @@ class StrategyBacktester:
                 ('Markov Chain Model', lambda s, **kw: s.markov_strategy(**kw), {}),
                 ('Time Series Analysis', lambda s, **kw: s.time_series_strategy(**kw), {}),
                 ('Bayesian Inference', lambda s, **kw: s.bayesian_strategy(**kw), {}),
-                ('Coverage Optimization', lambda s, **kw: s.coverage_optimization_strategy(**kw), {}),
-                ('Temporal Patterns', lambda s, **kw: s.temporal_pattern_strategy(**kw), {}),
+                # Note: Coverage Optimization and Temporal Patterns not implemented for French Loto
                 ('Stratified Sampling', lambda s, **kw: s.stratified_sampling_strategy(**kw), {}),
                 ('Anti-Cognitive Bias', lambda s, **kw: s.cognitive_bias_strategy(**kw), {}),
                 ('Mixed Strategy', lambda s, **kw: s.mixed_strategy(**kw), {}),
