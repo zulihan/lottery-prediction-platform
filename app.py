@@ -19,6 +19,19 @@ try:
     from src.utils.combination_analysis import analyze_full_combinations, analyze_number_combinations
     from src.utils.strategy_recommendation import get_ordered_strategy_list, get_strategy_info_text, get_base_strategy_name
     from src.core.fibonacci_strategy import generate_fibonacci_combinations, get_fibonacci_strategy_info, save_fibonacci_to_database
+
+    # NEW: Import ensemble strategies and analysis tools
+    from src.core.ensemble import EnsembleStrategies
+    from src.utils.evaluation import FailureAnalyzer
+    from src.utils.visualizations import (
+        plot_number_pairs_heatmap,
+        plot_number_frequency_chart,
+        plot_hot_cold_numbers,
+        plot_range_distribution,
+        plot_star_frequency,
+        plot_trend_over_time,
+        create_all_visualizations
+    )
 except ImportError as e:
     logging.warning(f"Strategy modules not found. Some features may be unavailable. Error: {str(e)}")
     # Define fallback functions
@@ -33,6 +46,9 @@ except ImportError as e:
         return {"error": "Combination analysis not available"}
     def analyze_full_combinations():
         return {"error": "Combination analysis not available"}
+    # Define fallback for new modules
+    EnsembleStrategies = None
+    FailureAnalyzer = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -164,11 +180,12 @@ def main():
     
     # Create tabs for different application functionalities
     tabs = st.tabs([
-        "Data Overview", 
-        "Statistics", 
-        "Strategy Generation", 
-        "Results Analysis", 
+        "Data Overview",
+        "Statistics",
+        "Strategy Generation",
+        "Results Analysis",
         "Visualizations",
+        "Failure Analysis",  # NEW
         "Add Latest Draw",
         "Strategy Performance"
     ])
@@ -474,14 +491,21 @@ def main():
                     from src.core.statistics import EuromillionsStatistics
                     euro_stats = EuromillionsStatistics(st.session_state.processed_data)
                     strategies = PredictionStrategies(euro_stats)
+
+                    # Initialize ensemble strategies
+                    ensemble_strategies = EnsembleStrategies(
+                        base_strategies=strategies,
+                        historical_data=st.session_state.processed_data
+                    )
                 except Exception as e:
                     st.error(f"Error initializing prediction strategies: {str(e)}")
                     strategies = None
+                    ensemble_strategies = None
                 
                 if strategies:
                     # Information about strategy performance
                     st.info(get_strategy_info_text())
-                    
+
                     # Strategy selection
                     strategy_type = st.selectbox(
                         "Select Strategy",
@@ -490,6 +514,8 @@ def main():
                             "Frequency Analysis ⭐",
                             "Markov Chain Model ⭐",
                             "Time Series Analysis ⭐",
+                            "Fibonacci-Filtered Hybrid ⭐⭐",
+                            "Strategic Fusion Ensemble ⭐⭐",
                             "Bayesian Inference",
                             "Coverage Optimization",
                             "Temporal Patterns",
@@ -570,7 +596,22 @@ def main():
                             5, 30, 10,
                             help="Window size for analyzing cognitive biases"
                         )
-                    
+
+                    elif base_strategy_type == "Fibonacci-Filtered Hybrid":
+                        num_per_strategy = st.slider(
+                            "Candidates per Strategy",
+                            4, 12, 8,
+                            help="Number of candidates to generate from each base strategy before filtering"
+                        )
+
+                    elif base_strategy_type == "Strategic Fusion Ensemble":
+                        fusion_types = st.multiselect(
+                            "Fusion Types",
+                            ["cross_strategy", "averaging", "frequency_weighted"],
+                            default=["cross_strategy", "averaging"],
+                            help="Select which fusion methods to use"
+                        )
+
                     # Number of combinations to generate
                     num_combinations = st.slider("Number of Combinations", 1, 10, 5)
                     
@@ -637,12 +678,34 @@ def main():
                                         num_combinations=num_combinations,
                                         window_size=window_size
                                     )
-                                
+
                                 elif base_strategy_type == "Mixed Strategy":
                                     combinations = strategies.mixed_strategy(
                                         num_combinations=num_combinations
                                     )
-                                
+
+                                elif base_strategy_type == "Fibonacci-Filtered Hybrid":
+                                    if ensemble_strategies:
+                                        combinations = ensemble_strategies.fibonacci_filtered_hybrid_strategy(
+                                            num_combinations=num_combinations,
+                                            num_per_strategy=num_per_strategy
+                                        )
+                                    else:
+                                        st.error("Ensemble strategies not available")
+                                        combinations = []
+
+                                elif base_strategy_type == "Strategic Fusion Ensemble":
+                                    if ensemble_strategies:
+                                        # Use fusion_types from multiselect, or default if empty
+                                        selected_fusion = fusion_types if fusion_types else ["cross_strategy", "averaging"]
+                                        combinations = ensemble_strategies.strategic_fusion_ensemble(
+                                            num_combinations=num_combinations,
+                                            fusion_types=selected_fusion
+                                        )
+                                    else:
+                                        st.error("Ensemble strategies not available")
+                                        combinations = []
+
                                 # Display generated combinations
                                 if combinations:
                                     st.subheader("Generated Combinations")
@@ -1563,11 +1626,361 @@ def main():
         
     # Visualizations tab
     with tabs[4]:
-        st.header("Visualizations")
-        st.write("Visualization tools will be added here.")
-        
-    # Add Latest Draw tab
+        st.header("📊 Interactive Visualizations")
+
+        # Lottery type selection
+        viz_lottery_type = st.radio(
+            "Select Lottery Type for Visualizations",
+            ["Euromillions", "French Loto"],
+            key="viz_lottery_type",
+            horizontal=True
+        )
+
+        if viz_lottery_type == "Euromillions":
+            if not st.session_state.data_loaded:
+                st.warning("⚠️ Please load Euromillions data from the sidebar first.")
+            else:
+                try:
+                    from src.core.statistics import EuromillionsStatistics
+
+                    # Initialize statistics
+                    euro_stats = EuromillionsStatistics(st.session_state.processed_data)
+
+                    # Visualization selection
+                    viz_type = st.selectbox(
+                        "Select Visualization Type",
+                        [
+                            "Number Pairs Heatmap",
+                            "Number Frequency Chart",
+                            "Hot vs Cold Numbers",
+                            "Range Distribution",
+                            "Star Frequency",
+                            "Trends Over Time",
+                            "All Visualizations"
+                        ]
+                    )
+
+                    if viz_type == "Number Pairs Heatmap":
+                        st.subheader("Number Pairs Frequency Heatmap")
+                        st.markdown("Interactive heatmap showing how often number pairs appear together")
+                        with st.spinner("Generating heatmap..."):
+                            fig = plot_number_pairs_heatmap(
+                                historical_data=st.session_state.processed_data.to_dict('records')
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+
+                    elif viz_type == "Number Frequency Chart":
+                        st.subheader("Number Frequency Analysis")
+                        top_n = st.slider("Show Top N Numbers", 10, 50, 20, key="freq_top_n")
+                        chart_type = st.radio("Chart Type", ["bar", "line"], horizontal=True, key="freq_chart_type")
+
+                        number_freq = euro_stats.get_frequency()
+                        fig = plot_number_frequency_chart(number_freq, top_n=top_n, chart_type=chart_type)
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif viz_type == "Hot vs Cold Numbers":
+                        st.subheader("Hot vs Cold Numbers Comparison")
+                        max_display = st.slider("Numbers to Display per Category", 5, 15, 10, key="hotcold_display")
+
+                        hot_numbers = euro_stats.get_hot_numbers(max_display)
+                        cold_numbers = euro_stats.get_cold_numbers(max_display)
+
+                        # Convert to (number, frequency) tuples
+                        hot_freq = [(n, euro_stats.get_frequency(n)) for n in hot_numbers]
+                        cold_freq = [(n, euro_stats.get_frequency(n)) for n in cold_numbers]
+
+                        fig = plot_hot_cold_numbers(hot_freq, cold_freq, max_display=max_display)
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif viz_type == "Range Distribution":
+                        st.subheader("Number Range Distribution")
+                        st.markdown("Distribution of numbers across different ranges (1-10, 11-20, etc.)")
+
+                        range_dist = euro_stats.get_number_range_distribution()
+                        fig = plot_range_distribution(range_dist)
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif viz_type == "Star Frequency":
+                        st.subheader("Lucky Star Frequency Distribution")
+
+                        star_freq = euro_stats.get_star_frequency()
+                        fig = plot_star_frequency(star_freq)
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif viz_type == "Trends Over Time":
+                        st.subheader("Number Frequency Trends Over Time")
+
+                        trend_option = st.radio(
+                            "Track",
+                            ["Top 5 Numbers", "Specific Number"],
+                            horizontal=True,
+                            key="trend_option"
+                        )
+
+                        if trend_option == "Specific Number":
+                            specific_num = st.number_input(
+                                "Enter number to track (1-50)",
+                                min_value=1,
+                                max_value=50,
+                                value=7,
+                                key="trend_specific_num"
+                            )
+                            fig = plot_trend_over_time(
+                                st.session_state.processed_data.to_dict('records'),
+                                number=specific_num
+                            )
+                        else:
+                            fig = plot_trend_over_time(
+                                st.session_state.processed_data.to_dict('records'),
+                                number=None
+                            )
+
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif viz_type == "All Visualizations":
+                        st.subheader("Comprehensive Dashboard")
+                        st.markdown("Generating all visualizations...")
+
+                        with st.spinner("Generating comprehensive dashboard..."):
+                            figures = create_all_visualizations(
+                                st.session_state.processed_data.to_dict('records'),
+                                euro_stats
+                            )
+
+                            # Display each figure
+                            if 'pairs_heatmap' in figures:
+                                st.plotly_chart(figures['pairs_heatmap'], use_container_width=True)
+
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if 'number_frequency' in figures:
+                                    st.plotly_chart(figures['number_frequency'], use_container_width=True)
+                                if 'range_distribution' in figures:
+                                    st.plotly_chart(figures['range_distribution'], use_container_width=True)
+
+                            with col2:
+                                if 'hot_cold' in figures:
+                                    st.plotly_chart(figures['hot_cold'], use_container_width=True)
+                                if 'star_frequency' in figures:
+                                    st.plotly_chart(figures['star_frequency'], use_container_width=True)
+
+                            if 'trends' in figures:
+                                st.plotly_chart(figures['trends'], use_container_width=True)
+
+                except Exception as e:
+                    st.error(f"Error generating visualizations: {str(e)}")
+                    import traceback
+                    st.error(f"Traceback: {traceback.format_exc()}")
+
+        else:  # French Loto
+            if not st.session_state.french_loto_data_loaded:
+                st.warning("⚠️ Please load French Loto data from the sidebar first.")
+            else:
+                st.info("French Loto visualizations coming soon! The visualization framework supports it, just needs implementation.")
+
+
+    # Failure Analysis tab (NEW)
     with tabs[5]:
+        st.header("🔍 Failure Analysis")
+        st.markdown("Analyze why your predictions didn't match the winning numbers and get actionable recommendations.")
+
+        if FailureAnalyzer is None:
+            st.error("Failure Analysis module not available.")
+        else:
+            # Lottery type selection
+            analysis_lottery_type = st.radio(
+                "Select Lottery Type for Analysis",
+                ["Euromillions", "French Loto"],
+                key="analysis_lottery_type",
+                horizontal=True
+            )
+
+            st.subheader("📋 Your Predictions")
+
+            # Manual entry of predictions
+            num_predictions = st.number_input(
+                "Number of combinations to analyze",
+                min_value=1,
+                max_value=20,
+                value=5,
+                key="num_predictions_to_analyze"
+            )
+
+            predictions = []
+            if analysis_lottery_type == "Euromillions":
+                st.write("Enter your predicted combinations:")
+                for i in range(num_predictions):
+                    with st.expander(f"Combination {i+1}"):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            numbers = st.multiselect(
+                                "Numbers (select 5)",
+                                list(range(1, 51)),
+                                key=f"pred_numbers_{i}",
+                                max_selections=5
+                            )
+                        with col2:
+                            stars = st.multiselect(
+                                "Stars (select 2)",
+                                list(range(1, 13)),
+                                key=f"pred_stars_{i}",
+                                max_selections=2
+                            )
+
+                        if len(numbers) == 5 and len(stars) == 2:
+                            predictions.append({
+                                'numbers': sorted(numbers),
+                                'stars': sorted(stars)
+                            })
+
+                st.subheader("🎯 Actual Winning Numbers")
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    winning_numbers = st.multiselect(
+                        "Winning Numbers (select 5)",
+                        list(range(1, 51)),
+                        key="winning_numbers_analysis",
+                        max_selections=5
+                    )
+                with col2:
+                    winning_stars = st.multiselect(
+                        "Winning Stars (select 2)",
+                        list(range(1, 13)),
+                        key="winning_stars_analysis",
+                        max_selections=2
+                    )
+
+            else:  # French Loto
+                st.write("Enter your predicted combinations:")
+                for i in range(num_predictions):
+                    with st.expander(f"Combination {i+1}"):
+                        col1, col2 = st.columns([4, 1])
+                        with col1:
+                            numbers = st.multiselect(
+                                "Numbers (select 5)",
+                                list(range(1, 50)),
+                                key=f"pred_loto_numbers_{i}",
+                                max_selections=5
+                            )
+                        with col2:
+                            lucky = st.selectbox(
+                                "Lucky Number",
+                                list(range(1, 11)),
+                                key=f"pred_loto_lucky_{i}"
+                            )
+
+                        if len(numbers) == 5:
+                            predictions.append({
+                                'numbers': sorted(numbers),
+                                'stars': []  # Not used for Loto but keep structure consistent
+                            })
+
+                st.subheader("🎯 Actual Winning Numbers")
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    winning_numbers = st.multiselect(
+                        "Winning Numbers (select 5)",
+                        list(range(1, 50)),
+                        key="winning_loto_numbers_analysis",
+                        max_selections=5
+                    )
+                with col2:
+                    winning_lucky = st.selectbox(
+                        "Winning Lucky Number",
+                        list(range(1, 11)),
+                        key="winning_loto_lucky_analysis"
+                    )
+                winning_stars = []  # Not used for Loto
+
+            # Analyze button
+            if st.button("🔍 Analyze Predictions", type="primary"):
+                if len(predictions) > 0 and len(winning_numbers) == 5:
+                    with st.spinner("Analyzing predictions..."):
+                        try:
+                            analyzer = FailureAnalyzer()
+                            results = analyzer.analyze_predictions(
+                                predictions,
+                                winning_numbers,
+                                winning_stars if analysis_lottery_type == "Euromillions" else []
+                            )
+
+                            # Display results
+                            st.success("✅ Analysis Complete!")
+
+                            # Summary metrics
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                st.metric(
+                                    "Overused Numbers",
+                                    len(results['overused_numbers']['numbers'])
+                                )
+                            with col2:
+                                st.metric(
+                                    "Missing Numbers",
+                                    results['missing_numbers']['count']
+                                )
+                            with col3:
+                                st.metric(
+                                    "Missing %",
+                                    f"{results['missing_numbers']['percentage']:.0f}%"
+                                )
+                            with col4:
+                                if analysis_lottery_type == "Euromillions":
+                                    st.metric(
+                                        "Star Hit Rate",
+                                        f"{results['star_analysis']['hit_rate']:.0f}%"
+                                    )
+
+                            # Detailed Analysis
+                            st.subheader("📊 Detailed Analysis")
+
+                            # Overused numbers
+                            if results['overused_numbers']['numbers']:
+                                with st.expander("⚠️ Overused Numbers"):
+                                    st.write("These numbers appeared too many times in your predictions:")
+                                    for num, count in sorted(
+                                        results['overused_numbers']['numbers'].items(),
+                                        key=lambda x: x[1],
+                                        reverse=True
+                                    ):
+                                        won = "✓ WON" if num in winning_numbers else "✗ LOST"
+                                        st.write(f"- Number **{num}**: used {count} times - {won}")
+
+                            # Missing numbers
+                            if results['missing_numbers']['numbers']:
+                                with st.expander("❌ Missing Winning Numbers"):
+                                    st.write("These winning numbers were not in any of your predictions:")
+                                    missing_nums = ", ".join([f"**{n}**" for n in sorted(results['missing_numbers']['numbers'])])
+                                    st.write(missing_nums)
+
+                            # Range distribution
+                            with st.expander("📍 Range Distribution Analysis"):
+                                st.write("Comparison of number ranges:")
+                                range_df = pd.DataFrame({
+                                    'Range': list(results['range_analysis']['winning_distribution'].keys()),
+                                    'Winning': list(results['range_analysis']['winning_distribution'].values()),
+                                    'Your Predictions': list(results['range_analysis']['our_distribution'].values())
+                                })
+                                st.dataframe(range_df, use_container_width=True)
+
+                                if results['range_analysis']['underrepresented_ranges']:
+                                    st.warning("⚠️ Underrepresented ranges:")
+                                    for gap in results['range_analysis']['underrepresented_ranges']:
+                                        st.write(f"- **{gap['range']}**: needed {gap['winning_count']}, had {gap['our_count']}")
+
+                            # Recommendations
+                            st.subheader("💡 Recommendations")
+                            for i, rec in enumerate(results['recommendations'], 1):
+                                st.info(f"**{i}.** {rec}")
+
+                        except Exception as e:
+                            st.error(f"Error during analysis: {str(e)}")
+                            logger.error(f"Failure analysis error: {e}")
+                else:
+                    st.warning("Please enter at least one complete prediction and the winning numbers.")
+
+    # Add Latest Draw tab
+    with tabs[6]:
         st.header("Add Latest Draw")
         
         # Select lottery type for the new draw
@@ -1809,7 +2222,7 @@ def main():
                             st.error(f"❌ Database error: {str(e)}")
     
     # Strategy Performance tab
-    with tabs[6]:
+    with tabs[7]:
         st.header("Strategy Performance Analysis")
         
         # Select lottery type for the performance analysis
