@@ -209,10 +209,10 @@ def main():
     
     # Create tabs for different application functionalities
     tabs = st.tabs([
-        "Data Overview",
-        "Statistics",
-        "Strategy Generation",
-        "Results Analysis",
+        "Data Overview", 
+        "Statistics", 
+        "Strategy Generation", 
+        "Results Analysis", 
         "Visualizations",
         "Failure Analysis",  # NEW
         "Add Latest Draw",
@@ -391,9 +391,9 @@ def main():
                         )
                         
                         if combination_analysis and 'most_frequent_combinations' in combination_analysis:
-                            st.write(f"Most Frequent {combination_size}-Number Combinations:")
+                        st.write(f"Most Frequent {combination_size}-Number Combinations:")
                             for combo, freq in combination_analysis['most_frequent_combinations']:
-                                st.write(f"Numbers {combo}: {freq} occurrences")
+                            st.write(f"Numbers {combo}: {freq} occurrences")
                         elif combination_analysis and 'error' in combination_analysis:
                             st.warning(combination_analysis['error'])
                     else:
@@ -534,7 +534,7 @@ def main():
                 if strategies:
                     # Information about strategy performance
                     st.info(get_strategy_info_text())
-
+                    
                     # Strategy selection
                     strategy_type = st.selectbox(
                         "Select Strategy",
@@ -625,7 +625,7 @@ def main():
                             5, 30, 10,
                             help="Window size for analyzing cognitive biases"
                         )
-
+                    
                     elif base_strategy_type == "Fibonacci-Filtered Hybrid":
                         num_per_strategy = st.slider(
                             "Candidates per Strategy",
@@ -640,7 +640,7 @@ def main():
                             default=["cross_strategy", "averaging"],
                             help="Select which fusion methods to use"
                         )
-
+                    
                     # Number of combinations to generate
                     num_combinations = st.slider("Number of Combinations", 1, 10, 5)
                     
@@ -707,12 +707,12 @@ def main():
                                         num_combinations=num_combinations,
                                         window_size=window_size
                                     )
-
+                                
                                 elif base_strategy_type == "Mixed Strategy":
                                     combinations = strategies.mixed_strategy(
                                         num_combinations=num_combinations
                                     )
-
+                                
                                 elif base_strategy_type == "Fibonacci-Filtered Hybrid":
                                     if ensemble_strategies:
                                         combinations = ensemble_strategies.fibonacci_filtered_hybrid_strategy(
@@ -734,7 +734,7 @@ def main():
                                     else:
                                         st.error("Ensemble strategies not available")
                                         combinations = []
-
+                                
                                 # Display generated combinations
                                 if combinations:
                                     st.subheader("Generated Combinations")
@@ -1397,7 +1397,7 @@ def main():
                                             if 'main_numbers' in combo:
                                                 # French Loto format
                                                 numbers_str = ", ".join([str(n) for n in combo['main_numbers']])
-                                                st.write(f"Numbers: {numbers_str}")
+                                            st.write(f"Numbers: {numbers_str}")
                                                 st.write(f"Lucky Number: {combo.get('lucky_number', 'N/A')}")
                                             else:
                                                 # Euromillions format
@@ -2319,7 +2319,7 @@ def main():
         
         if lottery_perf_type == "French Loto":
             st.subheader("French Loto Strategy Performance")
-
+            
             st.markdown("""
             **Dynamic Backtesting**: Performance metrics are calculated from your actual database data.
             Click the button below to run a comprehensive backtest (cached for 1 hour).
@@ -2356,10 +2356,10 @@ def main():
                             st.session_state.loto_backtest_results = backtest_results
 
                             # Display performance metrics
-                            col1, col2 = st.columns(2)
-
-                            with col1:
-                                st.markdown("### Best Performing Strategies")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### Best Performing Strategies")
 
                                 # Show top 4 strategies
                                 top_strategies = backtest_results.head(4)
@@ -2367,8 +2367,8 @@ def main():
                                     st.markdown(f"**{idx+1}. {row['strategy']}**: "
                                               f"{row['avg_score']:.2f}/6 avg score, "
                                               f"{row['win_rate']:.2f}% win rate")
-
-                                st.markdown("### Recommendations")
+                
+                st.markdown("### Recommendations")
                                 if len(top_strategies) > 0:
                                     best = top_strategies.iloc[0]
                                     st.markdown(f"- ✅ **{best['strategy']}** is optimal (avg score: {best['avg_score']:.2f})")
@@ -2427,9 +2427,107 @@ def main():
                         st.error(f"Traceback: {traceback.format_exc()}")
             else:
                 st.info("👆 Click 'Run Backtest' to generate fresh performance metrics from your database data.")
+            
+            # Separate Lucky Number Strategies Section
+            st.divider()
+            st.subheader("🍀 Lucky Number Strategies (Separate Analysis)")
+                st.markdown("""
+            **Analyze lucky number strategies independently** from main number strategies.
+            This helps identify the best approach specifically for the lucky number (1-10).
+                """)
+                
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                run_lucky_backtest = st.button("🔄 Run Lucky Number Backtest", type="primary", key="run_lucky_backtest")
+            with col2:
+                generate_lucky = st.button("🎲 Generate Lucky Number", key="generate_lucky_btn")
+            
+            if run_lucky_backtest:
+                with st.spinner("Running lucky number backtest..."):
+                    try:
+                        from src.core.lucky_number_strategies import LuckyNumberStrategies, backtest_lucky_strategies
+                        
+                        # Get data
+                        conn = get_db_connection()
+                        if conn:
+                            loto_data = pd.read_sql("SELECT * FROM french_loto_drawings ORDER BY date", conn)
+                            
+                            if not loto_data.empty:
+                                results = backtest_lucky_strategies(loto_data, test_size=0.3)
+                                
+                                st.markdown("### Lucky Number Strategy Performance")
+                                
+                                # Display results
+                                results_df = pd.DataFrame([
+                                    {
+                                        'Strategy': strategy,
+                                        'Predictions': data['predictions'],
+                                        'Matches': data['matches'],
+                                        'Win Rate (%)': data['win_rate'],
+                                        'Expected Random (%)': data['expected_random']
+                                    }
+                                    for strategy, data in results.items()
+                                ])
+                                results_df = results_df.sort_values('Win Rate (%)', ascending=False)
+                                
+                                # Best strategy
+                                best = results_df.iloc[0]
+                                st.success(f"🏆 **Best Lucky Strategy: {best['Strategy']}** with {best['Win Rate (%)']}% win rate")
+                                
+                                # Chart
+                                fig = px.bar(results_df, x='Strategy', y='Win Rate (%)',
+                                           color='Win Rate (%)', color_continuous_scale='Greens',
+                                           title='Lucky Number Strategy Win Rates')
+                                fig.add_hline(y=10, line_dash="dash", line_color="red",
+                                            annotation_text="Random (10%)")
+                                st.plotly_chart(fig, use_container_width=True)
+                                
+                                # Table
+                                st.dataframe(results_df, use_container_width=True)
+                                
+                                st.info("**Note**: Random probability is 10% (1/10). Strategies above this line are performing better than random.")
+                            else:
+                                st.error("No data available for backtesting.")
+                    except Exception as e:
+                        st.error(f"Error running lucky backtest: {str(e)}")
+            
+            if generate_lucky:
+                with st.spinner("Generating lucky number..."):
+                    try:
+                        from src.core.lucky_number_strategies import LuckyNumberStrategies
+                        
+                        conn = get_db_connection()
+                        if conn:
+                            loto_data = pd.read_sql("SELECT * FROM french_loto_drawings ORDER BY date", conn)
+                            
+                            if not loto_data.empty:
+                                strategies = LuckyNumberStrategies(loto_data)
+                                
+                                st.markdown("### Generated Lucky Numbers by Strategy")
+                                
+                                strategy_names = ['frequency', 'balanced', 'contrarian', 'time_series', 
+                                                'hot_cold', 'range_balanced', 'weighted_random']
+                                
+                                cols = st.columns(len(strategy_names))
+                                for i, strat in enumerate(strategy_names):
+                                    with cols[i]:
+                                        result = strategies.generate(strat)
+                                        st.metric(
+                                            label=strat.replace('_', ' ').title(),
+                                            value=result['lucky_number'],
+                                            delta=f"Score: {result['score']:.0f}"
+                                        )
+                                
+                                # Statistics
+                                stats = strategies.get_statistics()
+                                with st.expander("📊 Lucky Number Statistics"):
+                                    st.write("**Most Frequent:**", [f"{n}: {f} times" for n, f in stats['most_frequent']])
+                                    st.write("**Least Frequent:**", [f"{n}: {f} times" for n, f in stats['least_frequent']])
+                    except Exception as e:
+                        st.error(f"Error generating lucky numbers: {str(e)}")
         
         else:  # Euromillions
-            st.subheader("Euromillions Strategy Performance")
+            st.subheader("Euromillions Strategy Performance (Main Numbers)")
 
             st.markdown("""
             **Dynamic Backtesting**: Performance metrics are calculated from your actual database data.
@@ -2491,22 +2589,22 @@ def main():
                                 st.markdown("- ✅ For consistent performance, use a mix of top-ranked strategies")
 
                             with col2:
-                                # Bar chart of average scores
+                # Bar chart of average scores
                                 st.write("Average Score by Strategy (out of 12)")
                                 fig1 = px.bar(backtest_results_euro, x='strategy', y='avg_score',
                                             color='avg_score',
-                                            color_continuous_scale='Viridis', height=300)
+                             color_continuous_scale='Viridis', height=300)
                                 fig1.update_layout(xaxis_title="Strategy", yaxis_title="Average Score")
-                                st.plotly_chart(fig1, use_container_width=True)
-
-                                # Bar chart of win rates
-                                st.write("Win Rate by Strategy (%)")
+                st.plotly_chart(fig1, use_container_width=True)
+                
+                # Bar chart of win rates
+                st.write("Win Rate by Strategy (%)")
                                 fig2 = px.bar(backtest_results_euro, x='strategy', y='win_rate',
                                             color='win_rate',
-                                            color_continuous_scale='Viridis', height=300)
+                             color_continuous_scale='Viridis', height=300)
                                 fig2.update_layout(xaxis_title="Strategy", yaxis_title="Win Rate (%)")
-                                st.plotly_chart(fig2, use_container_width=True)
-
+                st.plotly_chart(fig2, use_container_width=True)
+            
                             # Show detailed table
                             with st.expander("📊 Detailed Results Table"):
                                 # Select only columns that exist
@@ -2538,6 +2636,116 @@ def main():
                         st.error(f"Traceback: {traceback.format_exc()}")
             else:
                 st.info("👆 Click 'Run Backtest' to generate fresh performance metrics from your database data.")
+            
+            # Separate Star Strategies Section
+            st.divider()
+            st.subheader("⭐ Star Strategies (Separate Analysis)")
+            st.markdown("""
+            **Analyze star strategies independently** from main number strategies.
+            This helps identify the best approach specifically for the stars (1-12).
+            """)
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                run_star_backtest = st.button("🔄 Run Star Backtest", type="primary", key="run_star_backtest")
+            with col2:
+                generate_stars = st.button("🎲 Generate Stars", key="generate_stars_btn")
+            
+            if run_star_backtest:
+                with st.spinner("Running star backtest..."):
+                    try:
+                        from src.core.lucky_number_strategies import StarStrategies, backtest_star_strategies
+                        
+                        # Get data
+                        conn = get_db_connection()
+                        if conn:
+                            euro_data = pd.read_sql("SELECT * FROM euromillions_drawings ORDER BY date", conn)
+                            
+                            if not euro_data.empty:
+                                results = backtest_star_strategies(euro_data, test_size=0.3)
+                                
+                                st.markdown("### Star Strategy Performance")
+                                
+                                # Display results
+                                results_df = pd.DataFrame([
+                                    {
+                                        'Strategy': strategy,
+                                        'Predictions': data['predictions'],
+                                        'Full Matches (2/2)': data['full_matches'],
+                                        'Partial (1/2)': data['partial_matches'],
+                                        'Full Match Rate (%)': data['full_match_rate'],
+                                        'Partial Rate (%)': data['partial_match_rate'],
+                                        'Expected Random (%)': data['expected_random_full']
+                                    }
+                                    for strategy, data in results.items()
+                                ])
+                                results_df = results_df.sort_values('Full Match Rate (%)', ascending=False)
+                                
+                                # Best strategy
+                                best = results_df.iloc[0]
+                                st.success(f"🏆 **Best Star Strategy: {best['Strategy']}** with {best['Full Match Rate (%)']}% full match rate")
+                                
+                                # Charts
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    fig = px.bar(results_df, x='Strategy', y='Full Match Rate (%)',
+                                               color='Full Match Rate (%)', color_continuous_scale='Blues',
+                                               title='Full Star Match Rates (2/2)')
+                                    fig.add_hline(y=1.52, line_dash="dash", line_color="red",
+                                                annotation_text="Random (1.52%)")
+                                    st.plotly_chart(fig, use_container_width=True)
+                                
+                                with col2:
+                                    fig = px.bar(results_df, x='Strategy', y='Partial Rate (%)',
+                                               color='Partial Rate (%)', color_continuous_scale='Oranges',
+                                               title='Partial Match Rates (1/2)')
+                                    st.plotly_chart(fig, use_container_width=True)
+                                
+                                # Table
+                                st.dataframe(results_df, use_container_width=True)
+                                
+                                st.info("**Note**: Random probability for 2/2 stars is 1.52% (1/66). Strategies above this line perform better than random.")
+                            else:
+                                st.error("No data available for backtesting.")
+                    except Exception as e:
+                        st.error(f"Error running star backtest: {str(e)}")
+            
+            if generate_stars:
+                with st.spinner("Generating stars..."):
+                    try:
+                        from src.core.lucky_number_strategies import StarStrategies
+                        
+                        conn = get_db_connection()
+                        if conn:
+                            euro_data = pd.read_sql("SELECT * FROM euromillions_drawings ORDER BY date", conn)
+                            
+                            if not euro_data.empty:
+                                strategies = StarStrategies(euro_data)
+                                
+                                st.markdown("### Generated Stars by Strategy")
+                                
+                                strategy_names = ['frequency', 'balanced', 'contrarian', 'range_balanced', 
+                                                'pair_frequency', 'markov', 'time_series', 'weighted_random']
+                                
+                                # Display in 2 rows of 4
+                                for row in range(2):
+                                    cols = st.columns(4)
+                                    for i, strat in enumerate(strategy_names[row*4:(row+1)*4]):
+                                        with cols[i]:
+                                            result = strategies.generate(strat)
+                                            st.metric(
+                                                label=strat.replace('_', ' ').title(),
+                                                value=f"{result['stars'][0]}, {result['stars'][1]}",
+                                                delta=f"Score: {result['score']:.0f}"
+                                            )
+                                
+                                # Statistics
+                                stats = strategies.get_statistics()
+                                with st.expander("📊 Star Statistics"):
+                                    st.write("**Most Frequent Stars:**", [f"⭐{s}: {f} times" for s, f in stats['most_frequent']])
+                                    st.write("**Most Common Pairs:**", [f"({p[0]}, {p[1]}): {f} times" for p, f in stats['most_common_pairs'][:5]])
+                    except Exception as e:
+                        st.error(f"Error generating stars: {str(e)}")
 
 
 if __name__ == "__main__":
