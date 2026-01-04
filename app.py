@@ -929,12 +929,15 @@ def main():
                         strategy_choice = st.selectbox(
                             "Strategy for Main Numbers" if use_separate_lucky else "Recommended Strategy",
                             [
-                                "Risk/Reward Balance ⭐ (Best Overall)",
-                                "Markov Chain Model ⭐ (Highest Win Rate)",
+                                "Stratified Sampling 🥇 (Best Avg Score)",
+                                "Anti-Cognitive Bias 🥈 (High Win Rate)",
+                                "Time Series Analysis 🥉 (Balanced)",
+                                "Temporal Patterns ⭐ (Pattern-Based)",
+                                "Risk/Reward Balance ⭐ (Optimized Risk)",
+                                "Markov Chain Model ⭐ (Sequential)",
                                 "Frequency Analysis ⭐ (Consistent)",
-                                "Time Series Analysis ⭐ (Balanced)",
-                                "Fibonacci-Filtered Hybrid ⭐⭐ (New Meta-Strategy)",
-                                "Strategic Fusion Ensemble ⭐⭐ (New Meta-Strategy)",
+                                "Coverage Optimization ⭐ (Range Coverage)",
+                                "Bayesian Inference ⭐ (Probabilistic)",
                                 "Mixed Strategy (Blend of Top 3)"
                             ],
                             key="loto_quick_strategy"
@@ -976,7 +979,32 @@ def main():
                                         use_separate_lucky = False
                                 
                                 # Extract base strategy name
-                                if "Risk/Reward" in strategy_choice:
+                                if "Stratified Sampling" in strategy_choice:
+                                    base_strategy = "Stratified Sampling"
+                                    combinations = strategies.stratified_sampling_strategy(
+                                        num_combinations=num_combos,
+                                        strata_type="pattern",
+                                        balance_factor=0.7
+                                    )
+                                elif "Anti-Cognitive Bias" in strategy_choice:
+                                    base_strategy = "Anti-Cognitive Bias"
+                                    combinations = strategies.cognitive_bias_strategy(
+                                        num_combinations=num_combos
+                                    )
+                                elif "Time Series" in strategy_choice:
+                                    base_strategy = "Time Series Analysis"
+                                    window_size = 10
+                                    combinations = strategies.time_series_strategy(
+                                        num_combinations=num_combos,
+                                        window_size=window_size
+                                    )
+                                elif "Temporal Patterns" in strategy_choice:
+                                    base_strategy = "Temporal Patterns"
+                                    combinations = strategies.temporal_pattern_strategy(
+                                        num_combinations=num_combos,
+                                        pattern_depth=3
+                                    )
+                                elif "Risk/Reward" in strategy_choice:
                                     base_strategy = "Risk/Reward Balance"
                                     risk_level = 0.5  # Balanced risk
                                     combinations = strategies.risk_reward_strategy(
@@ -997,21 +1025,18 @@ def main():
                                         num_combinations=num_combos,
                                         recent_weight=recency_weight
                                     )
-                                elif "Time Series" in strategy_choice:
-                                    base_strategy = "Time Series Analysis"
-                                    window_size = 10
-                                    combinations = strategies.time_series_strategy(
+                                elif "Coverage Optimization" in strategy_choice:
+                                    base_strategy = "Coverage Optimization"
+                                    combinations = strategies.coverage_optimization_strategy(
                                         num_combinations=num_combos,
-                                        window_size=window_size
+                                        balance=0.6
                                     )
-                                elif "Fibonacci-Filtered Hybrid" in strategy_choice:
-                                    st.info("Fibonacci-Filtered Hybrid ensemble strategy for French Loto coming soon! " +
-                                           "Currently available for Euromillions only.")
-                                    combinations = []
-                                elif "Strategic Fusion Ensemble" in strategy_choice:
-                                    st.info("Strategic Fusion Ensemble for French Loto coming soon! " +
-                                           "Currently available for Euromillions only.")
-                                    combinations = []
+                                elif "Bayesian" in strategy_choice:
+                                    base_strategy = "Bayesian Inference"
+                                    combinations = strategies.bayesian_strategy(
+                                        num_combinations=num_combos,
+                                        recent_draws_count=20
+                                    )
                                 else:  # Mixed Strategy
                                     base_strategy = "Mixed Strategy"
                                     combinations = strategies.mixed_strategy(
