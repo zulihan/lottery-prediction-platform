@@ -880,9 +880,11 @@ def main():
                                         top_4 = mini_results.head(4)
                                         medals = ['🥇', '🥈', '🥉', '⭐']
                                         for idx, (_, row) in enumerate(top_4.iterrows()):
+                                            num_score = row.get('avg_number_score', row['avg_score'])
+                                            bonus_rate = row.get('bonus_match_rate', 0)
                                             st.markdown(f"{medals[idx]} **{row['strategy']}**: "
-                                                      f"{row['avg_score']:.2f}/6 avg score, "
-                                                      f"{row['win_rate']:.2f}% win rate")
+                                                      f"Nums: {num_score:.2f}/5 | Lucky: {bonus_rate:.1f}% | "
+                                                      f"Win: {row['win_rate']:.2f}%")
 
                                         st.markdown("\n**Recommendations:**")
                                         best = top_4.iloc[0]
@@ -2482,9 +2484,11 @@ def main():
                                 # Show top 4 strategies
                                 top_strategies = backtest_results.head(4)
                                 for idx, row in top_strategies.iterrows():
+                                    num_score = row.get('avg_number_score', row['avg_score'])
+                                    bonus_rate = row.get('bonus_match_rate', 0)
                                     st.markdown(f"**{idx+1}. {row['strategy']}**: "
-                                              f"{row['avg_score']:.2f}/6 avg score, "
-                                              f"{row['win_rate']:.2f}% win rate")
+                                              f"Nums: {num_score:.2f}/5 | Lucky: {bonus_rate:.1f}% | "
+                                              f"Win: {row['win_rate']:.2f}%")
 
                                 st.markdown("### Recommendations")
                                 if len(top_strategies) > 0:
@@ -2516,13 +2520,15 @@ def main():
 
                             # Show detailed table
                             with st.expander("📊 Detailed Results Table"):
-                                # Select only columns that exist
-                                display_cols = ['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']
+                                # Select columns including separate number/lucky scores
+                                display_cols = ['strategy', 'avg_number_score', 'bonus_match_rate', 'avg_score', 'win_rate', 'max_score']
                                 available_cols = [col for col in display_cols if col in backtest_results.columns]
-                                st.dataframe(
-                                    backtest_results[available_cols],
-                                    use_container_width=True
-                                )
+                                display_df = backtest_results[available_cols].copy()
+                                # Rename for clarity
+                                rename_map = {'avg_number_score': 'Nums /5', 'bonus_match_rate': 'Lucky %', 
+                                             'avg_score': 'Total /6', 'win_rate': 'Win %', 'max_score': 'Max'}
+                                display_df = display_df.rename(columns={k: v for k, v in rename_map.items() if k in display_df.columns})
+                                st.dataframe(display_df, use_container_width=True)
 
                             st.info(f"**Analysis Details**: Backtested {len(backtest_results)} strategies using "
                                   f"{num_preds} predictions each against historical data (30% test set). "
@@ -2684,9 +2690,11 @@ def main():
                                 # Show top 4 strategies
                                 top_strategies = backtest_results_euro.head(4)
                                 for idx, row in top_strategies.iterrows():
+                                    num_score = row.get('avg_number_score', row['avg_score'])
+                                    bonus_rate = row.get('bonus_match_rate', 0)
                                     st.markdown(f"**{idx+1}. {row['strategy']}**: "
-                                              f"{row['avg_score']:.2f}/7 avg score, "
-                                              f"{row['win_rate']:.2f}% win rate")
+                                              f"Nums: {num_score:.2f}/5 | Stars: {bonus_rate:.1f}% | "
+                                              f"Win: {row['win_rate']:.2f}%")
 
                                 st.markdown("### Recommendations")
                                 if len(top_strategies) > 0:
@@ -2718,13 +2726,15 @@ def main():
 
                             # Show detailed table
                             with st.expander("📊 Detailed Results Table"):
-                                # Select only columns that exist
-                                display_cols = ['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']
+                                # Select columns including separate number/star scores
+                                display_cols = ['strategy', 'avg_number_score', 'bonus_match_rate', 'avg_score', 'win_rate', 'max_score']
                                 available_cols = [col for col in display_cols if col in backtest_results_euro.columns]
-                                st.dataframe(
-                                    backtest_results_euro[available_cols],
-                                    use_container_width=True
-                                )
+                                display_df = backtest_results_euro[available_cols].copy()
+                                # Rename for clarity
+                                rename_map = {'avg_number_score': 'Nums /5', 'bonus_match_rate': 'Stars %', 
+                                             'avg_score': 'Total /7', 'win_rate': 'Win %', 'max_score': 'Max'}
+                                display_df = display_df.rename(columns={k: v for k, v in rename_map.items() if k in display_df.columns})
+                                st.dataframe(display_df, use_container_width=True)
 
                             st.info(f"**Analysis Details**: Backtested {len(backtest_results_euro)} strategies using "
                                   f"{num_preds_euro} predictions each against historical data (30% test set). "

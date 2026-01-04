@@ -98,6 +98,51 @@ class StrategyBacktester:
         lucky_match = 1 if pred_lucky == actual_lucky else 0
 
         return number_matches + lucky_match
+    
+    def score_prediction_french_loto_detailed(self, predicted: Dict, actual: Dict) -> Dict:
+        """
+        Score a French Loto prediction with detailed breakdown.
+
+        Args:
+            predicted: {'main_numbers': [5 ints], 'lucky_number': int}
+            actual: {'main_numbers': [5 ints], 'lucky_number': int}
+
+        Returns:
+            Dict with separate scores for numbers and lucky
+        """
+        pred_numbers = predicted.get('main_numbers') or predicted.get('numbers', [])
+        actual_numbers = actual.get('main_numbers') or actual.get('numbers', [])
+        pred_lucky = predicted.get('lucky_number') or predicted.get('lucky')
+        actual_lucky = actual.get('lucky_number') or actual.get('lucky')
+
+        number_matches = len(set(pred_numbers) & set(actual_numbers))
+        lucky_match = 1 if pred_lucky == actual_lucky else 0
+
+        return {
+            'number_matches': number_matches,
+            'lucky_match': lucky_match,
+            'total_score': number_matches + lucky_match
+        }
+    
+    def score_prediction_euromillions_detailed(self, predicted: Dict, actual: Dict) -> Dict:
+        """
+        Score a Euromillions prediction with detailed breakdown.
+
+        Args:
+            predicted: {'numbers': [5 ints], 'stars': [2 ints]}
+            actual: {'numbers': [5 ints], 'stars': [2 ints]}
+
+        Returns:
+            Dict with separate scores for numbers and stars
+        """
+        number_matches = len(set(predicted['numbers']) & set(actual['numbers']))
+        star_matches = len(set(predicted['stars']) & set(actual['stars']))
+
+        return {
+            'number_matches': number_matches,
+            'star_matches': star_matches,
+            'total_score': number_matches + star_matches
+        }
 
     def is_winning_prediction(self, score: float) -> bool:
         """
@@ -175,6 +220,8 @@ class StrategyBacktester:
 
         # Score predictions against test data
         scores = []
+        number_scores = []  # Track number matches separately
+        bonus_scores = []   # Track lucky/star matches separately
         wins = 0
 
         for test_idx, test_row in test_data.iterrows():
@@ -195,9 +242,15 @@ class StrategyBacktester:
             # Score each prediction against this actual result
             for pred in predictions:
                 if self.lottery_type == "euromillions":
-                    score = self.score_prediction_euromillions(pred, actual)
+                    detailed = self.score_prediction_euromillions_detailed(pred, actual)
+                    number_scores.append(detailed['number_matches'])
+                    bonus_scores.append(detailed['star_matches'])
+                    score = detailed['total_score']
                 else:
-                    score = self.score_prediction_french_loto(pred, actual)
+                    detailed = self.score_prediction_french_loto_detailed(pred, actual)
+                    number_scores.append(detailed['number_matches'])
+                    bonus_scores.append(detailed['lucky_match'])
+                    score = detailed['total_score']
 
                 scores.append(score)
 
@@ -206,6 +259,9 @@ class StrategyBacktester:
 
         # Calculate metrics
         avg_score = np.mean(scores) if scores else 0
+        avg_number_score = np.mean(number_scores) if number_scores else 0
+        avg_bonus_score = np.mean(bonus_scores) if bonus_scores else 0
+        bonus_match_rate = (sum(1 for b in bonus_scores if b > 0) / len(bonus_scores) * 100) if bonus_scores else 0
         win_rate = (wins / len(scores) * 100) if scores else 0
         max_score = max(scores) if scores else 0
         std_score = np.std(scores) if scores else 0
@@ -213,6 +269,9 @@ class StrategyBacktester:
         results = {
             'strategy': strategy_name,
             'avg_score': round(avg_score, 2),
+            'avg_number_score': round(avg_number_score, 2),  # Numbers only (out of 5)
+            'avg_bonus_score': round(avg_bonus_score, 2),    # Lucky/Stars only
+            'bonus_match_rate': round(bonus_match_rate, 2),  # % of lucky/star matches
             'win_rate': round(win_rate, 2),
             'max_score': max_score,
             'std_score': round(std_score, 2),
@@ -221,7 +280,7 @@ class StrategyBacktester:
             'total_scores': len(scores)
         }
 
-        logger.info(f"{strategy_name}: Avg Score={avg_score:.2f}, Win Rate={win_rate:.2f}%")
+        logger.info(f"{strategy_name}: Numbers={avg_number_score:.2f}/5, Bonus={bonus_match_rate:.1f}%, Total={avg_score:.2f}, Win Rate={win_rate:.2f}%")
 
         return results
 
