@@ -776,18 +776,23 @@ def main():
                     with st.expander("📊 Strategy Performance Analysis", expanded=True):
                         st.markdown("""
                         **Based on comprehensive backtesting against historical data (30% test set, 20 combinations per strategy):**
-                        
+
                         **Best Performing Strategies:**
                         - 🥇 **Risk/Reward Strategy**: 2.16/6 avg score, 22.69% win rate
                         - 🥈 **Frequency Analysis**: 2.15/6 avg score, 21.45% win rate
                         - 🥉 **Markov Chain Model**: 2.14/6 avg score, 23.26% win rate
                         - ⭐ **Time Series Analysis**: 2.14/6 avg score, 22.12% win rate
-                        
+
+                        **New Ensemble Strategies (Not Yet Backtested):**
+                        - ⭐⭐ **Fibonacci-Filtered Hybrid**: Meta-strategy combining 4 base strategies with Fibonacci filtering
+                        - ⭐⭐ **Strategic Fusion Ensemble**: Blends elements from multiple strategies using fusion algorithms
+
                         **Recommendations:**
                         - ✅ **Risk/Reward Balance** is optimal for maximizing both your match rate and potential payouts
                         - ✅ **Markov Chain Model** gives the highest win percentage but slightly lower average matches
                         - ✅ For consistent performance, consider a **blend of the top three strategies**
-                        
+                        - 🆕 Try the new **Ensemble Strategies** for advanced meta-strategy predictions
+
                         *Analysis Details: Backtesting conducted across 1,049 test drawings from historical data. Win rate refers to matches of 3 or more numbers (threshold for winning a prize).*
                         """)
                     
@@ -807,6 +812,8 @@ def main():
                                 "Markov Chain Model ⭐ (Highest Win Rate)",
                                 "Frequency Analysis ⭐ (Consistent)",
                                 "Time Series Analysis ⭐ (Balanced)",
+                                "Fibonacci-Filtered Hybrid ⭐⭐ (New Meta-Strategy)",
+                                "Strategic Fusion Ensemble ⭐⭐ (New Meta-Strategy)",
                                 "Mixed Strategy (Blend of Top 3)"
                             ],
                             key="loto_quick_strategy"
@@ -849,6 +856,14 @@ def main():
                                         num_combinations=num_combos,
                                         window_size=window_size
                                     )
+                                elif "Fibonacci-Filtered Hybrid" in strategy_choice:
+                                    st.info("Fibonacci-Filtered Hybrid ensemble strategy for French Loto coming soon! " +
+                                           "Currently available for Euromillions only.")
+                                    combinations = []
+                                elif "Strategic Fusion Ensemble" in strategy_choice:
+                                    st.info("Strategic Fusion Ensemble for French Loto coming soon! " +
+                                           "Currently available for Euromillions only.")
+                                    combinations = []
                                 else:  # Mixed Strategy
                                     base_strategy = "Mixed Strategy"
                                     combinations = strategies.mixed_strategy(
@@ -2260,28 +2275,35 @@ def main():
             with col2:
                 # Example performance chart
                 strategy_data = {
-                    'Strategy': ['Risk/Reward', 'Frequency', 'Markov', 'Time Series', 'Bayesian', 
-                                'Coverage', 'Temporal', 'Stratified', 'Cognitive', 'Mixed'],
-                    'Average Score': [2.16, 2.15, 2.14, 2.14, 2.10, 2.13, 2.13, 2.06, 2.09, 1.91],
-                    'Win Rate (%)': [22.69, 21.45, 23.26, 22.12, 20.97, 22.50, 20.59, 18.02, 20.02, 14.78]
+                    'Strategy': ['Risk/Reward', 'Frequency', 'Markov', 'Time Series', 'Fibonacci-Hybrid ⭐⭐',
+                                'Fusion Ensemble ⭐⭐', 'Bayesian', 'Coverage', 'Temporal', 'Stratified', 'Cognitive', 'Mixed'],
+                    'Average Score': [2.16, 2.15, 2.14, 2.14, None, None, 2.10, 2.13, 2.13, 2.06, 2.09, 1.91],
+                    'Win Rate (%)': [22.69, 21.45, 23.26, 22.12, None, None, 20.97, 22.50, 20.59, 18.02, 20.02, 14.78]
                 }
                 
                 df_perf = pd.DataFrame(strategy_data)
-                
+
+                # Filter out strategies with None values for charting
+                df_perf_tested = df_perf.dropna()
+
                 # Bar chart of average scores
                 st.write("Average Score by Strategy (out of 6)")
-                fig1 = px.bar(df_perf, x='Strategy', y='Average Score', color='Average Score',
+                fig1 = px.bar(df_perf_tested, x='Strategy', y='Average Score', color='Average Score',
                              color_continuous_scale='Viridis', height=300)
                 st.plotly_chart(fig1, use_container_width=True)
-                
+
                 # Bar chart of win rates
                 st.write("Win Rate by Strategy (%)")
-                fig2 = px.bar(df_perf, x='Strategy', y='Win Rate (%)', color='Win Rate (%)',
+                fig2 = px.bar(df_perf_tested, x='Strategy', y='Win Rate (%)', color='Win Rate (%)',
                              color_continuous_scale='Viridis', height=300)
                 st.plotly_chart(fig2, use_container_width=True)
-            
+
             st.info("**Analysis Details**: Backtesting conducted across 1,049 test drawings from historical data. " +
                    "Win rate refers to matches of 3 or more numbers (threshold for winning a prize).")
+
+            st.warning("⚠️ **New Ensemble Strategies**: The Fibonacci-Filtered Hybrid ⭐⭐ and Strategic Fusion Ensemble ⭐⭐ " +
+                      "are newly added meta-strategies that haven't been backtested yet. They combine multiple base strategies " +
+                      "and are expected to perform at or above the top-rated strategies. Run comprehensive backtesting to get performance data.")
         
         else:  # Euromillions
             st.subheader("Euromillions Strategy Performance")
