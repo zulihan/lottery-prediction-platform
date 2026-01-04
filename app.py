@@ -67,8 +67,8 @@ st.set_page_config(
 )
 
 
-@st.cache_data(ttl=3600)  # Cache for 1 hour
-def run_comprehensive_backtest(lottery_type: str, num_predictions: int = 20):
+@st.cache_data(ttl=3600, show_spinner=False)  # Cache for 1 hour
+def run_comprehensive_backtest(lottery_type: str, num_predictions: int = 20, _cache_version: int = 2):
     """
     Run comprehensive backtest of all strategies.
 
@@ -78,6 +78,7 @@ def run_comprehensive_backtest(lottery_type: str, num_predictions: int = 20):
     Args:
         lottery_type: "euromillions" or "french_loto"
         num_predictions: Number of predictions per strategy
+        _cache_version: Internal version for cache invalidation (increment to force refresh)
 
     Returns:
         DataFrame with performance metrics
@@ -88,6 +89,8 @@ def run_comprehensive_backtest(lottery_type: str, num_predictions: int = 20):
         return results
     except Exception as e:
         logger.error(f"Backtest failed: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return None
 
 
@@ -2336,6 +2339,12 @@ def main():
                 st.write("")
                 st.write("")
                 run_backtest_btn = st.button("🔄 Run Backtest", type="primary", key="run_loto_backtest")
+            with col3:
+                st.write("")
+                st.write("")
+                if st.button("🗑️ Clear Cache", key="clear_loto_cache", help="Clear cached results and force fresh backtest"):
+                    st.cache_data.clear()
+                    st.success("Cache cleared!")
 
             # Run backtest
             if run_backtest_btn or 'loto_backtest_results' in st.session_state:
@@ -2441,6 +2450,12 @@ def main():
                 st.write("")
                 st.write("")
                 run_backtest_euro_btn = st.button("🔄 Run Backtest", type="primary", key="run_euro_backtest")
+            with col3:
+                st.write("")
+                st.write("")
+                if st.button("🗑️ Clear Cache", key="clear_euro_cache", help="Clear cached results and force fresh backtest"):
+                    st.cache_data.clear()
+                    st.success("Cache cleared!")
 
             # Run backtest
             if run_backtest_euro_btn or 'euro_backtest_results' in st.session_state:
