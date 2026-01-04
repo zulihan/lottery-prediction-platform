@@ -147,7 +147,7 @@ class StrategyBacktester:
             strategies = PredictionStrategies(stats)
         else:  # french_loto
             from src.core.french_loto_statistics import FrenchLotoStatistics
-            from src.core.french_loto_strategies import FrenchLotoStrategy
+            from src.core.french_loto_strategy import FrenchLotoStrategy
 
             stats = FrenchLotoStatistics(training_data)
             strategies = FrenchLotoStrategy(stats)
