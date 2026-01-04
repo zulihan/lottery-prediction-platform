@@ -644,6 +644,29 @@ def main():
                     # Number of combinations to generate
                     num_combinations = st.slider("Number of Combinations", 1, 10, 5)
                     
+                    # Separate star strategy option
+                    use_separate_stars = st.checkbox(
+                        "⭐ Use separate strategy for Stars",
+                        key="euro_use_separate_stars",
+                        help="Enable to select a different optimization strategy for the stars (1-12)"
+                    )
+                    
+                    if use_separate_stars:
+                        star_strategy_choice = st.selectbox(
+                            "⭐ Strategy for Stars",
+                            [
+                                "frequency - Most frequent stars",
+                                "balanced - Mix frequent + medium",
+                                "contrarian - Least frequent (overdue)",
+                                "range_balanced - Balance 1-6 vs 7-12",
+                                "pair_frequency - Most common pairs",
+                                "markov - Based on transitions",
+                                "time_series - Recent trends",
+                                "weighted_random - Weighted by frequency"
+                            ],
+                            key="euro_star_strategy"
+                        )
+                    
                     # Generate combinations
                     generate_button = st.button("Generate Combinations")
                     
@@ -734,6 +757,22 @@ def main():
                                     else:
                                         st.error("Ensemble strategies not available")
                                         combinations = []
+                                
+                                # Replace stars with separate strategy if enabled
+                                if use_separate_stars and combinations:
+                                    try:
+                                        from src.core.lucky_number_strategies import StarStrategies
+                                        star_strategy_obj = StarStrategies(st.session_state.processed_data)
+                                        star_strat_name = star_strategy_choice.split(" - ")[0]
+                                        
+                                        for combo in combinations:
+                                            star_result = star_strategy_obj.generate(star_strat_name)
+                                            combo['stars'] = star_result['stars']
+                                            combo['strategy'] = f"{base_strategy_type} + Stars:{star_strat_name}"
+                                        
+                                        st.info(f"⭐ Stars generated using: {star_strat_name}")
+                                    except Exception as e:
+                                        st.warning(f"Could not apply separate star strategy: {e}")
 
                                 # Display generated combinations
                                 if combinations:
@@ -868,14 +907,27 @@ def main():
                     # Quick Generate Section
                     st.subheader("🚀 Quick Generate Optimal Combinations")
                     
-                    col1, col2, col3 = st.columns([2, 2, 1])
+                    col1, col2 = st.columns([1, 2])
                     
                     with col1:
                         num_combos = st.number_input("Number of combinations", min_value=1, max_value=10, value=2, key="loto_quick_num")
                     
                     with col2:
+                        use_separate_lucky = st.checkbox(
+                            "🍀 Use separate strategy for Lucky Number",
+                            key="loto_use_separate_lucky",
+                            help="Enable to select a different optimization strategy for the lucky number"
+                        )
+                    
+                    # Strategy selection columns
+                    if use_separate_lucky:
+                        col1, col2, col3 = st.columns([2, 2, 1])
+                    else:
+                        col1, col2, col3 = st.columns([3, 0.01, 1])  # Hide middle column
+                    
+                    with col1:
                         strategy_choice = st.selectbox(
-                            "Recommended Strategy",
+                            "Strategy for Main Numbers" if use_separate_lucky else "Recommended Strategy",
                             [
                                 "Risk/Reward Balance ⭐ (Best Overall)",
                                 "Markov Chain Model ⭐ (Highest Win Rate)",
@@ -888,6 +940,22 @@ def main():
                             key="loto_quick_strategy"
                         )
                     
+                    if use_separate_lucky:
+                        with col2:
+                            lucky_strategy_choice = st.selectbox(
+                                "🍀 Strategy for Lucky Number",
+                                [
+                                    "frequency - Most frequent historically",
+                                    "balanced - Mix frequent + medium",
+                                    "contrarian - Least frequent (overdue)",
+                                    "time_series - Recent trends",
+                                    "hot_cold - Balance hot/cold",
+                                    "range_balanced - Balance 1-5 vs 6-10",
+                                    "weighted_random - Weighted by frequency"
+                                ],
+                                key="loto_lucky_strategy"
+                            )
+                    
                     with col3:
                         st.write("")  # Spacing
                         st.write("")  # Spacing
@@ -896,6 +964,17 @@ def main():
                     if quick_generate:
                         with st.spinner(f"Generating {num_combos} optimal combinations using {strategy_choice}..."):
                             try:
+                                # Import lucky number strategies if using separate strategy
+                                lucky_strategy_obj = None
+                                if use_separate_lucky:
+                                    try:
+                                        from src.core.lucky_number_strategies import LuckyNumberStrategies
+                                        lucky_strategy_obj = LuckyNumberStrategies(st.session_state.french_loto_data)
+                                        lucky_strat_name = lucky_strategy_choice.split(" - ")[0]  # Extract strategy name
+                                    except Exception as e:
+                                        st.warning(f"Could not load lucky number strategies: {e}. Using default.")
+                                        use_separate_lucky = False
+                                
                                 # Extract base strategy name
                                 if "Risk/Reward" in strategy_choice:
                                     base_strategy = "Risk/Reward Balance"
@@ -939,8 +1018,22 @@ def main():
                                         num_combinations=num_combos
                                     )
                                 
+                                # Replace lucky numbers with separate strategy if enabled
+                                if use_separate_lucky and lucky_strategy_obj and combinations:
+                                    for combo in combinations:
+                                        lucky_result = lucky_strategy_obj.generate(lucky_strat_name)
+                                        if 'lucky_number' in combo:
+                                            combo['lucky_number'] = lucky_result['lucky_number']
+                                        elif 'lucky' in combo:
+                                            combo['lucky'] = lucky_result['lucky_number']
+                                        # Update strategy name to reflect both
+                                        combo['strategy'] = f"{base_strategy} + Lucky:{lucky_strat_name}"
+                                
                                 if combinations:
-                                    st.success(f"✅ Generated {len(combinations)} optimal combinations using {base_strategy}!")
+                                    if use_separate_lucky:
+                                        st.success(f"✅ Generated {len(combinations)} optimal combinations using {base_strategy} (numbers) + {lucky_strat_name} (lucky)!")
+                                    else:
+                                        st.success(f"✅ Generated {len(combinations)} optimal combinations using {base_strategy}!")
                                     st.subheader("🎲 Your Optimal Combinations")
                                     
                                     for i, combo in enumerate(combinations):
