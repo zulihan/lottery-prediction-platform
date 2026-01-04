@@ -32,6 +32,7 @@ try:
         plot_trend_over_time,
         create_all_visualizations
     )
+    from src.utils.backtesting import StrategyBacktester, quick_backtest
 except ImportError as e:
     logging.warning(f"Strategy modules not found. Some features may be unavailable. Error: {str(e)}")
     # Define fallback functions
@@ -64,6 +65,31 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def run_comprehensive_backtest(lottery_type: str, num_predictions: int = 20):
+    """
+    Run comprehensive backtest of all strategies.
+
+    Cached to avoid re-running on every page load.
+    Results cached for 1 hour (3600 seconds).
+
+    Args:
+        lottery_type: "euromillions" or "french_loto"
+        num_predictions: Number of predictions per strategy
+
+    Returns:
+        DataFrame with performance metrics
+    """
+    try:
+        logger.info(f"Running backtest for {lottery_type}...")
+        results = quick_backtest(lottery_type, num_predictions)
+        return results
+    except Exception as e:
+        logger.error(f"Backtest failed: {e}")
+        return None
+
 
 def main():
     """Main application function"""
@@ -2250,65 +2276,191 @@ def main():
         
         if lottery_perf_type == "French Loto":
             st.subheader("French Loto Strategy Performance")
-            
-            st.write("Based on comprehensive backtesting against historical data (30% test set, 20 combinations per strategy), here are the results:")
-            
-            # Display performance metrics for each strategy
-            col1, col2 = st.columns(2)
-            
+
+            st.markdown("""
+            **Dynamic Backtesting**: Performance metrics are calculated from your actual database data.
+            Click the button below to run a comprehensive backtest (cached for 1 hour).
+            """)
+
+            # Backtest configuration
+            col1, col2, col3 = st.columns([2, 2, 1])
             with col1:
-                st.markdown("### Best Performing Strategies")
-                st.markdown("""
-                1. **Risk/Reward Strategy**: 2.16/6 avg score, 22.69% win rate
-                2. **Frequency Analysis**: 2.15/6 avg score, 21.45% win rate
-                3. **Markov Chain Model**: 2.14/6 avg score, 23.26% win rate
-                4. **Time Series Analysis**: 2.14/6 avg score, 22.12% win rate
-                """)
-                
-                st.markdown("### Recommendations")
-                st.markdown("""
-                - **Risk/Reward Balance** is optimal for maximizing both your match rate and potential payouts
-                - **Markov Chain Model** gives the highest win percentage but slightly lower average matches
-                - For consistent performance, consider a blend of the top three strategies
-                """)
-                
+                num_preds = st.number_input(
+                    "Predictions per strategy",
+                    min_value=5,
+                    max_value=50,
+                    value=20,
+                    key="loto_backtest_num_preds"
+                )
             with col2:
-                # Example performance chart
-                strategy_data = {
-                    'Strategy': ['Risk/Reward', 'Frequency', 'Markov', 'Time Series', 'Fibonacci-Hybrid ⭐⭐',
-                                'Fusion Ensemble ⭐⭐', 'Bayesian', 'Coverage', 'Temporal', 'Stratified', 'Cognitive', 'Mixed'],
-                    'Average Score': [2.16, 2.15, 2.14, 2.14, None, None, 2.10, 2.13, 2.13, 2.06, 2.09, 1.91],
-                    'Win Rate (%)': [22.69, 21.45, 23.26, 22.12, None, None, 20.97, 22.50, 20.59, 18.02, 20.02, 14.78]
-                }
-                
-                df_perf = pd.DataFrame(strategy_data)
+                st.write("")
+                st.write("")
+                run_backtest_btn = st.button("🔄 Run Backtest", type="primary", key="run_loto_backtest")
 
-                # Filter out strategies with None values for charting
-                df_perf_tested = df_perf.dropna()
+            # Run backtest
+            if run_backtest_btn or 'loto_backtest_results' in st.session_state:
+                with st.spinner("Running comprehensive backtest... This may take a minute..."):
+                    try:
+                        backtest_results = run_comprehensive_backtest("french_loto", num_preds)
 
-                # Bar chart of average scores
-                st.write("Average Score by Strategy (out of 6)")
-                fig1 = px.bar(df_perf_tested, x='Strategy', y='Average Score', color='Average Score',
-                             color_continuous_scale='Viridis', height=300)
-                st.plotly_chart(fig1, use_container_width=True)
+                        if backtest_results is not None and len(backtest_results) > 0:
+                            st.session_state.loto_backtest_results = backtest_results
 
-                # Bar chart of win rates
-                st.write("Win Rate by Strategy (%)")
-                fig2 = px.bar(df_perf_tested, x='Strategy', y='Win Rate (%)', color='Win Rate (%)',
-                             color_continuous_scale='Viridis', height=300)
-                st.plotly_chart(fig2, use_container_width=True)
+                            # Display performance metrics
+                            col1, col2 = st.columns(2)
 
-            st.info("**Analysis Details**: Backtesting conducted across 1,049 test drawings from historical data. " +
-                   "Win rate refers to matches of 3 or more numbers (threshold for winning a prize).")
+                            with col1:
+                                st.markdown("### Best Performing Strategies")
 
-            st.warning("⚠️ **New Ensemble Strategies**: The Fibonacci-Filtered Hybrid ⭐⭐ and Strategic Fusion Ensemble ⭐⭐ " +
-                      "are newly added meta-strategies that haven't been backtested yet. They combine multiple base strategies " +
-                      "and are expected to perform at or above the top-rated strategies. Run comprehensive backtesting to get performance data.")
+                                # Show top 4 strategies
+                                top_strategies = backtest_results.head(4)
+                                for idx, row in top_strategies.iterrows():
+                                    st.markdown(f"**{idx+1}. {row['strategy']}**: "
+                                              f"{row['avg_score']:.2f}/6 avg score, "
+                                              f"{row['win_rate']:.2f}% win rate")
+
+                                st.markdown("### Recommendations")
+                                if len(top_strategies) > 0:
+                                    best = top_strategies.iloc[0]
+                                    st.markdown(f"- ✅ **{best['strategy']}** is optimal (avg score: {best['avg_score']:.2f})")
+
+                                    if len(top_strategies) > 1:
+                                        second = top_strategies.iloc[1]
+                                        st.markdown(f"- ✅ **{second['strategy']}** is also excellent (win rate: {second['win_rate']:.2f}%)")
+
+                                st.markdown("- ✅ For consistent performance, use a mix of top-ranked strategies")
+
+                            with col2:
+                                # Bar chart of average scores
+                                st.write("Average Score by Strategy (out of 6)")
+                                fig1 = px.bar(backtest_results, x='strategy', y='avg_score',
+                                            color='avg_score',
+                                            color_continuous_scale='Viridis', height=300)
+                                fig1.update_layout(xaxis_title="Strategy", yaxis_title="Average Score")
+                                st.plotly_chart(fig1, use_container_width=True)
+
+                                # Bar chart of win rates
+                                st.write("Win Rate by Strategy (%)")
+                                fig2 = px.bar(backtest_results, x='strategy', y='win_rate',
+                                            color='win_rate',
+                                            color_continuous_scale='Viridis', height=300)
+                                fig2.update_layout(xaxis_title="Strategy", yaxis_title="Win Rate (%)")
+                                st.plotly_chart(fig2, use_container_width=True)
+
+                            # Show detailed table
+                            with st.expander("📊 Detailed Results Table"):
+                                st.dataframe(
+                                    backtest_results[['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']],
+                                    use_container_width=True
+                                )
+
+                            st.info(f"**Analysis Details**: Backtested {len(backtest_results)} strategies using "
+                                  f"{num_preds} predictions each against historical data (30% test set). "
+                                  f"Win rate = predictions with 3+ matches (prize threshold).")
+
+                        else:
+                            st.error("Backtest failed. Please check database connection and ensure you have sufficient historical data.")
+
+                    except Exception as e:
+                        st.error(f"Error running backtest: {str(e)}")
+                        import traceback
+                        st.error(f"Traceback: {traceback.format_exc()}")
+            else:
+                st.info("👆 Click 'Run Backtest' to generate fresh performance metrics from your database data.")
         
         else:  # Euromillions
             st.subheader("Euromillions Strategy Performance")
-            st.write("Euromillions strategy performance analysis coming soon.")
-            st.info("Run the backtesting module to see comprehensive performance statistics for Euromillions strategies.")
+
+            st.markdown("""
+            **Dynamic Backtesting**: Performance metrics are calculated from your actual database data.
+            Click the button below to run a comprehensive backtest (cached for 1 hour).
+            """)
+
+            # Backtest configuration
+            col1, col2, col3 = st.columns([2, 2, 1])
+            with col1:
+                num_preds_euro = st.number_input(
+                    "Predictions per strategy",
+                    min_value=5,
+                    max_value=50,
+                    value=20,
+                    key="euro_backtest_num_preds"
+                )
+            with col2:
+                st.write("")
+                st.write("")
+                run_backtest_euro_btn = st.button("🔄 Run Backtest", type="primary", key="run_euro_backtest")
+
+            # Run backtest
+            if run_backtest_euro_btn or 'euro_backtest_results' in st.session_state:
+                with st.spinner("Running comprehensive backtest... This may take a minute..."):
+                    try:
+                        backtest_results_euro = run_comprehensive_backtest("euromillions", num_preds_euro)
+
+                        if backtest_results_euro is not None and len(backtest_results_euro) > 0:
+                            st.session_state.euro_backtest_results = backtest_results_euro
+
+                            # Display performance metrics
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+                                st.markdown("### Best Performing Strategies")
+
+                                # Show top 4 strategies
+                                top_strategies = backtest_results_euro.head(4)
+                                for idx, row in top_strategies.iterrows():
+                                    st.markdown(f"**{idx+1}. {row['strategy']}**: "
+                                              f"{row['avg_score']:.2f}/12 avg score, "
+                                              f"{row['win_rate']:.2f}% win rate")
+
+                                st.markdown("### Recommendations")
+                                if len(top_strategies) > 0:
+                                    best = top_strategies.iloc[0]
+                                    st.markdown(f"- ✅ **{best['strategy']}** is optimal (avg score: {best['avg_score']:.2f})")
+
+                                    if len(top_strategies) > 1:
+                                        second = top_strategies.iloc[1]
+                                        st.markdown(f"- ✅ **{second['strategy']}** is also excellent (win rate: {second['win_rate']:.2f}%)")
+
+                                st.markdown("- ✅ For consistent performance, use a mix of top-ranked strategies")
+
+                            with col2:
+                                # Bar chart of average scores
+                                st.write("Average Score by Strategy (out of 12)")
+                                fig1 = px.bar(backtest_results_euro, x='strategy', y='avg_score',
+                                            color='avg_score',
+                                            color_continuous_scale='Viridis', height=300)
+                                fig1.update_layout(xaxis_title="Strategy", yaxis_title="Average Score")
+                                st.plotly_chart(fig1, use_container_width=True)
+
+                                # Bar chart of win rates
+                                st.write("Win Rate by Strategy (%)")
+                                fig2 = px.bar(backtest_results_euro, x='strategy', y='win_rate',
+                                            color='win_rate',
+                                            color_continuous_scale='Viridis', height=300)
+                                fig2.update_layout(xaxis_title="Strategy", yaxis_title="Win Rate (%)")
+                                st.plotly_chart(fig2, use_container_width=True)
+
+                            # Show detailed table
+                            with st.expander("📊 Detailed Results Table"):
+                                st.dataframe(
+                                    backtest_results_euro[['strategy', 'avg_score', 'win_rate', 'max_score', 'total_predictions']],
+                                    use_container_width=True
+                                )
+
+                            st.info(f"**Analysis Details**: Backtested {len(backtest_results_euro)} strategies using "
+                                  f"{num_preds_euro} predictions each against historical data (30% test set). "
+                                  f"Win rate = predictions with 2+ matches (prize threshold).")
+
+                        else:
+                            st.error("Backtest failed. Please check database connection and ensure you have sufficient historical data.")
+
+                    except Exception as e:
+                        st.error(f"Error running backtest: {str(e)}")
+                        import traceback
+                        st.error(f"Traceback: {traceback.format_exc()}")
+            else:
+                st.info("👆 Click 'Run Backtest' to generate fresh performance metrics from your database data.")
 
 
 if __name__ == "__main__":
