@@ -801,26 +801,66 @@ def main():
                     # Display performance analysis
                     with st.expander("📊 Strategy Performance Analysis", expanded=True):
                         st.markdown("""
-                        **Based on comprehensive backtesting against historical data (30% test set, 20 combinations per strategy):**
-
-                        **Best Performing Strategies:**
-                        - 🥇 **Risk/Reward Strategy**: 2.16/6 avg score, 22.69% win rate
-                        - 🥈 **Frequency Analysis**: 2.15/6 avg score, 21.45% win rate
-                        - 🥉 **Markov Chain Model**: 2.14/6 avg score, 23.26% win rate
-                        - ⭐ **Time Series Analysis**: 2.14/6 avg score, 22.12% win rate
-
-                        **New Ensemble Strategies (Not Yet Backtested):**
-                        - ⭐⭐ **Fibonacci-Filtered Hybrid**: Meta-strategy combining 4 base strategies with Fibonacci filtering
-                        - ⭐⭐ **Strategic Fusion Ensemble**: Blends elements from multiple strategies using fusion algorithms
-
-                        **Recommendations:**
-                        - ✅ **Risk/Reward Balance** is optimal for maximizing both your match rate and potential payouts
-                        - ✅ **Markov Chain Model** gives the highest win percentage but slightly lower average matches
-                        - ✅ For consistent performance, consider a **blend of the top three strategies**
-                        - 🆕 Try the new **Ensemble Strategies** for advanced meta-strategy predictions
-
-                        *Analysis Details: Backtesting conducted across 1,049 test drawings from historical data. Win rate refers to matches of 3 or more numbers (threshold for winning a prize).*
+                        **Dynamic Performance Metrics**: Click below to run comprehensive backtesting
+                        against your actual historical data (30% test set, configurable predictions per strategy).
                         """)
+
+                        # Mini backtest configuration
+                        col1, col2 = st.columns([3, 2])
+                        with col1:
+                            num_preds_mini = st.number_input(
+                                "Predictions per strategy",
+                                min_value=5,
+                                max_value=30,
+                                value=15,
+                                key="loto_mini_backtest_num_preds",
+                                help="Lower values = faster, higher values = more accurate"
+                            )
+                        with col2:
+                            st.write("")
+                            run_mini_backtest = st.button(
+                                "🔄 Run Quick Backtest",
+                                type="secondary",
+                                key="run_loto_mini_backtest"
+                            )
+
+                        # Run mini backtest for recommendations
+                        if run_mini_backtest or 'loto_mini_backtest_results' in st.session_state:
+                            with st.spinner("Running quick backtest for recommendations..."):
+                                try:
+                                    mini_results = run_comprehensive_backtest("french_loto", num_preds_mini)
+
+                                    if mini_results is not None and len(mini_results) > 0:
+                                        st.session_state.loto_mini_backtest_results = mini_results
+
+                                        # Display top 4 strategies
+                                        st.markdown("**Best Performing Strategies:**")
+                                        top_4 = mini_results.head(4)
+                                        medals = ['🥇', '🥈', '🥉', '⭐']
+                                        for idx, (_, row) in enumerate(top_4.iterrows()):
+                                            st.markdown(f"{medals[idx]} **{row['strategy']}**: "
+                                                      f"{row['avg_score']:.2f}/6 avg score, "
+                                                      f"{row['win_rate']:.2f}% win rate")
+
+                                        st.markdown("\n**Recommendations:**")
+                                        best = top_4.iloc[0]
+                                        st.markdown(f"- ✅ **{best['strategy']}** is optimal for maximizing "
+                                                  f"both your match rate and potential payouts")
+                                        if len(top_4) > 1:
+                                            second = top_4.iloc[1]
+                                            st.markdown(f"- ✅ **{second['strategy']}** gives excellent "
+                                                      f"win rate ({second['win_rate']:.2f}%)")
+                                        st.markdown("- ✅ For consistent performance, consider a **blend of the top strategies**")
+
+                                        st.caption(f"*Analysis based on {num_preds_mini} predictions per strategy "
+                                                 f"against historical test set. Win rate = 3+ matches (prize threshold).*")
+                                    else:
+                                        st.error("Backtest failed. Please check your data.")
+
+                                except Exception as e:
+                                    st.error(f"Error running backtest: {str(e)}")
+                        else:
+                            st.info("👆 Click 'Run Quick Backtest' to see which strategies perform best on your data.")
                     
                     # Quick Generate Section
                     st.subheader("🚀 Quick Generate Optimal Combinations")
