@@ -128,22 +128,37 @@ class FrenchLotoStrategy:
             
         neutral_count = 5 - hot_count - cold_count
         
-        # Select numbers from each category
-        selected = []
+        # Select numbers from each category (ensuring no duplicates)
+        selected = set()
         
         if hot_count > 0 and hot_numbers:
-            selected.extend(random.sample(hot_numbers, hot_count))
+            # Filter out any already selected and sample
+            available_hot = [n for n in hot_numbers if n not in selected]
+            sample_count = min(hot_count, len(available_hot))
+            if sample_count > 0:
+                selected.update(random.sample(available_hot, sample_count))
         
         if cold_count > 0 and cold_numbers:
-            selected.extend(random.sample(cold_numbers, cold_count))
+            # Filter out any already selected and sample
+            available_cold = [n for n in cold_numbers if n not in selected]
+            sample_count = min(cold_count, len(available_cold))
+            if sample_count > 0:
+                selected.update(random.sample(available_cold, sample_count))
         
         if neutral_count > 0 and neutral_numbers:
-            selected.extend(random.sample(neutral_numbers, neutral_count))
+            # Filter out any already selected and sample
+            available_neutral = [n for n in neutral_numbers if n not in selected]
+            sample_count = min(neutral_count, len(available_neutral))
+            if sample_count > 0:
+                selected.update(random.sample(available_neutral, sample_count))
         
         # If we still need more numbers, select randomly from all numbers
         while len(selected) < 5:
             remaining = [n for n in all_numbers if n not in selected]
-            selected.append(random.choice(remaining))
+            if remaining:
+                selected.add(random.choice(remaining))
+            else:
+                break
         
         # Select lucky number with bias toward hot ones
         if hot_lucky and random.random() < 0.6:  # 60% chance to pick hot lucky
@@ -153,7 +168,7 @@ class FrenchLotoStrategy:
         else:  # Otherwise pick randomly from all
             lucky = random.randint(1, 10)
         
-        return sorted(selected), lucky
+        return sorted(list(selected)), lucky
     
     def generate_balanced_range(self):
         """

@@ -1587,6 +1587,27 @@ def main():
         if lottery_type == "French Loto":
             st.subheader("French Loto Results Analysis")
             
+            # Section 0: View Saved Predictions
+            with st.expander("📋 View Saved Predictions", expanded=True):
+                conn = get_db_connection()
+                if conn:
+                    try:
+                        predictions_query = """
+                            SELECT id, date_generated, numbers, lucky, strategy, score 
+                            FROM french_loto_predictions 
+                            ORDER BY id DESC
+                            LIMIT 20
+                        """
+                        saved_preds = pd.read_sql(predictions_query, conn)
+                        
+                        if not saved_preds.empty:
+                            st.success(f"📊 {len(saved_preds)} prédictions sauvegardées")
+                            st.dataframe(saved_preds, use_container_width=True)
+                        else:
+                            st.info("Aucune prédiction sauvegardée. Générez et sauvegardez des combinaisons dans l'onglet 'Strategy Generation'.")
+                    except Exception as e:
+                        st.error(f"Erreur: {str(e)}")
+            
             # Get latest drawing date
             conn = get_db_connection()
             if conn:
