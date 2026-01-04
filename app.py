@@ -2685,7 +2685,7 @@ def main():
                                 top_strategies = backtest_results_euro.head(4)
                                 for idx, row in top_strategies.iterrows():
                                     st.markdown(f"**{idx+1}. {row['strategy']}**: "
-                                              f"{row['avg_score']:.2f}/12 avg score, "
+                                              f"{row['avg_score']:.2f}/7 avg score, "
                                               f"{row['win_rate']:.2f}% win rate")
 
                                 st.markdown("### Recommendations")
